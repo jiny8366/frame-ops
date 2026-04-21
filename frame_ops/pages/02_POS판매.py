@@ -680,7 +680,7 @@ with right:
         for i, line in enumerate(st.session_state.fo_cart):
             c0, c1, c2, c3 = st.columns([4, 1, 1, 1])
             with c0:
-                st.write(f"**{line['display_name']}**  `{line['product_code']}`")
+                st.write(f"**{line['display_name']}**")
             with c1:
                 st.write(f"{format_fo_quantity_display(line['quantity'])}개")
             with c2:
