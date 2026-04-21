@@ -73,8 +73,8 @@ FO_POS_KPD_CSS = """
 .fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
 .st-key-fo_pos_amt_keypad_scope [data-testid="stButton"] > button {
   width: 100% !important;
-  aspect-ratio: 2.4 / 1 !important;
-  min-height: clamp(2.6rem, 6.5vw, 3.4rem) !important;
+  aspect-ratio: 1 / 1 !important;
+  min-height: 0 !important;
   max-height: none !important;
   font-size: clamp(1.05rem, 2.2vw, 1.45rem) !important;
   font-weight: 650 !important;
