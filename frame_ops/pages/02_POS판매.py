@@ -334,7 +334,16 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
             cur = int(st.session_state.get(field_key, 0) or 0)
             st.session_state[draft_key] = str(cur) if cur else ""
 
-    if st.session_state.get(FO_POS_ACTIVE_AMOUNT_KEYPAD) == field_key:
+    other_dialog_open = any(
+        bool(st.session_state.get(k))
+        for k in (
+            K_POS_BR_DLG,
+            K_POS_ST_DLG,
+            K_POS_CO_DLG,
+            K_OPEN_SALE_SEARCH,
+        )
+    )
+    if st.session_state.get(FO_POS_ACTIVE_AMOUNT_KEYPAD) == field_key and not other_dialog_open:
         if field_key == "fo_pos_card":
             _dialog_fo_pos_card_amount()
         elif field_key == "fo_pos_cash":
@@ -638,10 +647,13 @@ with left:
                 st.rerun()
 
 if st.session_state.get(K_POS_BR_DLG):
+    st.session_state.pop(FO_POS_ACTIVE_AMOUNT_KEYPAD, None)
     pos_pick_brand_dialog()
 if st.session_state.get(K_POS_ST_DLG):
+    st.session_state.pop(FO_POS_ACTIVE_AMOUNT_KEYPAD, None)
     pos_pick_style_dialog()
 if st.session_state.get(K_POS_CO_DLG):
+    st.session_state.pop(FO_POS_ACTIVE_AMOUNT_KEYPAD, None)
     pos_pick_color_dialog()
 
 with right:
