@@ -15,6 +15,7 @@ config/local_views/*.env
 
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 .Python
