@@ -809,5 +809,5 @@ with tab_edit:
                     except Exception as ex:
                         st.error(str(ex))
 
-st.page_link("app.py", label="← 홈")
+st.page_link("pages/90_admin_portal.py", label="← 홈")
 st.page_link("pages/15_지점·매니저·판매사.py", label="지점·매니저·판매사")

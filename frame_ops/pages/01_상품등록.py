@@ -65,7 +65,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.page_link("app.py", label="홈")
+st.page_link("pages/90_admin_portal.py", label="홈")
 st.page_link("pages/03_입고.py", label="→ 입고")
 st.page_link("pages/02_POS판매.py", label="→ POS 판매")
 

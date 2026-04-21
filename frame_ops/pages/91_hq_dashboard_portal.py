@@ -39,7 +39,7 @@ with c1:
     st.page_link("pages/16_판매검색.py", label="판매 검색", icon="🔎")
 with c2:
     st.markdown("**참조 화면**")
-    st.page_link("app.py", label="홈 · 지점 요약", icon="🏠")
+    st.page_link("pages/90_admin_portal.py", label="홈 · 지점 요약", icon="🏠")
     st.page_link("pages/06_재고현황.py", label="재고 현황", icon="📊")
     st.page_link("pages/08_정산.py", label="정산", icon="🔒")
 

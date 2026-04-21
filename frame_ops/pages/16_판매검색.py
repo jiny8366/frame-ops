@@ -39,4 +39,4 @@ except RuntimeError as e:
 render_sales_search_panel(sb, key_prefix="fo_sale_search")
 
 st.page_link("pages/02_POS판매.py", label="← POS 판매")
-st.page_link("app.py", label="홈")
+st.page_link("pages/90_admin_portal.py", label="홈")

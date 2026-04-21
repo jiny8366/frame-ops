@@ -96,7 +96,7 @@ else:
 stores = [s for s in load_stores_with_business_fields_or_halt(sb) if s.get("active", True)]
 if not stores:
     st.warning("활성 지점이 없습니다. **홈**에서 지점을 먼저 등록하세요.")
-    st.page_link("app.py", label="← 홈")
+    st.page_link("pages/90_admin_portal.py", label="← 홈")
     st.stop()
 
 store_labels = [f"{s['store_code']} — {s['name']}" for s in stores]
@@ -248,5 +248,5 @@ else:
         except Exception as ex:
             st.error(str(ex))
 
-st.page_link("app.py", label="← 홈")
+st.page_link("pages/90_admin_portal.py", label="← 홈")
 st.page_link("pages/14_본사·스태프·권한.py", label="본사·스태프·권한(전체)")
