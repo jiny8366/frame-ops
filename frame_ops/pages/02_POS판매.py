@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import os
 import sys
 import uuid
@@ -30,6 +31,7 @@ from lib.constants import (
 )
 from lib.barcode_decode import decode_barcode_from_bytes, is_barcode_decode_available
 from lib.pos_staff_auth import verify_clerk_for_pos_sale
+from lib.sales_helpers import format_pos_keypad_amount_display
 from lib.settlement_guard import is_business_day_settled, settled_warning_message
 from lib.stock import bump_stock, find_product
 from lib.store_defaults import default_store_index
@@ -53,6 +55,24 @@ K_POS_ST_PG = "fo_pos_style_dlg_page"
 K_POS_CO_DLG = "fo_pos_color_dlg_open"
 K_POS_CO_PG = "fo_pos_color_dlg_page"
 DEFAULT_CLERK_EMAIL = os.getenv("FO_POS_CLERK_EMAIL", "").strip()
+
+FO_POS_KPD_CSS = """
+<style>
+.fo-pos-keypad-lcd-wrap { margin-bottom: 0.35rem; }
+.fo-pos-keypad-lcd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(1.15rem, 3.2vw, 1.65rem);
+  font-weight: 700;
+  text-align: right;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f5f5f7;
+}
+.fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
+</style>
+"""
 
 header_title, header_search, header_store, header_day = st.columns([2, 1, 2, 2])
 with header_title:
@@ -233,7 +253,16 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
 @st.fragment
 def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display: str) -> None:
     draft = st.session_state.get(draft_key) or ""
-    st.caption(f"입력 중: **{draft or '0'}**  →  적용 시 **{label_display}** 창에 반영")
+    lcd = format_pos_keypad_amount_display(draft)
+    st.caption(f"{label_display} · 계산기처럼 즉시 표시")
+    st.markdown(
+        f"""
+<div class="fo-pos-keypad-lcd-wrap">
+  <div class="fo-pos-keypad-lcd">{html.escape(lcd)}<span class="fo-pos-keypad-lcd-won">원</span></div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
 
     def _append(s: str) -> None:
         st.session_state[draft_key] = (st.session_state.get(draft_key) or "") + s
@@ -271,8 +300,6 @@ def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display
     with a1:
         if st.button("초기화", key=f"{field_key}_frclr", use_container_width=True):
             st.session_state[draft_key] = ""
-            st.session_state[field_key] = 0
-            st.rerun()
     with a2:
         if st.button("적용", key=f"{field_key}_frapply", type="primary", use_container_width=True):
             raw = "".join(ch for ch in (st.session_state.get(draft_key) or "") if ch.isdigit())
@@ -512,6 +539,7 @@ with right:
         """,
         unsafe_allow_html=True,
     )
+    st.markdown(FO_POS_KPD_CSS, unsafe_allow_html=True)
     st.markdown("##### 장바구니 · 결제")
     if not st.session_state.fo_cart:
         st.info("왼쪽에서 상품을 담으면 여기에 표시됩니다.")
@@ -532,7 +560,7 @@ with right:
         subtotal = sum(int(line["unit_price"] * line["quantity"]) for line in st.session_state.fo_cart)
         d1, d2 = st.columns(2)
         with d1:
-            disc = st.number_input("할인 합계(원)", min_value=0, value=0, step=1000)
+            disc = _render_amount_keypad("fo_pos_disc", "할인 합계(원)")
         with d2:
             dtypes = (
                 sb.table("fo_discount_types")

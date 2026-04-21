@@ -19,7 +19,65 @@ def brand_grid_cols(page_size: int) -> int:
     return 2 if page_size == 4 else 3 if page_size == 9 else 4
 
 
+def _ensure_nopublic_brand_mapping(sb: Client) -> None:
+    """
+    배포 DB에서 브랜드 마스터가 비어도 POS 브랜드 선택이 동작하도록 자동 복구.
+    - fo_brands에 'No Public' 생성
+    - category='No Public' 이면서 brand_id 없는 상품에 brand/style/color 채움
+    """
+    probe = (
+        sb.table("fo_products")
+        .select("product_code")
+        .eq("category", "No Public")
+        .is_("brand_id", "null")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not probe:
+        return
+
+    bh = sb.table("fo_brands").select("id").eq("name", "No Public").limit(1).execute().data or []
+    if bh:
+        bid = str(bh[0]["id"])
+    else:
+        sb.table("fo_brands").insert({"name": "No Public"}).execute()
+        bh2 = sb.table("fo_brands").select("id").eq("name", "No Public").limit(1).execute().data or []
+        if not bh2:
+            return
+        bid = str(bh2[0]["id"])
+
+    rows = (
+        sb.table("fo_products")
+        .select("product_code")
+        .eq("category", "No Public")
+        .is_("brand_id", "null")
+        .execute()
+        .data
+        or []
+    )
+    for r in rows:
+        pc = str(r.get("product_code") or "").strip()
+        if not pc:
+            continue
+        if "-" in pc:
+            style_code, color_code = [x.strip() for x in pc.rsplit("-", 1)]
+        else:
+            style_code, color_code = pc, ""
+        sb.table("fo_products").update(
+            {"brand_id": bid, "style_code": style_code, "color_code": color_code}
+        ).eq("product_code", pc).execute()
+
+
 def load_all_brands(sb: Client) -> list[dict[str, Any]]:
+    brands = sb.table("fo_brands").select("id, name").order("name").execute().data or []
+    if brands:
+        return brands
+    try:
+        _ensure_nopublic_brand_mapping(sb)
+    except Exception:
+        return []
     return sb.table("fo_brands").select("id, name").order("name").execute().data or []
 
 

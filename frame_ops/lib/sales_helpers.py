@@ -22,3 +22,11 @@ def store_cash_sales_total(sb: Any, store_id: str, business_day: date) -> int:
         or []
     )
     return sum(int(r.get("cash_amount") or 0) for r in rows)
+
+
+def format_pos_keypad_amount_display(raw: str) -> str:
+    """POS 금액 키패드 표시창: 숫자만 남겨 천 단위 콤마(정수 원)."""
+    digits = "".join(ch for ch in (raw or "") if ch.isdigit())
+    if not digits:
+        return "0"
+    return f"{int(digits):,}"
