@@ -71,7 +71,7 @@ FO_POS_KPD_CSS = """
   color: #f5f5f7;
 }
 .fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
-.st-key-fo_pos_amt_keypad_scope [data-testid="stButton"] > button {
+[class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stButton"] > button {
   width: 100% !important;
   aspect-ratio: 1 / 1 !important;
   min-height: 0 !important;
@@ -261,7 +261,24 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
 
 @st.fragment
 def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display: str) -> None:
-    with st.container(key="fo_pos_amt_keypad_scope"):
+    with st.container(key=f"fo_pos_amt_keypad_scope_{field_key}"):
+        lcd_slot = st.empty()
+
+        def _render_lcd() -> None:
+            draft = st.session_state.get(draft_key) or ""
+            lcd = format_pos_keypad_amount_display(draft)
+            lcd_slot.markdown(
+                f"""
+<div class="fo-pos-keypad-lcd-wrap">
+  <div class="fo-pos-keypad-lcd">{html.escape(lcd)}<span class="fo-pos-keypad-lcd-won">원</span></div>
+</div>
+""",
+                unsafe_allow_html=True,
+            )
+
+        # 상단 고정 표시 (버튼 처리 전 1회)
+        _render_lcd()
+
         def _append(s: str) -> None:
             st.session_state[draft_key] = (st.session_state.get(draft_key) or "") + s
 
@@ -304,17 +321,8 @@ def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display
                 st.session_state[field_key] = int(raw or "0")
                 st.session_state[draft_key] = str(st.session_state[field_key])
 
-        # 버튼 처리 이후 상태를 기준으로 LCD를 그려야 입력/삭제가 즉시 반영됩니다.
-        draft = st.session_state.get(draft_key) or ""
-        lcd = format_pos_keypad_amount_display(draft)
-        st.markdown(
-            f"""
-<div class="fo-pos-keypad-lcd-wrap">
-  <div class="fo-pos-keypad-lcd">{html.escape(lcd)}<span class="fo-pos-keypad-lcd-won">원</span></div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+        # 버튼 처리 이후 상태로 상단 LCD를 즉시 갱신
+        _render_lcd()
 
 
 def _run_sale_save(
