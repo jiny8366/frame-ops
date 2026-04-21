@@ -262,17 +262,6 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
 @st.fragment
 def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display: str) -> None:
     with st.container(key="fo_pos_amt_keypad_scope"):
-        draft = st.session_state.get(draft_key) or ""
-        lcd = format_pos_keypad_amount_display(draft)
-        st.markdown(
-            f"""
-<div class="fo-pos-keypad-lcd-wrap">
-  <div class="fo-pos-keypad-lcd">{html.escape(lcd)}<span class="fo-pos-keypad-lcd-won">원</span></div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-
         def _append(s: str) -> None:
             st.session_state[draft_key] = (st.session_state.get(draft_key) or "") + s
 
@@ -314,6 +303,18 @@ def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display
                 raw = "".join(ch for ch in (st.session_state.get(draft_key) or "") if ch.isdigit())
                 st.session_state[field_key] = int(raw or "0")
                 st.session_state[draft_key] = str(st.session_state[field_key])
+
+        # 버튼 처리 이후 상태를 기준으로 LCD를 그려야 입력/삭제가 즉시 반영됩니다.
+        draft = st.session_state.get(draft_key) or ""
+        lcd = format_pos_keypad_amount_display(draft)
+        st.markdown(
+            f"""
+<div class="fo-pos-keypad-lcd-wrap">
+  <div class="fo-pos-keypad-lcd">{html.escape(lcd)}<span class="fo-pos-keypad-lcd-won">원</span></div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
 
 
 def _run_sale_save(
