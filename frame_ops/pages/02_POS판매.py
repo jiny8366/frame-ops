@@ -95,13 +95,21 @@ FO_POS_KPD_CSS = """
   font-size: 1.2rem !important;
   font-weight: 650 !important;
   padding: 0.2rem 0.45rem !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
-/* ⌫ 버튼은 별도 래퍼(_pad_bs)에 들어가므로 높이를 한 번 더 고정 */
-[class*="st-key-fo_pos_amt_keypad_scope_"] [class*="_pad_bs"] [data-testid="stButton"] > button {
+/* ⌫ 버튼은 라벨/렌더 차이로 높이가 달라질 수 있어 별도 강제 */
+[class*="st-key-"][class*="_frbs"] [data-testid="stButton"] > button {
   aspect-ratio: 1 / 1 !important;
   height: var(--fo-kpd-side) !important;
   min-height: var(--fo-kpd-side) !important;
   max-height: var(--fo-kpd-side) !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 /* 금액입력 다이얼로그: 화면 우측 상단 고정 (top 100px, right 100px) */
 div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
