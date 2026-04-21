@@ -46,7 +46,6 @@ MODE_INTROS = {
 SIDEBAR_LINKS: dict[str, list[tuple[str, str, str]]] = {
     MODE_HQ: [
         ("pages/90_admin_portal.py", "본사어드민 포털", "🧭"),
-        ("app.py", "홈 · 지점 등록", "🏠"),
         ("pages/01_상품등록.py", "상품 등록", "📦"),
         ("pages/02_POS판매.py", "POS 판매", "🛒"),
         ("pages/03_입고.py", "입고", "📥"),
@@ -89,7 +88,6 @@ MENU_SECTIONS: list[tuple[str, list[tuple[str, str, str]]]] = [
         "본사어드민",
         [
             ("pages/90_admin_portal.py", "본사어드민 포털", "🧭"),
-            ("app.py", "홈 · 지점 등록", "🏠"),
             ("pages/01_상품등록.py", "상품 등록", "📦"),
             ("pages/05_재고조정.py", "재고 조정", "⚖️"),
             ("pages/06_재고현황.py", "재고 현황", "📊"),
@@ -112,7 +110,6 @@ MENU_SECTIONS: list[tuple[str, list[tuple[str, str, str]]]] = [
         [
             ("pages/91_hq_dashboard_portal.py", "본사대시보드 포털", "🧭"),
             ("pages/11_통계리포트.py", "통계 · 리포트 · 차트", "📈"),
-            ("app.py", "홈 · 지점 요약", "🏠"),
         ],
     ),
     (
@@ -258,9 +255,15 @@ def _render_top_bar_popover() -> None:
             for sec, links in MENU_SECTIONS:
                 st.markdown(f"**{sec}**")
                 for path, lab, icon in links:
-                    st.page_link(path, label=lab, icon=icon)
+                    try:
+                        st.page_link(path, label=lab, icon=icon)
+                    except Exception:
+                        pass
             st.divider()
-            st.page_link("pages/00_서비스선택.py", label="서비스 선택 화면", icon="🔀")
+            try:
+                st.page_link("pages/00_서비스선택.py", label="서비스 선택 화면", icon="🔀")
+            except Exception:
+                pass
 
 
 def _mode_menu_section_index(mode: str) -> int | None:
@@ -281,7 +284,10 @@ def _render_sidebar() -> None:
         if _lv:
             st.info(f"로컬뷰 · {_lv}")
         st.markdown("##### FRAME OPS")
-        st.page_link("pages/00_서비스선택.py", label="서비스 선택", icon="🔀")
+        try:
+            st.page_link("pages/00_서비스선택.py", label="서비스 선택", icon="🔀")
+        except Exception:
+            pass
         mode = get_service_mode()
         if mode is None:
             st.info("**서비스 선택**에서 모드를 고르거나 **☰** 로 전체 화면을 여세요.")
@@ -290,7 +296,10 @@ def _render_sidebar() -> None:
             primary = SIDEBAR_LINKS.get(mode, [])
             seen = {p for p, _, _ in primary}
             for path, lab, icon in primary:
-                st.page_link(path, label=lab, icon=icon)
+                try:
+                    st.page_link(path, label=lab, icon=icon)
+                except Exception:
+                    pass
             sec_i = _mode_menu_section_index(mode)
             if sec_i is not None:
                 _, sec_links = MENU_SECTIONS[sec_i]
@@ -298,7 +307,10 @@ def _render_sidebar() -> None:
                 if extra:
                     with st.expander("더 보기", expanded=False):
                         for path, lab, icon in extra:
-                            st.page_link(path, label=lab, icon=icon)
+                            try:
+                                st.page_link(path, label=lab, icon=icon)
+                            except Exception:
+                                pass
 
 
 def _render_code_sync_sidebar_hint() -> None:
