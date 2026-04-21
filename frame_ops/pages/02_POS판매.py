@@ -71,11 +71,15 @@ FO_POS_KPD_CSS = """
   color: #f5f5f7;
 }
 .fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
+[class*="st-key-fo_pos_amt_keypad_scope_"] {
+  --fo-kpd-side: clamp(3rem, 8vw, 4.2rem);
+}
 [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stButton"] > button {
   width: 100% !important;
   aspect-ratio: 1 / 1 !important;
-  min-height: 0 !important;
-  max-height: none !important;
+  height: var(--fo-kpd-side) !important;
+  min-height: var(--fo-kpd-side) !important;
+  max-height: var(--fo-kpd-side) !important;
   font-size: clamp(1.05rem, 2.2vw, 1.45rem) !important;
   font-weight: 650 !important;
   padding: 0.2rem 0.45rem !important;
