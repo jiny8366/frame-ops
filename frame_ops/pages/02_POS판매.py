@@ -59,7 +59,7 @@ FO_POS_ACTIVE_AMOUNT_KEYPAD = "fo_pos_active_amount_keypad_field"
 FO_POS_KPD_DLG_TOP_PX = 100
 FO_POS_KPD_DLG_RIGHT_PX = 100
 
-FO_POS_KPD_CSS = f"""
+FO_POS_KPD_CSS = """
 <style>
 .fo-pos-keypad-lcd-wrap { margin-bottom: 0.35rem; }
 .fo-pos-keypad-lcd {
@@ -97,15 +97,17 @@ FO_POS_KPD_CSS = f"""
 /* 금액입력 다이얼로그: 화면 우측 상단 고정 (top 100px, right 100px) */
 div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
   position: fixed !important;
-  top: {FO_POS_KPD_DLG_TOP_PX}px !important;
-  right: {FO_POS_KPD_DLG_RIGHT_PX}px !important;
+  top: __FO_POS_KPD_DLG_TOP_PX__px !important;
+  right: __FO_POS_KPD_DLG_RIGHT_PX__px !important;
   left: auto !important;
   bottom: auto !important;
   transform: none !important;
   margin: 0 !important;
 }
 </style>
-"""
+""".replace("__FO_POS_KPD_DLG_TOP_PX__", str(FO_POS_KPD_DLG_TOP_PX)).replace(
+    "__FO_POS_KPD_DLG_RIGHT_PX__", str(FO_POS_KPD_DLG_RIGHT_PX)
+)
 
 header_title, header_search, header_store, header_day = st.columns([2, 1, 2, 2])
 with header_title:
