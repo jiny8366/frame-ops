@@ -314,7 +314,6 @@ def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display
                 raw = "".join(ch for ch in (st.session_state.get(draft_key) or "") if ch.isdigit())
                 st.session_state[field_key] = int(raw or "0")
                 st.session_state[draft_key] = str(st.session_state[field_key])
-                st.rerun()
 
 
 def _run_sale_save(
