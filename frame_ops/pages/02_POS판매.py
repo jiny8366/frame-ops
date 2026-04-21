@@ -64,10 +64,10 @@ FO_POS_KPD_CSS = """
 .fo-pos-keypad-lcd-wrap { margin-bottom: 0.35rem; }
 .fo-pos-keypad-lcd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: clamp(1.15rem, 3.2vw, 1.65rem);
+  font-size: 1.5rem;
   font-weight: 700;
   text-align: right;
-  padding: 0.55rem 0.7rem;
+  padding: 10px 12px;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -75,7 +75,10 @@ FO_POS_KPD_CSS = """
 }
 .fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
 [class*="st-key-fo_pos_amt_keypad_scope_"] {
-  --fo-kpd-side: clamp(3rem, 8vw, 4.2rem);
+  --fo-kpd-side: 68px;
+  width: 236px;
+  min-width: 236px;
+  max-width: 236px;
 }
 [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stButton"] > button {
   width: 100% !important;
@@ -83,7 +86,7 @@ FO_POS_KPD_CSS = """
   height: var(--fo-kpd-side) !important;
   min-height: var(--fo-kpd-side) !important;
   max-height: var(--fo-kpd-side) !important;
-  font-size: clamp(1.05rem, 2.2vw, 1.45rem) !important;
+  font-size: 1.2rem !important;
   font-weight: 650 !important;
   padding: 0.2rem 0.45rem !important;
 }
@@ -103,6 +106,9 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
   bottom: auto !important;
   transform: none !important;
   margin: 0 !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
 }
 </style>
 """.replace("__FO_POS_KPD_DLG_TOP_PX__", str(FO_POS_KPD_DLG_TOP_PX)).replace(
