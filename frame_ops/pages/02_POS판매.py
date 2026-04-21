@@ -84,6 +84,13 @@ FO_POS_KPD_CSS = """
   font-weight: 650 !important;
   padding: 0.2rem 0.45rem !important;
 }
+/* ⌫ 버튼은 별도 래퍼(_pad_bs)에 들어가므로 높이를 한 번 더 고정 */
+[class*="st-key-fo_pos_amt_keypad_scope_"] [class*="_pad_bs"] [data-testid="stButton"] > button {
+  aspect-ratio: 1 / 1 !important;
+  height: var(--fo-kpd-side) !important;
+  min-height: var(--fo-kpd-side) !important;
+  max-height: var(--fo-kpd-side) !important;
+}
 </style>
 """
 
