@@ -30,3 +30,11 @@ def format_pos_keypad_amount_display(raw: str) -> str:
     if not digits:
         return "0"
     return f"{int(digits):,}"
+
+
+def format_fo_quantity_display(q: Any) -> str:
+    """수량 표시용: 소수점 이하는 표시하지 않고 정수만 노출."""
+    try:
+        return str(int(float(q)))
+    except (TypeError, ValueError):
+        return "0"

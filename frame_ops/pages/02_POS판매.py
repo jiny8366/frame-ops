@@ -31,7 +31,7 @@ from lib.constants import (
 )
 from lib.barcode_decode import decode_barcode_from_bytes, is_barcode_decode_available
 from lib.pos_staff_auth import verify_clerk_for_pos_sale
-from lib.sales_helpers import format_pos_keypad_amount_display
+from lib.sales_helpers import format_fo_quantity_display, format_pos_keypad_amount_display
 from lib.settlement_guard import is_business_day_settled, settled_warning_message
 from lib.stock import bump_stock, find_product
 from lib.store_defaults import default_store_index
@@ -102,6 +102,18 @@ FO_POS_KPD_CSS = """
 }
 /* ⌫ 버튼은 라벨/렌더 차이로 높이가 달라질 수 있어 별도 강제 */
 [class*="st-key-"][class*="_frbs"] [data-testid="stButton"] > button {
+  aspect-ratio: 1 / 1 !important;
+  height: var(--fo-kpd-side) !important;
+  min-height: var(--fo-kpd-side) !important;
+  max-height: var(--fo-kpd-side) !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* 삭제 버튼 전용 래퍼: 높이/폭을 숫자키와 동일하게 강제 */
+[class*="st-key-"][class*="_pad_bs"] [data-testid="stButton"] > button {
+  width: 100% !important;
   aspect-ratio: 1 / 1 !important;
   height: var(--fo-kpd-side) !important;
   min-height: var(--fo-kpd-side) !important;
@@ -382,8 +394,9 @@ def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display
                 _append("6")
             if st.button("3", key=f"{field_key}_fr3", use_container_width=True):
                 _append("3")
-            if st.button("⌫", key=f"{field_key}_frbs", use_container_width=True, help="한 자리 삭제"):
-                st.session_state[draft_key] = (st.session_state.get(draft_key) or "")[:-1]
+            with st.container(key=f"{field_key}_pad_bs"):
+                if st.button("삭제", key=f"{field_key}_frbs", use_container_width=True):
+                    st.session_state[draft_key] = (st.session_state.get(draft_key) or "")[:-1]
 
         a1, a2 = st.columns(2)
         with a1:
@@ -600,7 +613,7 @@ with left:
         )
         selected_product_row = pr[0] if pr else None
 
-    qty_add = st.number_input("수량", min_value=0.01, value=1.0, step=1.0)
+    qty_add = st.number_input("수량", min_value=1, value=1, step=1)
     if st.button("장바구니에 담기", use_container_width=True):
         if pos_locked:
             st.error("정산된 일자에는 담을 수 없습니다.")
@@ -616,7 +629,7 @@ with left:
                         "product_id": p["id"],
                         "product_code": p["product_code"],
                         "display_name": p["display_name"],
-                        "quantity": float(qty_add),
+                        "quantity": int(qty_add),
                         "unit_price": int(p["sale_price"]),
                         "cost_price": int(p["cost_price"]),
                     }
@@ -657,7 +670,7 @@ with right:
             with c0:
                 st.write(f"**{line['display_name']}**  `{line['product_code']}`")
             with c1:
-                st.write(f"{line['quantity']}개")
+                st.write(f"{format_fo_quantity_display(line['quantity'])}개")
             with c2:
                 st.write(f"{line['unit_price']:,}원")
             with c3:
