@@ -79,6 +79,12 @@ FO_POS_KPD_CSS = """
   width: 236px;
   min-width: 236px;
   max-width: 236px;
+  margin-left: auto;
+  margin-right: auto;
+  border: 5px solid #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  box-sizing: border-box;
 }
 [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stButton"] > button {
   width: 100% !important;
