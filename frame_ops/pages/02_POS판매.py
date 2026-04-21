@@ -55,8 +55,11 @@ K_POS_ST_PG = "fo_pos_style_dlg_page"
 K_POS_CO_DLG = "fo_pos_color_dlg_open"
 K_POS_CO_PG = "fo_pos_color_dlg_page"
 DEFAULT_CLERK_EMAIL = os.getenv("FO_POS_CLERK_EMAIL", "").strip()
+FO_POS_ACTIVE_AMOUNT_KEYPAD = "fo_pos_active_amount_keypad_field"
+FO_POS_KPD_DLG_TOP_PX = 100
+FO_POS_KPD_DLG_RIGHT_PX = 100
 
-FO_POS_KPD_CSS = """
+FO_POS_KPD_CSS = f"""
 <style>
 .fo-pos-keypad-lcd-wrap { margin-bottom: 0.35rem; }
 .fo-pos-keypad-lcd {
@@ -90,6 +93,16 @@ FO_POS_KPD_CSS = """
   height: var(--fo-kpd-side) !important;
   min-height: var(--fo-kpd-side) !important;
   max-height: var(--fo-kpd-side) !important;
+}
+/* 금액입력 다이얼로그: 화면 우측 상단 고정 (top 100px, right 100px) */
+div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
+  position: fixed !important;
+  top: {FO_POS_KPD_DLG_TOP_PX}px !important;
+  right: {FO_POS_KPD_DLG_RIGHT_PX}px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 !important;
 }
 </style>
 """
@@ -253,7 +266,7 @@ def pos_pick_color_dialog() -> None:
 
 
 def _render_amount_keypad(field_key: str, label: str) -> int:
-    """금액은 팝오버 키패드에서만 편집하고, **적용** 시 메인 입력창에 반영 (@st.fragment 로 키 입력 시 전체 리런 최소화)."""
+    """금액은 우측상단 다이얼로그 키패드에서만 편집하고, 적용 시 메인 입력창 반영."""
     current = int(st.session_state.get(field_key, 0) or 0)
     draft_key = f"{field_key}_draft"
     if draft_key not in st.session_state:
@@ -264,8 +277,18 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
         st.text_input(label, value=f"{current:,}", disabled=True)
     with pop_col:
         st.write("")
-        with st.popover("입력", help=f"{label} — 숫자 입력 후 **적용**"):
-            _render_amount_keypad_fragment(field_key, draft_key, label)
+        if st.button("입력", key=f"{field_key}_open_amount_kp", use_container_width=True):
+            st.session_state[FO_POS_ACTIVE_AMOUNT_KEYPAD] = field_key
+            cur = int(st.session_state.get(field_key, 0) or 0)
+            st.session_state[draft_key] = str(cur) if cur else ""
+
+    if st.session_state.get(FO_POS_ACTIVE_AMOUNT_KEYPAD) == field_key:
+        if field_key == "fo_pos_card":
+            _dialog_fo_pos_card_amount()
+        elif field_key == "fo_pos_cash":
+            _dialog_fo_pos_cash_amount()
+        elif field_key == "fo_pos_disc":
+            _dialog_fo_pos_disc_amount()
 
     return int(st.session_state.get(field_key, 0) or 0)
 
@@ -331,9 +354,26 @@ def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display
                 raw = "".join(ch for ch in (st.session_state.get(draft_key) or "") if ch.isdigit())
                 st.session_state[field_key] = int(raw or "0")
                 st.session_state[draft_key] = str(st.session_state[field_key])
+                st.session_state.pop(FO_POS_ACTIVE_AMOUNT_KEYPAD, None)
+                st.rerun()
 
         # 버튼 처리 이후 상태로 상단 LCD를 즉시 갱신
         _render_lcd()
+
+
+@st.dialog("카드 금액 입력", width="small")
+def _dialog_fo_pos_card_amount() -> None:
+    _render_amount_keypad_fragment("fo_pos_card", "fo_pos_card_draft", "카드")
+
+
+@st.dialog("현금 금액 입력", width="small")
+def _dialog_fo_pos_cash_amount() -> None:
+    _render_amount_keypad_fragment("fo_pos_cash", "fo_pos_cash_draft", "현금")
+
+
+@st.dialog("할인 합계 입력", width="small")
+def _dialog_fo_pos_disc_amount() -> None:
+    _render_amount_keypad_fragment("fo_pos_disc", "fo_pos_disc_draft", "할인 합계(원)")
 
 
 def _run_sale_save(
