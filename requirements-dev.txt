@@ -1,0 +1,4 @@
+# 로컬 개발·CI (테스트 환경 없이 사전 검증)
+-r requirements.txt
+
+pytest>=7.4.0,<9.0.0

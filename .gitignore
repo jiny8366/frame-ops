@@ -1,0 +1,55 @@
+# GENIUS OPTICAL CRM — Git 제외 목록
+
+# 환경변수 & 시크릿 (절대 커밋 금지)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+config.js
+*.pem
+*.key
+
+# FRAME OPS — 로컬뷰 프리셋(실제 지점코드 등). 예시 파일만 커밋
+config/local_views/*.env
+!config/local_views/*.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# 가상환경
+.venv/
+venv/
+env/
+ENV/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 테스트/임시
+*.log
+*.tmp
+seed_data_output.txt
+packaging/mac/Launcher.build.applescript
+.product_mgmt_cache.json
+supabase/.temp/
+*.tar.gz
+*.zip

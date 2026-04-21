@@ -1,0 +1,27 @@
+# GENIUS OPTICAL CRM — Python 의존성
+# 버전 고정으로 배포 안정성 확보
+
+# Core
+streamlit>=1.33.0,<2.0.0
+
+# Supabase
+supabase>=2.0.0,<3.0.0
+
+# 환경변수
+python-dotenv>=1.0.0
+
+# FRAME OPS 통계·엑셀
+pandas>=2.0.0,<3.0.0
+openpyxl>=3.1.0,<4.0.0
+
+# 선택적 의존성 (없어도 동작)
+# st-aggrid>=0.3.4  # AgGrid UI (선택)
+
+matplotlib>=3.7.0
+
+# FRAME OPS POS — 카메라 바코드/QR 인식 (선택, 없으면 해당 기능만 비활성 안내)
+opencv-python-headless>=4.8.0,<5.0.0
+
+# FRAME OPS 상품등록 — 라벨용 QR·Code128 이미지
+qrcode[pil]>=7.4.0,<8.0.0
+python-barcode[images]>=0.15.0,<1.0.0
