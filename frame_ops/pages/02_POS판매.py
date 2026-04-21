@@ -71,6 +71,15 @@ FO_POS_KPD_CSS = """
   color: #f5f5f7;
 }
 .fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
+.st-key-fo_pos_amt_keypad_scope [data-testid="stButton"] > button {
+  width: 100% !important;
+  aspect-ratio: 2.4 / 1 !important;
+  min-height: clamp(2.6rem, 6.5vw, 3.4rem) !important;
+  max-height: none !important;
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem) !important;
+  font-weight: 650 !important;
+  padding: 0.2rem 0.45rem !important;
+}
 </style>
 """
 
@@ -252,60 +261,60 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
 
 @st.fragment
 def _render_amount_keypad_fragment(field_key: str, draft_key: str, label_display: str) -> None:
-    draft = st.session_state.get(draft_key) or ""
-    lcd = format_pos_keypad_amount_display(draft)
-    st.caption(f"{label_display} · 계산기처럼 즉시 표시")
-    st.markdown(
-        f"""
+    with st.container(key="fo_pos_amt_keypad_scope"):
+        draft = st.session_state.get(draft_key) or ""
+        lcd = format_pos_keypad_amount_display(draft)
+        st.markdown(
+            f"""
 <div class="fo-pos-keypad-lcd-wrap">
   <div class="fo-pos-keypad-lcd">{html.escape(lcd)}<span class="fo-pos-keypad-lcd-won">원</span></div>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
 
-    def _append(s: str) -> None:
-        st.session_state[draft_key] = (st.session_state.get(draft_key) or "") + s
+        def _append(s: str) -> None:
+            st.session_state[draft_key] = (st.session_state.get(draft_key) or "") + s
 
-    k1, k2, k3 = st.columns(3)
-    with k1:
-        if st.button("7", key=f"{field_key}_fr7", use_container_width=True):
-            _append("7")
-        if st.button("4", key=f"{field_key}_fr4", use_container_width=True):
-            _append("4")
-        if st.button("1", key=f"{field_key}_fr1", use_container_width=True):
-            _append("1")
-        if st.button("00", key=f"{field_key}_fr00", use_container_width=True):
-            _append("00")
-    with k2:
-        if st.button("8", key=f"{field_key}_fr8", use_container_width=True):
-            _append("8")
-        if st.button("5", key=f"{field_key}_fr5", use_container_width=True):
-            _append("5")
-        if st.button("2", key=f"{field_key}_fr2", use_container_width=True):
-            _append("2")
-        if st.button("0", key=f"{field_key}_fr0", use_container_width=True):
-            _append("0")
-    with k3:
-        if st.button("9", key=f"{field_key}_fr9", use_container_width=True):
-            _append("9")
-        if st.button("6", key=f"{field_key}_fr6", use_container_width=True):
-            _append("6")
-        if st.button("3", key=f"{field_key}_fr3", use_container_width=True):
-            _append("3")
-        if st.button("⌫", key=f"{field_key}_frbs", use_container_width=True, help="한 자리 삭제"):
-            st.session_state[draft_key] = (st.session_state.get(draft_key) or "")[:-1]
+        k1, k2, k3 = st.columns(3)
+        with k1:
+            if st.button("7", key=f"{field_key}_fr7", use_container_width=True):
+                _append("7")
+            if st.button("4", key=f"{field_key}_fr4", use_container_width=True):
+                _append("4")
+            if st.button("1", key=f"{field_key}_fr1", use_container_width=True):
+                _append("1")
+            if st.button("00", key=f"{field_key}_fr00", use_container_width=True):
+                _append("00")
+        with k2:
+            if st.button("8", key=f"{field_key}_fr8", use_container_width=True):
+                _append("8")
+            if st.button("5", key=f"{field_key}_fr5", use_container_width=True):
+                _append("5")
+            if st.button("2", key=f"{field_key}_fr2", use_container_width=True):
+                _append("2")
+            if st.button("0", key=f"{field_key}_fr0", use_container_width=True):
+                _append("0")
+        with k3:
+            if st.button("9", key=f"{field_key}_fr9", use_container_width=True):
+                _append("9")
+            if st.button("6", key=f"{field_key}_fr6", use_container_width=True):
+                _append("6")
+            if st.button("3", key=f"{field_key}_fr3", use_container_width=True):
+                _append("3")
+            if st.button("⌫", key=f"{field_key}_frbs", use_container_width=True, help="한 자리 삭제"):
+                st.session_state[draft_key] = (st.session_state.get(draft_key) or "")[:-1]
 
-    a1, a2 = st.columns(2)
-    with a1:
-        if st.button("초기화", key=f"{field_key}_frclr", use_container_width=True):
-            st.session_state[draft_key] = ""
-    with a2:
-        if st.button("적용", key=f"{field_key}_frapply", type="primary", use_container_width=True):
-            raw = "".join(ch for ch in (st.session_state.get(draft_key) or "") if ch.isdigit())
-            st.session_state[field_key] = int(raw or "0")
-            st.session_state[draft_key] = str(st.session_state[field_key])
-            st.rerun()
+        a1, a2 = st.columns(2)
+        with a1:
+            if st.button("초기화", key=f"{field_key}_frclr", use_container_width=True):
+                st.session_state[draft_key] = ""
+        with a2:
+            if st.button("적용", key=f"{field_key}_frapply", type="primary", use_container_width=True):
+                raw = "".join(ch for ch in (st.session_state.get(draft_key) or "") if ch.isdigit())
+                st.session_state[field_key] = int(raw or "0")
+                st.session_state[draft_key] = str(st.session_state[field_key])
+                st.rerun()
 
 
 def _run_sale_save(
