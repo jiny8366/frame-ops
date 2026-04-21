@@ -110,6 +110,24 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
   min-width: 280px !important;
   max-width: 280px !important;
 }
+/* 상/하 여백 제거 */
+div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) > div,
+div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
+div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+[data-baseweb="modal"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]),
+[data-baseweb="modal"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) > div,
+[data-baseweb="modal"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
+[data-baseweb="modal"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
 </style>
 """.replace("__FO_POS_KPD_DLG_TOP_PX__", str(FO_POS_KPD_DLG_TOP_PX)).replace(
     "__FO_POS_KPD_DLG_RIGHT_PX__", str(FO_POS_KPD_DLG_RIGHT_PX)
