@@ -257,12 +257,12 @@ def _render_top_bar_popover() -> None:
                 for path, lab, icon in links:
                     try:
                         st.page_link(path, label=lab, icon=icon)
-                    except Exception:
+                    except BaseException:
                         pass
             st.divider()
             try:
                 st.page_link("pages/00_서비스선택.py", label="서비스 선택 화면", icon="🔀")
-            except Exception:
+            except BaseException:
                 pass
 
 
@@ -286,7 +286,7 @@ def _render_sidebar() -> None:
         st.markdown("##### FRAME OPS")
         try:
             st.page_link("pages/00_서비스선택.py", label="서비스 선택", icon="🔀")
-        except Exception:
+        except BaseException:
             pass
         mode = get_service_mode()
         if mode is None:
@@ -298,7 +298,7 @@ def _render_sidebar() -> None:
             for path, lab, icon in primary:
                 try:
                     st.page_link(path, label=lab, icon=icon)
-                except Exception:
+                except BaseException:
                     pass
             sec_i = _mode_menu_section_index(mode)
             if sec_i is not None:
@@ -309,7 +309,7 @@ def _render_sidebar() -> None:
                         for path, lab, icon in extra:
                             try:
                                 st.page_link(path, label=lab, icon=icon)
-                            except Exception:
+                            except BaseException:
                                 pass
 
 
