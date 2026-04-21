@@ -69,16 +69,8 @@ SIDEBAR_LINKS: dict[str, list[tuple[str, str, str]]] = {
         ("pages/11_통계리포트.py", "통계 · 리포트 · 차트", "📈"),
     ],
     MODE_SALES: [
-        ("pages/92_store_portal.py", "지점용 포털", "🧭"),
-        ("pages/03_입고.py", "입고", "📥"),
-        ("pages/02_POS판매.py", "POS 판매", "🛒"),
-        ("pages/04_출고.py", "출고", "📤"),
-        ("pages/06_재고현황.py", "재고 현황", "📊"),
-        ("pages/05_재고조정.py", "재고 조정", "⚖️"),
-        ("pages/07_주문리스트.py", "주문 리스트", "📋"),
-        ("pages/09_반품.py", "반품", "↩️"),
-        ("pages/10_매장간이동.py", "매장 간 이동", "🚚"),
-        ("pages/08_정산.py", "정산", "🔒"),
+        ("pages/13_매입처리.py", "입고 · 매입처리", "📥"),
+        ("pages/02_POS판매.py", "출고 · POS판매", "🛒"),
     ],
 }
 
@@ -115,16 +107,8 @@ MENU_SECTIONS: list[tuple[str, list[tuple[str, str, str]]]] = [
     (
         "지점용",
         [
-            ("pages/92_store_portal.py", "지점용 포털", "🧭"),
-            ("pages/03_입고.py", "입고", "📥"),
-            ("pages/02_POS판매.py", "POS 판매", "🛒"),
-            ("pages/04_출고.py", "출고", "📤"),
-            ("pages/06_재고현황.py", "재고 현황", "📊"),
-            ("pages/05_재고조정.py", "재고 조정", "⚖️"),
-            ("pages/07_주문리스트.py", "주문 리스트", "📋"),
-            ("pages/08_정산.py", "정산", "🔒"),
-            ("pages/09_반품.py", "반품", "↩️"),
-            ("pages/10_매장간이동.py", "매장 간 이동", "🚚"),
+            ("pages/13_매입처리.py", "입고 · 매입처리", "📥"),
+            ("pages/02_POS판매.py", "출고 · POS판매", "🛒"),
         ],
     ),
 ]
@@ -284,15 +268,20 @@ def _render_sidebar() -> None:
         if _lv:
             st.info(f"로컬뷰 · {_lv}")
         st.markdown("##### FRAME OPS")
-        try:
-            st.page_link("pages/00_서비스선택.py", label="서비스 선택", icon="🔀")
-        except BaseException:
-            pass
         mode = get_service_mode()
         if mode is None:
+            try:
+                st.page_link("pages/00_서비스선택.py", label="서비스 선택", icon="🔀")
+            except BaseException:
+                pass
             st.info("**서비스 선택**에서 모드를 고르거나 **☰** 로 전체 화면을 여세요.")
         else:
             st.caption(f"**{MODE_LABELS[mode]}** · {MODE_INTROS.get(mode, '')}")
+            if mode != MODE_SALES:
+                try:
+                    st.page_link("pages/00_서비스선택.py", label="서비스 선택", icon="🔀")
+                except BaseException:
+                    pass
             primary = SIDEBAR_LINKS.get(mode, [])
             seen = {p for p, _, _ in primary}
             for path, lab, icon in primary:
