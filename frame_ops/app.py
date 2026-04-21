@@ -41,17 +41,20 @@ st.set_page_config(
 
 # ── 시작 모드 자동 이동 (FRAME_OPS_DEFAULT_MODE 환경변수 또는 Streamlit Secrets) ──
 import os as _os
-_default_mode = (
-    st.secrets.get("FRAME_OPS_DEFAULT_MODE", "")
-    if hasattr(st, "secrets") else ""
-) or _os.environ.get("FRAME_OPS_DEFAULT_MODE", "")
+try:
+    _default_mode = st.secrets.get("FRAME_OPS_DEFAULT_MODE", "").strip()
+except Exception:
+    _default_mode = ""
+if not _default_mode:
+    _default_mode = _os.environ.get("FRAME_OPS_DEFAULT_MODE", "").strip()
 _mode_to_portal = {
     "hq": "pages/90_admin_portal.py",
     "hq_dashboard": "pages/91_hq_dashboard_portal.py",
     "sales": "pages/92_store_portal.py",
 }
-if _default_mode.strip() in _mode_to_portal and "fo_service_mode" not in st.session_state:
-    st.switch_page(_mode_to_portal[_default_mode.strip()])
+if _default_mode in _mode_to_portal:
+    st.switch_page(_mode_to_portal[_default_mode])
+    st.stop()
 
 from lib.service_portal import render_frame_ops_chrome
 
