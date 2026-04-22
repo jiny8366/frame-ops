@@ -610,17 +610,25 @@ FO_POS_KPD_CSS = """
   margin-bottom: 0.6rem;
   min-height: 3rem;
 }
+/* ━━━ 제품번호/칼라 선택 다이얼로그 600×700px ━━━━━━━━━━━━━━━━━━━━ */
+[data-baseweb="modal"]:has([class*="st-key-fo_pos_stco_kpd_scope"]) [role="dialog"] {
+  width: 640px !important;
+  min-width: 640px !important;
+  max-width: 640px !important;
+  max-height: 720px !important;
+  overflow-y: auto !important;
+}
 /* ━━━ 제품번호/칼라 검색 키패드 스코프 ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 [class*="st-key-fo_pos_stco_kpd_scope"] {
-  --fo-stco-side: 60px;
-  width: 220px;
-  min-width: 220px;
-  max-width: 220px;
-  margin-left: auto;
+  --fo-stco-side: 58px;
+  width: 210px;
+  min-width: 210px;
+  max-width: 210px;
+  margin-left: 0;
   margin-right: auto;
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 12px;
-  padding: 6px;
+  padding: 14px 10px;
   box-sizing: border-box;
 }
 [class*="st-key-fo_pos_stco_kpd_scope"] [data-testid="stButton"] > button {
@@ -637,7 +645,7 @@ FO_POS_KPD_CSS = """
   align-items: center !important;
   justify-content: center !important;
 }
-/* 검색 결과 리스트 — 최대 높이 + 스크롤 */
+/* 검색 결과 3열 그리드 */
 [class*="st-key-fo_pos_stco_results"] {
   border: 1px solid var(--fo-border);
   border-radius: var(--fo-radius);
@@ -645,12 +653,20 @@ FO_POS_KPD_CSS = """
 }
 [class*="st-key-fo_pos_stco_results"] [data-testid="stButton"] > button {
   text-align: left !important;
-  font-size: 0.92rem !important;
-  min-height: 44px !important;
-  padding: 6px 10px !important;
-  white-space: nowrap !important;
+  font-size: 0.80rem !important;
+  min-height: 62px !important;
+  padding: 6px 8px !important;
+  white-space: pre-line !important;
   overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  line-height: 1.35 !important;
+}
+[class*="st-key-fo_pos_stco_results"] [data-testid="stHorizontalBlock"] {
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+}
+[class*="st-key-fo_pos_stco_results"] [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
 }
 
 /* ━━━ PIN 키패드 스코프 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -955,91 +971,121 @@ def _dialog_fo_pos_disc_amount() -> None:
 
 @st.fragment
 def _stco_keypad_fragment(brand_id: str) -> None:
-    """제품번호/칼라 통합 검색 — 숫자 키패드 + 결과 리스트 (fragment 내부)."""
+    """제품번호/칼라 통합 검색 — 키패드(좌) + 결과 3열 그리드(우)."""
     st.session_state.setdefault(K_POS_STCO_DRAFT, "")
-
-    # ── LCD 표시 ──────────────────────────────────────────────────────────────
-    draft = st.session_state[K_POS_STCO_DRAFT]
-    lcd_val = html.escape(draft) if draft else "—"
-    st.markdown(
-        f'<div class="fo-pos-keypad-lcd" style="text-align:center;margin-bottom:0.4rem">'
-        f'{lcd_val}</div>',
-        unsafe_allow_html=True,
-    )
 
     def _sadd(d: str) -> None:
         st.session_state[K_POS_STCO_DRAFT] = (st.session_state.get(K_POS_STCO_DRAFT) or "") + d
 
-    # ── 숫자 키패드 ───────────────────────────────────────────────────────────
-    with st.container(key="fo_pos_stco_kpd_scope"):
-        r1a, r1b, r1c = st.columns(3)
-        with r1a:
-            if st.button("1", key="stco_k1", use_container_width=True): _sadd("1")
-        with r1b:
-            if st.button("2", key="stco_k2", use_container_width=True): _sadd("2")
-        with r1c:
-            if st.button("3", key="stco_k3", use_container_width=True): _sadd("3")
+    col_kpd, col_res = st.columns([5, 7], gap="medium")
 
-        r2a, r2b, r2c = st.columns(3)
-        with r2a:
-            if st.button("4", key="stco_k4", use_container_width=True): _sadd("4")
-        with r2b:
-            if st.button("5", key="stco_k5", use_container_width=True): _sadd("5")
-        with r2c:
-            if st.button("6", key="stco_k6", use_container_width=True): _sadd("6")
-
-        r3a, r3b, r3c = st.columns(3)
-        with r3a:
-            if st.button("7", key="stco_k7", use_container_width=True): _sadd("7")
-        with r3b:
-            if st.button("8", key="stco_k8", use_container_width=True): _sadd("8")
-        with r3c:
-            if st.button("9", key="stco_k9", use_container_width=True): _sadd("9")
-
-        r4a, r4b, r4c = st.columns(3)
-        with r4a:
-            if st.button("지우기", key="stco_kclr", use_container_width=True):
-                st.session_state[K_POS_STCO_DRAFT] = ""
-        with r4b:
-            if st.button("0", key="stco_k0", use_container_width=True): _sadd("0")
-        with r4c:
-            if st.button("⌫", key="stco_kbs", use_container_width=True):
-                st.session_state[K_POS_STCO_DRAFT] = (
-                    st.session_state.get(K_POS_STCO_DRAFT) or ""
-                )[:-1]
-
-    # ── 검색 결과 (버튼 처리 후 draft 재읽기) ─────────────────────────────────
-    draft = st.session_state[K_POS_STCO_DRAFT]
-    products = _cached_products_by_style_prefix(
-        get_configured_supabase_url(), str(brand_id), draft
-    )
-
-    st.divider()
-    if products:
-        caption = (
-            f"**{html.escape(draft)}** 로 시작 · {len(products)}개"
-            if draft
-            else f"전체 {len(products)}개 (최대 30)"
+    # ── 왼쪽: LCD + 숫자 키패드 ──────────────────────────────────────
+    with col_kpd:
+        draft = st.session_state[K_POS_STCO_DRAFT]
+        lcd_val = html.escape(draft) if draft else "—"
+        st.markdown(
+            f'<div class="fo-pos-keypad-lcd" style="text-align:center;margin-bottom:0.5rem">'
+            f'{lcd_val}</div>',
+            unsafe_allow_html=True,
         )
-        st.caption(caption)
-        with st.container(key="fo_pos_stco_results"):
-            for p in products:
-                price_str = f"{int(p['sale_price']):,}원" if p.get("sale_price") else ""
-                lbl = (
-                    f"{p['style_code']} / {p['color_code']}"
-                    f"　{p['display_name']}"
-                    + (f"　{price_str}" if price_str else "")
-                )
-                if st.button(lbl, key=f"stco_r_{p['id']}", use_container_width=True):
-                    st.session_state["fo_pos_style"] = p["style_code"]
-                    st.session_state["fo_pos_color"] = p["color_code"]
+        with st.container(key="fo_pos_stco_kpd_scope"):
+            r1a, r1b, r1c = st.columns(3)
+            with r1a:
+                if st.button("1", key="stco_k1", use_container_width=True): _sadd("1")
+            with r1b:
+                if st.button("2", key="stco_k2", use_container_width=True): _sadd("2")
+            with r1c:
+                if st.button("3", key="stco_k3", use_container_width=True): _sadd("3")
+            r2a, r2b, r2c = st.columns(3)
+            with r2a:
+                if st.button("4", key="stco_k4", use_container_width=True): _sadd("4")
+            with r2b:
+                if st.button("5", key="stco_k5", use_container_width=True): _sadd("5")
+            with r2c:
+                if st.button("6", key="stco_k6", use_container_width=True): _sadd("6")
+            r3a, r3b, r3c = st.columns(3)
+            with r3a:
+                if st.button("7", key="stco_k7", use_container_width=True): _sadd("7")
+            with r3b:
+                if st.button("8", key="stco_k8", use_container_width=True): _sadd("8")
+            with r3c:
+                if st.button("9", key="stco_k9", use_container_width=True): _sadd("9")
+            r4a, r4b, r4c = st.columns(3)
+            with r4a:
+                if st.button("지우기", key="stco_kclr", use_container_width=True):
                     st.session_state[K_POS_STCO_DRAFT] = ""
-                    st.session_state[K_POS_SHOW_STCO] = False
-                    st.rerun()
-    elif draft:
-        st.info(f"**'{html.escape(draft)}'** 로 시작하는 제품이 없습니다.")
-    else:
-        st.caption("제품번호를 입력하면 목록이 표시됩니다.")
+            with r4b:
+                if st.button("0", key="stco_k0", use_container_width=True): _sadd("0")
+            with r4c:
+                if st.button("⌫", key="stco_kbs", use_container_width=True):
+                    st.session_state[K_POS_STCO_DRAFT] = (
+                        st.session_state.get(K_POS_STCO_DRAFT) or ""
+                    )[:-1]
+
+        # 즉각 LCD 반응 — 키 누름 즉시 화면 반영 (서버 응답 전 시각 피드백)
+        import streamlit.components.v1 as _c1
+        _c1.html("""<script>
+(function() {
+  var d = window.parent.document;
+  function attach() {
+    var lcd = d.querySelector('.fo-pos-keypad-lcd');
+    var scope = d.querySelector('[class*="st-key-fo_pos_stco_kpd_scope"]');
+    if (!lcd || !scope) { setTimeout(attach, 150); return; }
+    scope.querySelectorAll('button').forEach(function(b) {
+      if (b._fo) return; b._fo = 1;
+      b.addEventListener('pointerdown', function() {
+        var t = b.innerText.trim();
+        var cur = lcd.innerText.trim() === '—' ? '' : lcd.innerText.trim();
+        if (t === '지우기') { lcd.innerText = '—'; }
+        else if (t === '\u232b') { lcd.innerText = cur.slice(0,-1) || '—'; }
+        else if (/^[0-9]$/.test(t)) { lcd.innerText = cur + t; }
+      }, true);
+    });
+  }
+  setTimeout(attach, 80);
+})();
+</script>""", height=0, scrolling=False)
+
+    # ── 오른쪽: 검색 결과 3열 그리드 ─────────────────────────────────
+    with col_res:
+        draft = st.session_state[K_POS_STCO_DRAFT]
+        products = _cached_products_by_style_prefix(
+            get_configured_supabase_url(), str(brand_id), draft
+        )
+        if products:
+            caption = (
+                f"**{html.escape(draft)}** 로 시작 · {len(products)}개"
+                if draft
+                else f"전체 {len(products)}개 (최대 30)"
+            )
+            st.caption(caption)
+            with st.container(key="fo_pos_stco_results"):
+                for row_start in range(0, len(products), 3):
+                    row_items = products[row_start : row_start + 3]
+                    rcols = st.columns(3)
+                    for j in range(3):
+                        with rcols[j]:
+                            if j < len(row_items):
+                                p = row_items[j]
+                                price_str = (
+                                    f"{int(p['sale_price']):,}원"
+                                    if p.get("sale_price") else ""
+                                )
+                                lbl = (
+                                    f"{p.get('style_code','')}/{p.get('color_code','')}\n"
+                                    f"{p.get('display_name','')}"
+                                    + (f"\n{price_str}" if price_str else "")
+                                )
+                                if st.button(lbl, key=f"stco_r_{p['id']}", use_container_width=True):
+                                    st.session_state["fo_pos_style"] = p["style_code"]
+                                    st.session_state["fo_pos_color"] = p["color_code"]
+                                    st.session_state[K_POS_STCO_DRAFT] = ""
+                                    st.session_state[K_POS_SHOW_STCO] = False
+                                    st.rerun()
+        elif draft:
+            st.info(f"**'{html.escape(draft)}'** 로 시작하는 제품이 없습니다.")
+        else:
+            st.caption("제품번호를 입력하면 목록이 표시됩니다.")
 
 
 @st.dialog("제품번호 / 칼라 선택", width="large")
@@ -1055,8 +1101,7 @@ def _stco_search_dialog() -> None:
             st.rerun()
         return
     _stco_keypad_fragment(str(bid))
-    st.divider()
-    if st.button("닫기", key="stco_dlg_close", use_container_width=True):
+    if st.button("✕ 닫기", key="stco_dlg_close", use_container_width=True):
         st.session_state[K_POS_SHOW_STCO] = False
         st.session_state[K_POS_STCO_DRAFT] = ""
         st.rerun()
