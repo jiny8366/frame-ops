@@ -40,8 +40,8 @@ export const brandsApi = {
   list: () => apiFetch<unknown[]>('/api/brands'),
 };
 
-// ── 주문 ──────────────────────────────────────────────────────────────────────
-export const ordersApi = {
+// ── 매출 ──────────────────────────────────────────────────────────────────────
+export const salesApi = {
   list: (params?: Record<string, string | number>) => {
     const qs = params ? '?' + new URLSearchParams(
       Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
@@ -50,22 +50,6 @@ export const ordersApi = {
   },
   create: (body: Record<string, unknown>) =>
     apiFetch('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
-};
-
-// ── 고객 ──────────────────────────────────────────────────────────────────────
-export const customersApi = {
-  list: (params?: { search?: string; limit?: number }) => {
-    const qs = params ? '?' + new URLSearchParams(
-      Object.fromEntries(
-        Object.entries(params)
-          .filter(([, v]) => v !== undefined)
-          .map(([k, v]) => [k, String(v)])
-      )
-    ).toString() : '';
-    return apiFetch<unknown[]>(`/api/customers${qs}`);
-  },
-  create: (body: Record<string, unknown>) =>
-    apiFetch('/api/customers', { method: 'POST', body: JSON.stringify(body) }),
 };
 
 // ── 재고 ──────────────────────────────────────────────────────────────────────

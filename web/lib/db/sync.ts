@@ -88,10 +88,8 @@ export async function flushSyncQueue(): Promise<void> {
 
 // ── API Routes를 통한 서버 적용 ───────────────────────────────────────────────
 const TABLE_TO_ENDPOINT: Record<string, string> = {
-  frames:        '/api/products',
-  customers:     '/api/customers',
-  prescriptions: '/api/customers',
-  orders:        '/api/orders',
+  frames: '/api/products',
+  orders: '/api/orders',   // fo_sales 테이블
 };
 
 async function applyViaApi(

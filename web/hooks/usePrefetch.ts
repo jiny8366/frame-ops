@@ -5,8 +5,8 @@
 
 import { useCallback, useRef } from 'react';
 import { mutate } from 'swr';
-import { productsApi, customersApi, ordersApi } from '@/lib/api-client';
-import type { Product, Customer, Order } from '@/types';
+import { productsApi, salesApi } from '@/lib/api-client';
+import type { Product, Sale } from '@/types';
 
 export function usePrefetchFrame() {
   const prefetchedRef = useRef<Set<string>>(new Set());
@@ -28,7 +28,7 @@ export function usePrefetchFrame() {
   return prefetch;
 }
 
-export function usePrefetchCustomer() {
+export function usePrefetchSale() {
   const prefetchedRef = useRef<Set<string>>(new Set());
 
   const prefetch = useCallback((id: string) => {
@@ -36,30 +36,10 @@ export function usePrefetchCustomer() {
     prefetchedRef.current.add(id);
 
     mutate(
-      ['customer', id],
+      ['sale', id],
       async () => {
-        const { data } = await customersApi.list({ search: id });
-        return (data?.[0] ?? null) as Customer | null;
-      },
-      { revalidate: false }
-    );
-  }, []);
-
-  return prefetch;
-}
-
-export function usePrefetchOrder() {
-  const prefetchedRef = useRef<Set<string>>(new Set());
-
-  const prefetch = useCallback((id: string) => {
-    if (prefetchedRef.current.has(id)) return;
-    prefetchedRef.current.add(id);
-
-    mutate(
-      ['order', id],
-      async () => {
-        const { data } = await ordersApi.list({ id });
-        return (data?.[0] ?? null) as Order | null;
+        const { data } = await salesApi.list({ id });
+        return (data?.[0] ?? null) as Sale | null;
       },
       { revalidate: false }
     );

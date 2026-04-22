@@ -17,8 +17,7 @@ export async function GET(req: NextRequest) {
     const db = getDB();
     let query = db
       .from('fo_products')
-      .select('*, brand:fo_brands(id, brand_code, brand_name)')
-      .eq('is_active', true)
+      .select('*, brand:fo_brands(id, name)')
       .not('style_code', 'like', '%:%')   // 콜론 포함 제품 제외
       .order('style_code', { ascending: true })
       .range(page * limit, (page + 1) * limit - 1);
@@ -34,7 +33,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: data ?? [], error: null });
   } catch (e) {
-    return NextResponse.json({ data: null, error: String(e) }, { status: 500 });
+    const msg = e instanceof Error ? e.message
+      : typeof e === 'object' && e !== null ? JSON.stringify(e)
+      : String(e);
+    return NextResponse.json({ data: null, error: msg }, { status: 500 });
   }
 }
 
@@ -50,6 +52,9 @@ export async function POST(req: NextRequest) {
     if (error) throw error;
     return NextResponse.json({ data, error: null }, { status: 201 });
   } catch (e) {
-    return NextResponse.json({ data: null, error: String(e) }, { status: 500 });
+    const msg = e instanceof Error ? e.message
+      : typeof e === 'object' && e !== null ? JSON.stringify(e)
+      : String(e);
+    return NextResponse.json({ data: null, error: msg }, { status: 500 });
   }
 }

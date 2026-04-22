@@ -10,12 +10,14 @@ export async function GET() {
     const { data, error } = await db
       .from('fo_brands')
       .select('*')
-      .eq('is_active', true)
-      .order('brand_name', { ascending: true });
+      .order('name', { ascending: true });
 
     if (error) throw error;
     return NextResponse.json({ data: data ?? [], error: null });
   } catch (e) {
-    return NextResponse.json({ data: null, error: String(e) }, { status: 500 });
+    const msg = e instanceof Error ? e.message
+      : typeof e === 'object' && e !== null ? JSON.stringify(e)
+      : String(e);
+    return NextResponse.json({ data: null, error: msg }, { status: 500 });
   }
 }

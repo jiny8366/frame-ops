@@ -1,5 +1,5 @@
 // Frame Ops — 공통 타입 정의
-// Supabase DB 스키마 기반
+// 실제 Supabase DB 스키마 기반 (fo_brands, fo_products, fo_sales)
 
 // ── 매장 ──────────────────────────────────────────────────────────────────────
 export interface Store {
@@ -11,17 +11,15 @@ export interface Store {
   created_at: string;
 }
 
-// ── 브랜드 ────────────────────────────────────────────────────────────────────
+// ── 브랜드 (fo_brands) ────────────────────────────────────────────────────────
 export interface Brand {
   id: string;
-  brand_code: string;
-  brand_name: string;
-  brand_name_en?: string;
-  is_active: boolean;
+  name: string;         // fo_brands.name
   created_at: string;
+  updated_at: string;
 }
 
-// ── 제품 ──────────────────────────────────────────────────────────────────────
+// ── 제품 / 프레임 (fo_products) ───────────────────────────────────────────────
 export interface Product {
   id: string;
   brand_id: string;
@@ -30,10 +28,13 @@ export interface Product {
   color_code: string;
   display_name?: string;
   category?: string;
-  gender?: string;
   sale_price?: number;
   cost_price?: number;
-  is_active: boolean;
+  suggested_retail?: number;
+  barcode?: string;
+  product_line?: string;
+  supplier_id?: string;
+  status: 'active' | 'inactive';
   image_url?: string;
   created_at: string;
   updated_at: string;
@@ -41,87 +42,24 @@ export interface Product {
   brand?: Brand;
 }
 
-// ── 재고 ──────────────────────────────────────────────────────────────────────
-export interface Inventory {
+// ── 매출 (fo_sales) ───────────────────────────────────────────────────────────
+export interface Sale {
   id: string;
   store_id: string;
-  product_id: string;
-  quantity: number;
-  updated_at: string;
-  // 조인
-  product?: Product;
-  store?: Store;
-}
-
-// ── 고객 ──────────────────────────────────────────────────────────────────────
-export interface Customer {
-  id: string;
-  store_id: string;
-  name: string;
-  phone?: string;
-  birth_date?: string;
-  gender?: 'M' | 'F';
-  memo?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// ── 처방전 ────────────────────────────────────────────────────────────────────
-export interface Prescription {
-  id: string;
-  customer_id: string;
-  store_id: string;
-  // 우안
-  r_sph?: number;
-  r_cyl?: number;
-  r_axis?: number;
-  r_add?: number;
-  r_pd?: number;
-  // 좌안
-  l_sph?: number;
-  l_cyl?: number;
-  l_axis?: number;
-  l_add?: number;
-  l_pd?: number;
-  // 기타
-  va_r?: string;
-  va_l?: string;
-  memo?: string;
+  sold_at: string;
+  cash_amount: number;
+  card_amount: number;
+  discount_total: number;
+  discount_type_code?: string | null;
+  idempotency_key?: string;
+  clerk_note?: string | null;
+  seller_code?: string;
+  seller_user_id?: string;
+  seller_label?: string;
   created_at: string;
 }
 
-// ── 주문 / 판매 ───────────────────────────────────────────────────────────────
-export interface Order {
-  id: string;
-  store_id: string;
-  customer_id?: string;
-  order_number: string;
-  order_date: string;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
-  total_amount: number;
-  paid_amount: number;
-  payment_method?: string;
-  memo?: string;
-  created_at: string;
-  updated_at: string;
-  // 조인
-  customer?: Customer;
-  items?: OrderItem[];
-}
-
-export interface OrderItem {
-  id: string;
-  order_id: string;
-  product_id: string;
-  quantity: number;
-  unit_price: number;
-  discount_amount: number;
-  total_price: number;
-  // 조인
-  product?: Product;
-}
-
-// ── POS ───────────────────────────────────────────────────────────────────────
+// ── POS 장바구니 ──────────────────────────────────────────────────────────────
 export interface CartItem {
   product: Product;
   quantity: number;
@@ -132,8 +70,6 @@ export interface CartItem {
 
 export interface PosState {
   cart: CartItem[];
-  customer?: Customer;
-  prescription?: Prescription;
   payment_method?: string;
   paid_amount: number;
 }
