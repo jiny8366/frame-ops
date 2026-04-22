@@ -782,6 +782,29 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [rol
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
+
+/* ━━━ 브랜드 선택 다이얼로그 600×700px ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[data-baseweb="modal"]:has([class*="st-key-fo_pos_brand_dlg_scope"]) [role="dialog"] {
+  width: 620px !important;
+  min-width: 620px !important;
+  max-width: 620px !important;
+  max-height: 700px !important;
+  overflow-y: auto !important;
+}
+[class*="st-key-fo_pos_brand_dlg_scope"] [data-testid="stHorizontalBlock"] {
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+}
+[class*="st-key-fo_pos_brand_dlg_scope"] [data-testid="stButton"] > button {
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  font-size: 0.88rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  padding: 0 6px !important;
+}
 </style>
 """.replace("__FO_POS_KPD_DLG_TOP_PX__", str(FO_POS_KPD_DLG_TOP_PX)).replace(
     "__FO_POS_KPD_DLG_RIGHT_PX__", str(FO_POS_KPD_DLG_RIGHT_PX)
@@ -1039,49 +1062,39 @@ def _stco_search_dialog() -> None:
         st.rerun()
 
 
-def _brand_inline_grid(sb) -> None:
-    """브랜드 인라인 선택 그리드 — fragment 내부에서 실행."""
-    st.divider()
-    brands = load_all_brands(sb)
+@st.dialog("브랜드 선택", width="large")
+def _brand_select_dialog() -> None:
+    """브랜드 선택 다이얼로그 — 600×700px, 5열 그리드."""
+    brands = load_all_brands(None)
     if not brands:
         st.info("등록된 브랜드가 없습니다.")
-        if st.button("닫기", key="br_il_close_empty"):
+        if st.button("닫기", key="br_dlg_close_empty", use_container_width=True):
             st.session_state[K_POS_SHOW_BR] = False
+            st.rerun()
         return
-    n = len(brands)
-    page_size = brand_page_size(n)
-    page = int(st.session_state.get(K_POS_BR_PG, 0))
-    start = page * page_size
-    chunk = brands[start : start + page_size]
-    cols_n = brand_grid_cols(page_size)
-    n_rows = (page_size + cols_n - 1) // cols_n
-    with st.container(key="fo_pos_br_inline_wrap"):
-        idx = 0
-        for _r in range(n_rows):
+
+    with st.container(key="fo_pos_brand_dlg_scope"):
+        cols_n = 5
+        for row_start in range(0, len(brands), cols_n):
+            row_items = brands[row_start : row_start + cols_n]
             cols = st.columns(cols_n)
-            for c in range(cols_n):
-                with cols[c]:
-                    if idx < len(chunk):
-                        h = chunk[idx]
-                        nm = str(h.get("name") or "")
-                        if st.button(nm, key=f"br_il_{start}_{idx}", use_container_width=True):
-                            st.session_state["fo_pos_brand_id"] = str(h["id"])
+            for j in range(cols_n):
+                with cols[j]:
+                    if j < len(row_items):
+                        b = row_items[j]
+                        nm = str(b.get("name") or "")
+                        if st.button(nm, key=f"br_dlg_{b['id']}", use_container_width=True):
+                            st.session_state["fo_pos_brand_id"] = str(b["id"])
                             st.session_state["fo_pos_brand_name"] = nm
                             st.session_state["fo_pos_style"] = ""
                             st.session_state["fo_pos_color"] = ""
                             st.session_state[K_POS_SHOW_BR] = False
-                            st.session_state.pop(K_POS_BR_PG, None)
-                    else:
-                        st.empty()
-                    idx += 1
-    nav_l, nav_r = st.columns([4, 1])
-    with nav_l:
-        if st.button("닫기", key="br_il_close"):
-            st.session_state[K_POS_SHOW_BR] = False
-    with nav_r:
-        if start + page_size < n:
-            if st.button("다음→", key="br_il_next"):
-                st.session_state[K_POS_BR_PG] = page + 1
+                            st.rerun()
+
+    st.divider()
+    if st.button("닫기", key="br_dlg_close", use_container_width=True):
+        st.session_state[K_POS_SHOW_BR] = False
+        st.rerun()
 
 
 def _style_inline_grid(sb) -> None:
@@ -1216,8 +1229,8 @@ def _product_pick_panel(*, sb, store_id: str, pos_locked: bool) -> None:
         with bc1:
             _lbl_brand = _brand_name if _brand_name else "브랜드"
             if st.button(_lbl_brand, key="fo_pos_btn_brand", use_container_width=True):
-                st.session_state[K_POS_SHOW_BR] = not st.session_state[K_POS_SHOW_BR]
-                st.session_state[K_POS_BR_PG] = 0
+                st.session_state[K_POS_SHOW_BR] = True
+                st.rerun()
         with bc2:
             # 선택된 값 표시: "제품번호 / 칼라" 또는 기본 레이블
             if _style_code and _color_code:
@@ -1236,10 +1249,6 @@ def _product_pick_panel(*, sb, store_id: str, pos_locked: bool) -> None:
                 st.session_state[K_POS_STCO_DRAFT] = ""
                 st.session_state[K_POS_SHOW_BR] = False
                 st.rerun()  # 전체 재실행 → 다이얼로그 표시
-
-    # 브랜드 인라인 그리드
-    if st.session_state.get(K_POS_SHOW_BR):
-        _brand_inline_grid(sb)
 
     # 선택된 제품 조회
     bid = st.session_state.get("fo_pos_brand_id")
@@ -1415,6 +1424,9 @@ if st.session_state.get(K_OPEN_SALE_SEARCH):
 
 if st.session_state.get(K_POS_SHOW_STCO):
     _stco_search_dialog()
+
+if st.session_state.get(K_POS_SHOW_BR):
+    _brand_select_dialog()
 
 pos_locked = is_business_day_settled(sb, store_id, sale_day)
 if pos_locked:

@@ -77,7 +77,7 @@ def load_sales_analytics(
     for ch in _chunks(pids, 100):
         prows.extend(
             sb.table("fo_products")
-            .select("id, display_name, category, supplier_id")
+            .select("id, product_code, display_name, category, supplier_id")
             .in_("id", ch)
             .execute()
             .data
@@ -89,10 +89,14 @@ def load_sales_analytics(
         df_m["product_id"] = df_m["product_id"].astype(str)
         df_m = df_m.merge(df_p, on="product_id", how="left")
     else:
+        df_m["product_code"] = ""
         df_m["display_name"] = ""
         df_m["category"] = ""
         df_m["supplier_id"] = pd.NA
 
+    if "product_code" not in df_m.columns:
+        df_m["product_code"] = ""
+    df_m["product_code"] = df_m["product_code"].fillna("")
     df_m["display_name"] = df_m["display_name"].fillna("(미상)")
     df_m["category"] = df_m["category"].fillna("")
 
