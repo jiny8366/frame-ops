@@ -15,9 +15,28 @@ export async function GET(req: NextRequest) {
     const search   = searchParams.get('search') ?? '';
 
     const db = getDB();
+    // 클라이언트가 실제로 사용하는 컬럼만 명시 (supplier_id 등 서버 전용 컬럼 제외)
+    // brand는 !inner로 INNER JOIN 강제 — brand_id가 null인 제품은 카탈로그에서 배제
     let query = db
       .from('fo_products')
-      .select('*, brand:fo_brands(id, name)')
+      .select(`
+        id,
+        brand_id,
+        product_code,
+        style_code,
+        color_code,
+        display_name,
+        category,
+        sale_price,
+        cost_price,
+        suggested_retail,
+        barcode,
+        product_line,
+        status,
+        created_at,
+        updated_at,
+        brand:fo_brands!inner(id, name)
+      `)
       .not('style_code', 'like', '%:%')   // 콜론 포함 제품 제외
       .order('style_code', { ascending: true })
       .range(page * limit, (page + 1) * limit - 1);
