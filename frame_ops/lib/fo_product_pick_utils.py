@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import streamlit as st
 from supabase import Client
 
 
@@ -70,7 +71,10 @@ def _ensure_nopublic_brand_mapping(sb: Client) -> None:
         ).eq("product_code", pc).execute()
 
 
-def load_all_brands(sb: Client) -> list[dict[str, Any]]:
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_brands(supabase_url: str) -> list[dict[str, Any]]:
+    from lib.supabase_client import get_supabase
+    sb = get_supabase()
     brands = sb.table("fo_brands").select("id, name").order("name").execute().data or []
     if brands:
         return brands
@@ -81,7 +85,15 @@ def load_all_brands(sb: Client) -> list[dict[str, Any]]:
     return sb.table("fo_brands").select("id, name").order("name").execute().data or []
 
 
-def load_distinct_style_codes(sb: Client, brand_id: str) -> list[str]:
+def load_all_brands(sb: Client) -> list[dict[str, Any]]:
+    from lib.supabase_client import get_configured_supabase_url
+    return _cached_brands(get_configured_supabase_url())
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_style_codes(supabase_url: str, brand_id: str) -> list[str]:
+    from lib.supabase_client import get_supabase
+    sb = get_supabase()
     rows = (
         sb.table("fo_products")
         .select("style_code")
@@ -99,7 +111,15 @@ def load_distinct_style_codes(sb: Client, brand_id: str) -> list[str]:
     )
 
 
-def load_distinct_color_codes(sb: Client, brand_id: str, style_code_val: str) -> list[str]:
+def load_distinct_style_codes(sb: Client, brand_id: str) -> list[str]:
+    from lib.supabase_client import get_configured_supabase_url
+    return _cached_style_codes(get_configured_supabase_url(), brand_id)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_color_codes(supabase_url: str, brand_id: str, style_code_val: str) -> list[str]:
+    from lib.supabase_client import get_supabase
+    sb = get_supabase()
     stc = (style_code_val or "").strip()
     if not stc:
         return []
@@ -119,3 +139,8 @@ def load_distinct_color_codes(sb: Client, brand_id: str, style_code_val: str) ->
             if r.get("color_code") is not None and str(r.get("color_code") or "").strip() != ""
         }
     )
+
+
+def load_distinct_color_codes(sb: Client, brand_id: str, style_code_val: str) -> list[str]:
+    from lib.supabase_client import get_configured_supabase_url
+    return _cached_color_codes(get_configured_supabase_url(), brand_id, style_code_val)
