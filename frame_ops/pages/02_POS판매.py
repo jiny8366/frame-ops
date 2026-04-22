@@ -688,31 +688,33 @@ with st.container(key="fo_pos_main_wrap"):
 
 with left:
     st.markdown("##### 상품 담기")
-    with st.expander("카메라 스캔", expanded=False):
-        st.caption(
-            "브라우저에서 **카메라 권한**이 필요합니다. 배포 시 **HTTPS**(또는 PC에서 localhost)에서만 "
-            "모바일 카메라가 동작하는 경우가 많습니다. 선명하게 찍은 뒤 아래 버튼을 누르세요."
-        )
-        st.caption(
-            "블루투스/무선 **바코드 스캐너**는 키보드처럼 동작하므로, 이 칸 없이 아래 입력란에 포커스를 두고 스캔만 해도 됩니다."
-        )
+
+    # 카메라 ON/OFF 토글
+    st.session_state.setdefault("fo_pos_camera_on", False)
+    cam_label = "📷 카메라 끄기" if st.session_state.fo_pos_camera_on else "📷 카메라로 스캔"
+    if st.button(cam_label, key="fo_pos_cam_toggle", use_container_width=True):
+        st.session_state.fo_pos_camera_on = not st.session_state.fo_pos_camera_on
+        st.rerun()
+
+    if st.session_state.fo_pos_camera_on:
         if not is_barcode_decode_available():
-            st.warning(
-                "카메라 인식을 쓰려면 `opencv-python-headless`가 필요합니다. "
-                "`pip install -r requirements.txt` 후 앱을 다시 실행하세요."
+            st.warning("카메라 바코드 인식을 쓰려면 `opencv-python-headless`가 필요합니다.")
+        else:
+            cam = st.camera_input(
+                "바코드가 잘 보이도록 촬영하세요",
+                key="fo_pos_barcode_cam",
+                label_visibility="collapsed",
             )
-        cam = st.camera_input("바코드 영역이 잘 보이게 촬영", key="fo_pos_barcode_cam", label_visibility="collapsed")
-        if cam is not None and st.button("이 사진에서 코드 읽기", key="fo_pos_barcode_decode"):
-            if not is_barcode_decode_available():
-                st.error("OpenCV가 설치되어 있지 않습니다.")
-            else:
-                raw = decode_barcode_from_bytes(cam.getvalue())
-                if raw is None:
-                    st.error("이미지에서 바코드·QR을 읽지 못했습니다. 밝기·거리·각도를 조절해 다시 촬영해 보세요.")
-                else:
-                    st.session_state["fo_lookup"] = raw
-                    st.success(f"인식됨: **{raw}** — 수량 확인 후 「장바구니에 담기」를 누르세요.")
-                    st.rerun()
+            if cam is not None:
+                if st.button("이 사진에서 코드 읽기", key="fo_pos_barcode_decode"):
+                    raw = decode_barcode_from_bytes(cam.getvalue())
+                    if raw is None:
+                        st.error("바코드를 읽지 못했습니다. 밝기·거리·각도를 조절해 다시 촬영하세요.")
+                    else:
+                        st.session_state["fo_lookup"] = raw
+                        st.session_state.fo_pos_camera_on = False  # 인식 후 카메라 자동 종료
+                        st.success(f"인식됨: **{raw}**")
+                        st.rerun()
 
     lookup = st.text_input("바코드 / 상품코드 직접 입력", key="fo_lookup",
                            placeholder="스캔하거나 코드 입력 후 담기")
