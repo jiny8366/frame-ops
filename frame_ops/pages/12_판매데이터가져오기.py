@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -39,8 +39,8 @@ st.caption(
     "표준 **CSV** 또는 북촌 **판매일지 xlsx** 를 POS와 동일 규칙으로 넣습니다. "
     "검증 통과 후에만 DB에 반영하세요. 재고는 **차감**되며, 정산된 날·적재 시작일 이전 날은 거절됩니다."
 )
-st.page_link("pages/02_POS판매.py", label="→ POS 판매(수동 입력)")
-st.page_link("pages/11_통계리포트.py", label="→ 통계·리포트")
+fo_page_link("pages/02_POS판매.py", label="→ POS 판매(수동 입력)")
+fo_page_link("pages/11_통계리포트.py", label="→ 통계·리포트")
 
 with st.expander("CSV 필수 컬럼 안내", expanded=False):
     st.markdown(

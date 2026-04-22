@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -38,8 +38,8 @@ st.caption(
     "체크하지 않은 품목은 **다음에도 같은 주문서에 남습니다**. "
     "**보류**에 체크하면 이후 매입 목록에 **나타나지 않습니다**."
 )
-st.page_link("pages/07_주문리스트.py", label="→ 주문 리스트")
-st.page_link("pages/03_입고.py", label="→ 입고 (실제 입고 전표)")
+fo_page_link("pages/07_주문리스트.py", label="→ 주문 리스트")
+fo_page_link("pages/03_입고.py", label="→ 입고 (실제 입고 전표)")
 
 try:
     sb = get_supabase()

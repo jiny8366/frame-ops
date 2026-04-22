@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -81,8 +81,8 @@ all_pids = sorted(set(qty_by_pid) | set(opt_by_pid), key=str)
 
 if not all_pids:
     st.info("이 지점에 재고·적정재고 데이터가 없습니다. 입고 또는 위에서 적정재고를 등록하세요.")
-    st.page_link("pages/03_입고.py", label="→ 입고")
-    st.page_link("pages/01_상품등록.py", label="→ 상품 등록")
+    fo_page_link("pages/03_입고.py", label="→ 입고")
+    fo_page_link("pages/01_상품등록.py", label="→ 상품 등록")
     st.stop()
 
 # 상품 메타 (배치)
@@ -143,7 +143,7 @@ st.caption(f"표시 **{len(rows_view)}**건 / 전체 {len(rows_out)}건")
 short_in_view = [r for r in rows_view if r.get("부족") == "예"]
 if short_in_view:
     st.warning(f"적정 대비 부족 **{len(short_in_view)}**건 — 발주 후보는 주문 리스트에서 CSV로 받을 수 있습니다.")
-    st.page_link("pages/07_주문리스트.py", label="→ 주문(발주) 리스트")
+    fo_page_link("pages/07_주문리스트.py", label="→ 주문(발주) 리스트")
 
 neg_df = [r for r in rows_view if r["음수"] == "예"]
 if neg_df:

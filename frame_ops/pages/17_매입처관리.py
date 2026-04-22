@@ -19,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -30,7 +30,7 @@ st.caption(
     "매입처명/코드/사업자등록번호/주소/연락처/취급브랜드/메모를 관리합니다. "
     "상품등록 화면에서는 매입처를 직접 입력하지 않습니다."
 )
-st.page_link("pages/01_상품등록.py", label="→ 상품 등록")
+fo_page_link("pages/01_상품등록.py", label="→ 상품 등록")
 
 try:
     sb = get_supabase()

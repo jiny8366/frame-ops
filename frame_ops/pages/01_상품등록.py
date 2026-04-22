@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -65,9 +65,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.page_link("pages/90_admin_portal.py", label="홈")
-st.page_link("pages/03_입고.py", label="→ 입고")
-st.page_link("pages/02_POS판매.py", label="→ POS 판매")
+fo_page_link("pages/90_admin_portal.py", label="홈")
+fo_page_link("pages/03_입고.py", label="→ 입고")
+fo_page_link("pages/02_POS판매.py", label="→ POS 판매")
 
 try:
     sb = get_supabase()

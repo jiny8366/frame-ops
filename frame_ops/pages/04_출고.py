@@ -19,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -463,4 +463,4 @@ if recs:
 else:
     st.info("출고 이력이 없습니다.")
 
-st.page_link("pages/10_매장간이동.py", label="→ 매장 간 이동 (수신함·발송 현황)")
+fo_page_link("pages/10_매장간이동.py", label="→ 매장 간 이동 (수신함·발송 현황)")

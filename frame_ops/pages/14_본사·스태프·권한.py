@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -809,5 +809,5 @@ with tab_edit:
                     except Exception as ex:
                         st.error(str(ex))
 
-st.page_link("pages/90_admin_portal.py", label="← 홈")
-st.page_link("pages/15_지점·매니저·판매사.py", label="지점·매니저·판매사")
+fo_page_link("pages/90_admin_portal.py", label="← 홈")
+fo_page_link("pages/15_지점·매니저·판매사.py", label="지점·매니저·판매사")

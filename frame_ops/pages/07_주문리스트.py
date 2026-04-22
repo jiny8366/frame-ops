@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -71,7 +71,7 @@ with tab_targets:
     st.caption(
         "적정재고는 **재고 현황**에서 등록합니다. 북촌 No Public만 보려면 재고 현황에서 「No Public만」 필터를 활용하세요."
     )
-    st.page_link("pages/06_재고현황.py", label="→ 재고 현황 · 적정재고")
+    fo_page_link("pages/06_재고현황.py", label="→ 재고 현황 · 적정재고")
 
     targets = (
         sb.table("fo_stock_targets").select("product_id, optimal_quantity").eq("store_id", store_id).execute().data
@@ -139,7 +139,7 @@ with tab_sales:
         "선택 기간·지점의 **POS 판매 라인 수량**을 상품별로 합산해 주문서를 저장합니다. "
         "저장 후 **매입처리**에서 미매입 건만 이어서 처리하고, **보류**한 품목은 이후 목록에서 제외됩니다."
     )
-    st.page_link("pages/13_매입처리.py", label="→ 매입처리")
+    fo_page_link("pages/13_매입처리.py", label="→ 매입처리")
 
     c1, c2, c3 = st.columns(3)
     with c1:

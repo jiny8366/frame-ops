@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.service_portal import render_frame_ops_chrome, fo_page_link  # noqa: E402
 
 render_frame_ops_chrome()
 
@@ -379,7 +379,7 @@ with tab_po:
 
         if not _po_sheets:
             st.info("이 지점에 저장된 주문서가 없습니다. **주문리스트** 화면에서 먼저 주문서를 생성하세요.")
-            st.page_link("pages/07_주문리스트.py", label="→ 주문리스트")
+            fo_page_link("pages/07_주문리스트.py", label="→ 주문리스트")
         else:
             po_labels = [
                 f"{s.get('title','')} ({s.get('period_start','')[:10]}~{s.get('period_end','')[:10]})"
