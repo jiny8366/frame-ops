@@ -46,6 +46,7 @@ from lib.fo_product_pick_utils import (
 from lib.sales_search_panel import render_sales_search_panel
 from lib.streamlit_fo_stores import active_fo_stores_list_or_halt
 from lib.supabase_client import get_configured_supabase_anon_key, get_configured_supabase_url, get_supabase
+from lib.fo_pos_css import FO_POS_CSS
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -119,7 +120,10 @@ FO_POS_ACTIVE_AMOUNT_KEYPAD = "fo_pos_active_amount_keypad_field"
 FO_POS_KPD_DLG_TOP_PX = 100
 FO_POS_KPD_DLG_RIGHT_PX = 100
 
-FO_POS_KPD_CSS = """
+# ── CSS는 lib/fo_pos_css.py 에서 관리 (Apple HIG 디자인 토큰 시스템) ──
+FO_POS_KPD_CSS = FO_POS_CSS  # 하위 호환 별칭 유지
+
+_LEGACY_CSS_START = """
 <style>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    FRAME OPS · POS 판매 UI
@@ -832,9 +836,7 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [rol
   padding: 0 6px !important;
 }
 </style>
-""".replace("__FO_POS_KPD_DLG_TOP_PX__", str(FO_POS_KPD_DLG_TOP_PX)).replace(
-    "__FO_POS_KPD_DLG_RIGHT_PX__", str(FO_POS_KPD_DLG_RIGHT_PX)
-)
+"""  # _LEGACY_CSS_START (사용 안 함 — FO_POS_CSS 로 대체됨)
 
 with st.container(key="fo_pos_header"):
     hc_title, hc_store, hc_day, hc_search = st.columns([2, 4, 3, 2])
