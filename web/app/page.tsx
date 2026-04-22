@@ -5,10 +5,9 @@ import Link from 'next/link';
 export const metadata: Metadata = { title: '대시보드' };
 
 const NAV_ITEMS = [
-  { href: '/pos',       label: 'POS 판매',   icon: '💳', color: 'bg-brand-600' },
-  { href: '/frames',    label: '재고 조회',   icon: '👓', color: 'bg-emerald-600' },
-  { href: '/customers', label: '고객 관리',   icon: '👤', color: 'bg-sky-600' },
-  { href: '/orders',    label: '주문/매출',   icon: '📊', color: 'bg-violet-600' },
+  { href: '/pos',    label: 'POS 판매',  icon: '💳', color: 'bg-brand-600' },
+  { href: '/frames', label: '재고 조회', icon: '👓', color: 'bg-emerald-600' },
+  { href: '/orders', label: '매출',      icon: '📊', color: 'bg-violet-600' },
 ];
 
 export default function DashboardPage() {
