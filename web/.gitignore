@@ -27,6 +27,9 @@ public/workbox-*.js.map
 *.tsbuildinfo
 next-env.d.ts
 
+# Supabase CLI 상태 (link, TypeGen 부산물)
+supabase/.temp/
+
 # OS
 .DS_Store
 Thumbs.db

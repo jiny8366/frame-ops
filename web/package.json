@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "types:db": "supabase gen types typescript --linked > types/database.ts",
+    "types:check": "tsc --noEmit",
     "analyze": "ANALYZE=true next build",
     "lighthouse": "lighthouse http://localhost:3000 --view --preset=desktop",
     "lighthouse:mobile": "lighthouse http://localhost:3000 --view --preset=mobile"
@@ -43,6 +45,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.29",
     "postcss": "^8.5.3",
+    "supabase": "^2.93.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "webpack-bundle-analyzer": "^4.10.2"
