@@ -221,14 +221,26 @@ def inject_chrome_css() -> None:
     st.markdown(
         """
         <style>
-        /* 상단 ☰ — 터치 영역 확대 (모바일) */
+        /* ── Streamlit 기본 헤더 영역 제거 ────────────────────────── */
+        [data-testid="stHeader"] {
+            height: 0 !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            display: none !important;
+        }
+        /* ── 메인 콘텐츠 상단 여백 20px 고정 ──────────────────────── */
+        [data-testid="stMainBlockContainer"],
+        .block-container {
+            padding-top: 20px !important;
+        }
+        /* ── 상단 ☰ 팝오버 — 터치 영역 확대 (모바일) ─────────────── */
         div[data-testid="stPopover"] > button {
             min-height: 2.75rem !important;
             min-width: 2.75rem !important;
             padding: 0.35rem 0.6rem !important;
             font-size: 1.25rem !important;
         }
-        /* 사이드바 링크 간격 */
+        /* ── 사이드바 링크 간격 ─────────────────────────────────────── */
         [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {
             padding-top: 0.35rem;
             padding-bottom: 0.35rem;

@@ -82,16 +82,34 @@ def _cached_discount_types(supabase_url: str) -> list:
         or []
     )
 
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_products_by_style_prefix(supabase_url: str, brand_id: str, style_prefix: str) -> list:
+    """브랜드 + 제품번호 앞자리로 제품 목록 검색 — 1분 캐싱."""
+    from lib.supabase_client import get_supabase as _gsb
+    _sb = _gsb()
+    q = (
+        _sb.table("fo_products")
+        .select("id, display_name, style_code, color_code, sale_price")
+        .eq("brand_id", str(brand_id))
+    )
+    if style_prefix:
+        q = q.ilike("style_code", f"{style_prefix}%")
+    return q.order("style_code").order("color_code").limit(30).execute().data or []
+
+
 K_PENDING_SALE_SAVE = "fo_pending_sale_save"
 K_POS_PIN_DRAFT = "fo_pos_pin_kpd_draft"
 K_OPEN_SALE_SEARCH = "fo_pos_sale_search_open"
 # 인라인 그리드 토글 (dialog 대체 — fragment 재실행만 유발)
 K_POS_SHOW_BR = "fo_pos_show_br_grid"
-K_POS_SHOW_ST = "fo_pos_show_st_grid"
-K_POS_SHOW_CO = "fo_pos_show_co_grid"
+K_POS_SHOW_ST = "fo_pos_show_st_grid"   # 하위 호환 (미사용)
+K_POS_SHOW_CO = "fo_pos_show_co_grid"   # 하위 호환 (미사용)
+K_POS_SHOW_STCO = "fo_pos_show_stco_dlg"   # 제품번호/칼라 통합 검색 다이얼로그
+K_POS_STCO_DRAFT = "fo_pos_stco_draft"     # 제품번호/칼라 키패드 입력 버퍼
 K_POS_BR_PG = "fo_pos_brand_grid_page"
-K_POS_ST_PG = "fo_pos_style_grid_page"
-K_POS_CO_PG = "fo_pos_color_grid_page"
+K_POS_ST_PG = "fo_pos_style_grid_page"  # 하위 호환 (미사용)
+K_POS_CO_PG = "fo_pos_color_grid_page"  # 하위 호환 (미사용)
 # 하위 호환: 예전 dialog 키 (더 이상 쓰지 않음)
 K_POS_BR_DLG = "fo_pos_brand_dlg_open"
 K_POS_ST_DLG = "fo_pos_style_dlg_open"
@@ -450,7 +468,37 @@ FO_POS_KPD_CSS = """
     justify-content: center !important;
   }
 
-  /* ⑱ PIN 키패드 내부 컬럼 — 3열 고정 */
+  /* ⑱ 제품번호/칼라 검색 키패드 — 3열 고정 */
+  [class*="st-key-fo_pos_stco_kpd_scope"] [data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+  [class*="st-key-fo_pos_stco_kpd_scope"] [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    padding: 0 2px !important;
+  }
+  [class*="st-key-fo_pos_stco_kpd_scope"] [data-testid="stButton"] > button {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  /* 검색 결과 버튼 — 터치 타깃 */
+  [class*="st-key-fo_pos_stco_results"] [data-testid="stButton"] > button {
+    min-height: 52px !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* ⑲ PIN 키패드 내부 컬럼 — 3열 고정 */
   [class*="st-key-fo_pos_pin_kpd_scope"] [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
     gap: 4px !important;
@@ -535,6 +583,49 @@ FO_POS_KPD_CSS = """
   margin-bottom: 0.6rem;
   min-height: 3rem;
 }
+/* ━━━ 제품번호/칼라 검색 키패드 스코프 ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[class*="st-key-fo_pos_stco_kpd_scope"] {
+  --fo-stco-side: 60px;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  margin-left: auto;
+  margin-right: auto;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+[class*="st-key-fo_pos_stco_kpd_scope"] [data-testid="stButton"] > button {
+  width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  height: var(--fo-stco-side) !important;
+  min-height: var(--fo-stco-side) !important;
+  max-height: var(--fo-stco-side) !important;
+  font-size: 1.1rem !important;
+  font-weight: 650 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* 검색 결과 리스트 — 최대 높이 + 스크롤 */
+[class*="st-key-fo_pos_stco_results"] {
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius);
+  padding: 0.3rem;
+}
+[class*="st-key-fo_pos_stco_results"] [data-testid="stButton"] > button {
+  text-align: left !important;
+  font-size: 0.92rem !important;
+  min-height: 44px !important;
+  padding: 6px 10px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 /* ━━━ PIN 키패드 스코프 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 [class*="st-key-fo_pos_pin_kpd_scope"] {
   --fo-pin-side: 68px;
@@ -710,8 +801,7 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
         bool(st.session_state.get(k))
         for k in (
             K_POS_SHOW_BR,
-            K_POS_SHOW_ST,
-            K_POS_SHOW_CO,
+            K_POS_SHOW_STCO,
             K_OPEN_SALE_SEARCH,
         )
     )
@@ -808,6 +898,119 @@ def _dialog_fo_pos_cash_amount() -> None:
 @st.dialog("할인 합계 입력", width="small")
 def _dialog_fo_pos_disc_amount() -> None:
     _render_amount_keypad_fragment("fo_pos_disc", "fo_pos_disc_draft", "할인 합계(원)")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 제품번호/칼라 통합 검색 다이얼로그
+# ──────────────────────────────────────────────────────────────────────────────
+
+@st.fragment
+def _stco_keypad_fragment(brand_id: str) -> None:
+    """제품번호/칼라 통합 검색 — 숫자 키패드 + 결과 리스트 (fragment 내부)."""
+    st.session_state.setdefault(K_POS_STCO_DRAFT, "")
+
+    # ── LCD 표시 ──────────────────────────────────────────────────────────────
+    draft = st.session_state[K_POS_STCO_DRAFT]
+    lcd_val = html.escape(draft) if draft else "—"
+    st.markdown(
+        f'<div class="fo-pos-keypad-lcd" style="text-align:center;margin-bottom:0.4rem">'
+        f'{lcd_val}</div>',
+        unsafe_allow_html=True,
+    )
+
+    def _sadd(d: str) -> None:
+        st.session_state[K_POS_STCO_DRAFT] = (st.session_state.get(K_POS_STCO_DRAFT) or "") + d
+
+    # ── 숫자 키패드 ───────────────────────────────────────────────────────────
+    with st.container(key="fo_pos_stco_kpd_scope"):
+        r1a, r1b, r1c = st.columns(3)
+        with r1a:
+            if st.button("1", key="stco_k1", use_container_width=True): _sadd("1")
+        with r1b:
+            if st.button("2", key="stco_k2", use_container_width=True): _sadd("2")
+        with r1c:
+            if st.button("3", key="stco_k3", use_container_width=True): _sadd("3")
+
+        r2a, r2b, r2c = st.columns(3)
+        with r2a:
+            if st.button("4", key="stco_k4", use_container_width=True): _sadd("4")
+        with r2b:
+            if st.button("5", key="stco_k5", use_container_width=True): _sadd("5")
+        with r2c:
+            if st.button("6", key="stco_k6", use_container_width=True): _sadd("6")
+
+        r3a, r3b, r3c = st.columns(3)
+        with r3a:
+            if st.button("7", key="stco_k7", use_container_width=True): _sadd("7")
+        with r3b:
+            if st.button("8", key="stco_k8", use_container_width=True): _sadd("8")
+        with r3c:
+            if st.button("9", key="stco_k9", use_container_width=True): _sadd("9")
+
+        r4a, r4b, r4c = st.columns(3)
+        with r4a:
+            if st.button("지우기", key="stco_kclr", use_container_width=True):
+                st.session_state[K_POS_STCO_DRAFT] = ""
+        with r4b:
+            if st.button("0", key="stco_k0", use_container_width=True): _sadd("0")
+        with r4c:
+            if st.button("⌫", key="stco_kbs", use_container_width=True):
+                st.session_state[K_POS_STCO_DRAFT] = (
+                    st.session_state.get(K_POS_STCO_DRAFT) or ""
+                )[:-1]
+
+    # ── 검색 결과 (버튼 처리 후 draft 재읽기) ─────────────────────────────────
+    draft = st.session_state[K_POS_STCO_DRAFT]
+    products = _cached_products_by_style_prefix(
+        get_configured_supabase_url(), str(brand_id), draft
+    )
+
+    st.divider()
+    if products:
+        caption = (
+            f"**{html.escape(draft)}** 로 시작 · {len(products)}개"
+            if draft
+            else f"전체 {len(products)}개 (최대 30)"
+        )
+        st.caption(caption)
+        with st.container(key="fo_pos_stco_results"):
+            for p in products:
+                price_str = f"{int(p['sale_price']):,}원" if p.get("sale_price") else ""
+                lbl = (
+                    f"{p['style_code']} / {p['color_code']}"
+                    f"　{p['display_name']}"
+                    + (f"　{price_str}" if price_str else "")
+                )
+                if st.button(lbl, key=f"stco_r_{p['id']}", use_container_width=True):
+                    st.session_state["fo_pos_style"] = p["style_code"]
+                    st.session_state["fo_pos_color"] = p["color_code"]
+                    st.session_state[K_POS_STCO_DRAFT] = ""
+                    st.session_state[K_POS_SHOW_STCO] = False
+                    st.rerun()
+    elif draft:
+        st.info(f"**'{html.escape(draft)}'** 로 시작하는 제품이 없습니다.")
+    else:
+        st.caption("제품번호를 입력하면 목록이 표시됩니다.")
+
+
+@st.dialog("제품번호 / 칼라 선택", width="large")
+def _stco_search_dialog() -> None:
+    brand_name = (st.session_state.get("fo_pos_brand_name") or "").strip()
+    bid = st.session_state.get("fo_pos_brand_id")
+    if brand_name:
+        st.caption(f"브랜드: **{html.escape(brand_name)}**")
+    if not bid:
+        st.error("브랜드를 먼저 선택하세요.")
+        if st.button("닫기", key="stco_dlg_err_close", use_container_width=True):
+            st.session_state[K_POS_SHOW_STCO] = False
+            st.rerun()
+        return
+    _stco_keypad_fragment(str(bid))
+    st.divider()
+    if st.button("닫기", key="stco_dlg_close", use_container_width=True):
+        st.session_state[K_POS_SHOW_STCO] = False
+        st.session_state[K_POS_STCO_DRAFT] = ""
+        st.rerun()
 
 
 def _brand_inline_grid(sb) -> None:
@@ -974,54 +1177,42 @@ def _product_pick_panel(*, sb, store_id: str, pos_locked: bool) -> None:
     st.session_state.setdefault("fo_pos_style", "")
     st.session_state.setdefault("fo_pos_color", "")
     st.session_state.setdefault(K_POS_SHOW_BR, False)
-    st.session_state.setdefault(K_POS_SHOW_ST, False)
-    st.session_state.setdefault(K_POS_SHOW_CO, False)
+    st.session_state.setdefault(K_POS_SHOW_STCO, False)
+    st.session_state.setdefault(K_POS_STCO_DRAFT, "")
 
     _brand_name = (st.session_state.get("fo_pos_brand_name") or "").strip()
     _style_code = (st.session_state.get("fo_pos_style") or "").strip()
     _color_code = (st.session_state.get("fo_pos_color") or "").strip()
 
     with st.container(key="fo_pos_product_sel"):
-        bc1, bc2, bc3 = st.columns(3)
+        bc1, bc2 = st.columns(2)
         with bc1:
             _lbl_brand = _brand_name if _brand_name else "브랜드"
             if st.button(_lbl_brand, key="fo_pos_btn_brand", use_container_width=True):
                 st.session_state[K_POS_SHOW_BR] = not st.session_state[K_POS_SHOW_BR]
-                st.session_state[K_POS_SHOW_ST] = False
-                st.session_state[K_POS_SHOW_CO] = False
                 st.session_state[K_POS_BR_PG] = 0
         with bc2:
-            _lbl_style = _style_code if _style_code else "제품번호"
+            # 선택된 값 표시: "제품번호 / 칼라" 또는 기본 레이블
+            if _style_code and _color_code:
+                _lbl_stco = f"{_style_code} / {_color_code}"
+            elif _style_code:
+                _lbl_stco = _style_code
+            else:
+                _lbl_stco = "제품번호 / 칼라"
             if st.button(
-                _lbl_style,
-                key="fo_pos_btn_style",
+                _lbl_stco,
+                key="fo_pos_btn_stco",
                 use_container_width=True,
                 disabled=not st.session_state.get("fo_pos_brand_id"),
             ):
-                st.session_state[K_POS_SHOW_ST] = not st.session_state[K_POS_SHOW_ST]
+                st.session_state[K_POS_SHOW_STCO] = True
+                st.session_state[K_POS_STCO_DRAFT] = ""
                 st.session_state[K_POS_SHOW_BR] = False
-                st.session_state[K_POS_SHOW_CO] = False
-                st.session_state[K_POS_ST_PG] = 0
-        with bc3:
-            _lbl_color = _color_code if _color_code else "칼라"
-            bid_c = st.session_state.get("fo_pos_brand_id")
-            st_ok = bool(_style_code)
-            if st.button(
-                _lbl_color, key="fo_pos_btn_color", use_container_width=True,
-                disabled=not (bid_c and st_ok),
-            ):
-                st.session_state[K_POS_SHOW_CO] = not st.session_state[K_POS_SHOW_CO]
-                st.session_state[K_POS_SHOW_BR] = False
-                st.session_state[K_POS_SHOW_ST] = False
-                st.session_state[K_POS_CO_PG] = 0
+                st.rerun()  # 전체 재실행 → 다이얼로그 표시
 
-    # 인라인 그리드 (dialog 대신 버튼 아래 바로 표시)
+    # 브랜드 인라인 그리드
     if st.session_state.get(K_POS_SHOW_BR):
         _brand_inline_grid(sb)
-    elif st.session_state.get(K_POS_SHOW_ST):
-        _style_inline_grid(sb)
-    elif st.session_state.get(K_POS_SHOW_CO):
-        _color_inline_grid(sb)
 
     # 선택된 제품 조회
     bid = st.session_state.get("fo_pos_brand_id")
@@ -1143,15 +1334,15 @@ def _run_sale_save(
     for _k in ("fo_pos_card", "fo_pos_cash", "fo_pos_disc"):
         st.session_state[_k] = 0
         st.session_state[f"{_k}_draft"] = ""
-    # 브랜드·제품번호·칼라 선택 + 인라인 그리드 초기화
+    # 브랜드·제품번호·칼라 선택 + 그리드/다이얼로그 초기화
     st.session_state["fo_pos_brand_id"] = None
     st.session_state["fo_pos_brand_name"] = ""
     st.session_state["fo_pos_style"] = ""
     st.session_state["fo_pos_color"] = ""
     st.session_state["fo_pos_qty_add"] = 1
     st.session_state[K_POS_SHOW_BR] = False
-    st.session_state[K_POS_SHOW_ST] = False
-    st.session_state[K_POS_SHOW_CO] = False
+    st.session_state[K_POS_SHOW_STCO] = False
+    st.session_state[K_POS_STCO_DRAFT] = ""
     st.success(f"저장 완료 · 전표 `{sale_id[:8]}…` · 담당자 반영됨")
     st.balloons()
     st.rerun()
@@ -1187,6 +1378,9 @@ if st.session_state.get(K_OPEN_SALE_SEARCH):
             st.rerun()
 
     _sale_search_dialog()
+
+if st.session_state.get(K_POS_SHOW_STCO):
+    _stco_search_dialog()
 
 pos_locked = is_business_day_settled(sb, store_id, sale_day)
 if pos_locked:
