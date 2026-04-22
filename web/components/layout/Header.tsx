@@ -10,10 +10,9 @@ import { ThemeToggle, ThemeToggleMobile } from '@/components/ui/ThemeToggle';
 
 // ── 내비게이션 링크 정의 ──────────────────────────────────────────────────────
 const NAV_LINKS = [
-  { href: '/pos',       label: 'POS 판매' },
-  { href: '/frames',    label: '재고' },
-  { href: '/customers', label: '고객' },
-  { href: '/orders',    label: '매출' },
+  { href: '/pos',    label: 'POS 판매' },
+  { href: '/frames', label: '재고' },
+  { href: '/orders', label: '매출' },
 ] as const;
 
 // ── 헤더 컴포넌트 ─────────────────────────────────────────────────────────────
@@ -132,7 +131,7 @@ export function BottomTabBar() {
         {NAV_LINKS.map(({ href, label }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/');
           const ICONS: Record<string, string> = {
-            '/pos': '💳', '/frames': '👓', '/customers': '👤', '/orders': '📊',
+            '/pos': '💳', '/frames': '👓', '/orders': '📊',
           };
           return (
             <Link

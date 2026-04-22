@@ -1,8 +1,9 @@
 // Frame Ops — IndexedDB 유틸리티
-// idb 라이브러리 사용 / frameops_db v1
+// idb 라이브러리 사용 / frameops_db v2
+// 스토어: frames, sales, sync_queue
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Product, Customer, Prescription, Order } from '@/types';
+import type { Product, Sale } from '@/types';
 
 // ── DB 스키마 ─────────────────────────────────────────────────────────────────
 interface FrameOpsDB extends DBSchema {
@@ -15,29 +16,12 @@ interface FrameOpsDB extends DBSchema {
       by_updated_at: string;
     };
   };
-  customers: {
+  sales: {
     key: string;
-    value: Customer;
+    value: Sale;
     indexes: {
-      by_phone: string;
-      by_name: string;
-      by_updated_at: string;
-    };
-  };
-  prescriptions: {
-    key: string;
-    value: Prescription;
-    indexes: {
-      by_customer: string;
-      by_created_at: string;
-    };
-  };
-  orders: {
-    key: string;
-    value: Order;
-    indexes: {
-      by_customer: string;
-      by_date: string;
+      by_store: string;
+      by_sold_at: string;
     };
   };
   sync_queue: {
@@ -49,7 +33,7 @@ interface FrameOpsDB extends DBSchema {
 
 export interface SyncQueueItem {
   id?: number;
-  table: 'frames' | 'customers' | 'prescriptions' | 'orders';
+  table: 'frames' | 'orders';
   operation: 'insert' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
@@ -62,35 +46,39 @@ let _db: IDBPDatabase<FrameOpsDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<FrameOpsDB>> {
   if (_db) return _db;
 
-  _db = await openDB<FrameOpsDB>('frameops_db', 1, {
-    upgrade(db) {
+  _db = await openDB<FrameOpsDB>('frameops_db', 2, {
+    upgrade(db, oldVersion) {
+      // v1 → v2: customers, prescriptions, orders 스토어 제거
+      if (oldVersion < 2) {
+        for (const store of ['customers', 'prescriptions', 'orders'] as string[]) {
+          if (db.objectStoreNames.contains(store as never)) {
+            db.deleteObjectStore(store as never);
+          }
+        }
+      }
+
       // frames 스토어
-      const framesStore = db.createObjectStore('frames', { keyPath: 'id' });
-      framesStore.createIndex('by_brand', 'brand_id');
-      framesStore.createIndex('by_category', 'category');
-      framesStore.createIndex('by_updated_at', 'updated_at');
+      if (!db.objectStoreNames.contains('frames')) {
+        const framesStore = db.createObjectStore('frames', { keyPath: 'id' });
+        framesStore.createIndex('by_brand', 'brand_id');
+        framesStore.createIndex('by_category', 'category');
+        framesStore.createIndex('by_updated_at', 'updated_at');
+      }
 
-      // customers 스토어
-      const customersStore = db.createObjectStore('customers', { keyPath: 'id' });
-      customersStore.createIndex('by_phone', 'phone');
-      customersStore.createIndex('by_name', 'name');
-      customersStore.createIndex('by_updated_at', 'updated_at');
-
-      // prescriptions 스토어
-      const prescriptionsStore = db.createObjectStore('prescriptions', { keyPath: 'id' });
-      prescriptionsStore.createIndex('by_customer', 'customer_id');
-      prescriptionsStore.createIndex('by_created_at', 'created_at');
-
-      // orders 스토어
-      const ordersStore = db.createObjectStore('orders', { keyPath: 'id' });
-      ordersStore.createIndex('by_customer', 'customer_id');
-      ordersStore.createIndex('by_date', 'order_date');
+      // sales 스토어
+      if (!db.objectStoreNames.contains('sales')) {
+        const salesStore = db.createObjectStore('sales', { keyPath: 'id' });
+        salesStore.createIndex('by_store', 'store_id');
+        salesStore.createIndex('by_sold_at', 'sold_at');
+      }
 
       // sync_queue 스토어
-      db.createObjectStore('sync_queue', {
-        keyPath: 'id',
-        autoIncrement: true,
-      });
+      if (!db.objectStoreNames.contains('sync_queue')) {
+        db.createObjectStore('sync_queue', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+      }
     },
   });
 
@@ -98,7 +86,7 @@ export async function getDB(): Promise<IDBPDatabase<FrameOpsDB>> {
 }
 
 // ── 범용 CRUD ─────────────────────────────────────────────────────────────────
-type StoreName = 'frames' | 'customers' | 'prescriptions' | 'orders';
+type StoreName = 'frames' | 'sales';
 
 /** 전체 조회 */
 export async function dbGetAll<T>(store: StoreName): Promise<T[]> {
@@ -160,7 +148,7 @@ export async function deleteSyncItem(id: number): Promise<void> {
   await db.delete('sync_queue', id);
 }
 
-// ── 스토어별 편의 함수 ────────────────────────────────────────────────────────
+// ── 편의 함수 ─────────────────────────────────────────────────────────────────
 
 /** 제품 검색 (style_code prefix) */
 export async function searchProductsByStylePrefix(
@@ -172,17 +160,4 @@ export async function searchProductsByStylePrefix(
   return all
     .filter((p) => p.style_code?.toLowerCase().startsWith(lower))
     .slice(0, 30);
-}
-
-/** 고객 전화번호 검색 */
-export async function searchCustomersByPhone(phone: string): Promise<Customer[]> {
-  const all = await dbGetAll<Customer>('customers');
-  return all.filter((c) => c.phone?.includes(phone)).slice(0, 20);
-}
-
-/** 고객별 처방전 이력 */
-export async function getPrescriptionsByCustomer(
-  customerId: string
-): Promise<Prescription[]> {
-  return dbGetByIndex<Prescription>('prescriptions', 'by_customer', customerId);
 }
