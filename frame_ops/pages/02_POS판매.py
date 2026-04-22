@@ -1053,15 +1053,13 @@ def _stco_keypad_fragment(brand_id: str) -> None:
             st.caption(caption)
             with st.container(key="fo_pos_stco_results"):
                 for p in products:
-                    price_str = (
-                        f"{int(p['sale_price']):,}원"
-                        if p.get("sale_price") else ""
-                    )
-                    # 브랜드명 제외 — 제품번호/칼라 · 제품명 · 가격
+                    # 콜론 포함 제품번호 제외 (DB 수정 전 잔여 데이터 방어)
+                    if ":" in str(p.get("style_code", "")):
+                        continue
+                    # 제품번호/칼라 · 제품명만 표시 (브랜드·가격 제외)
                     lbl = (
                         f"{p.get('style_code','')}/{p.get('color_code','')}"
                         + (f"  {p.get('display_name','')}" if p.get("display_name") else "")
-                        + (f"  {price_str}" if price_str else "")
                     )
                     if st.button(lbl, key=f"stco_r_{p['id']}", use_container_width=True):
                         st.session_state["fo_pos_style"] = p["style_code"]
