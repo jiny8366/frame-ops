@@ -1169,9 +1169,10 @@ def _product_pick_panel(*, sb, store_id: str, pos_locked: bool) -> None:
     """상품 담기 패널 — fragment로 감싸 좌측만 재실행, 전체 깜빡임 없음."""
     st.markdown("##### 상품 담기")
 
-    # 카메라 ON/OFF 토글
-    st.session_state.setdefault("fo_pos_camera_on", False)
-    cam_label = "📷 카메라 끄기" if st.session_state.fo_pos_camera_on else "📷 카메라로 스캔"
+    # 카메라 ON/OFF 토글 — 페이지 첫 진입 시 항상 OFF
+    if "fo_pos_camera_on" not in st.session_state:
+        st.session_state["fo_pos_camera_on"] = False
+    cam_label = "카메라스캔 끄기" if st.session_state.fo_pos_camera_on else "카메라스캔"
     if st.button(cam_label, key="fo_pos_cam_toggle"):
         st.session_state.fo_pos_camera_on = not st.session_state.fo_pos_camera_on
 
@@ -1366,6 +1367,7 @@ def _run_sale_save(
     st.session_state["fo_pos_style"] = ""
     st.session_state["fo_pos_color"] = ""
     st.session_state["fo_pos_qty_add"] = 1
+    st.session_state["fo_pos_camera_on"] = False
     st.session_state[K_POS_SHOW_BR] = False
     st.session_state[K_POS_SHOW_STCO] = False
     st.session_state[K_POS_STCO_DRAFT] = ""
