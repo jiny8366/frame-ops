@@ -724,19 +724,21 @@ with left:
     st.session_state.setdefault("fo_pos_color", "")
 
     with st.container(key="fo_pos_product_sel"):
+        _brand_name = (st.session_state.get("fo_pos_brand_name") or "").strip()
+        _style_code = (st.session_state.get("fo_pos_style") or "").strip()
+        _color_code = (st.session_state.get("fo_pos_color") or "").strip()
+
         bc1, bc2, bc3 = st.columns(3)
         with bc1:
-            st.caption("브랜드")
-            st.text((st.session_state.get("fo_pos_brand_name") or "").strip() or "—")
-            if st.button("브랜드\n선택", key="fo_pos_btn_brand", use_container_width=True):
+            _lbl_brand = f"브랜드\n{_brand_name}" if _brand_name else "브랜드\n선택"
+            if st.button(_lbl_brand, key="fo_pos_btn_brand", use_container_width=True):
                 st.session_state[K_POS_BR_DLG] = True
                 st.session_state[K_POS_BR_PG] = 0
                 st.rerun()
         with bc2:
-            st.caption("제품번호")
-            st.text((st.session_state.get("fo_pos_style") or "").strip() or "—")
+            _lbl_style = f"제품번호\n{_style_code}" if _style_code else "제품번호\n선택"
             if st.button(
-                "번호\n선택",
+                _lbl_style,
                 key="fo_pos_btn_style",
                 use_container_width=True,
                 disabled=not st.session_state.get("fo_pos_brand_id"),
@@ -745,11 +747,10 @@ with left:
                 st.session_state[K_POS_ST_PG] = 0
                 st.rerun()
         with bc3:
-            st.caption("칼라")
-            st.text((st.session_state.get("fo_pos_color") or "").strip() or "—")
+            _lbl_color = f"칼라\n{_color_code}" if _color_code else "칼라\n선택"
             bid_c = st.session_state.get("fo_pos_brand_id")
-            st_ok = bool((st.session_state.get("fo_pos_style") or "").strip())
-            if st.button("칼라\n선택", key="fo_pos_btn_color", use_container_width=True,
+            st_ok = bool(_style_code)
+            if st.button(_lbl_color, key="fo_pos_btn_color", use_container_width=True,
                          disabled=not (bid_c and st_ok)):
                 st.session_state[K_POS_CO_DLG] = True
                 st.session_state[K_POS_CO_PG] = 0
