@@ -103,6 +103,21 @@ FO_POS_KPD_DLG_RIGHT_PX = 100
 
 FO_POS_KPD_CSS = """
 <style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FRAME OPS · POS 판매 UI
+   설계 원칙:
+     - 기본(global): PC 마우스 클릭에 최적화된 컴팩트 레이아웃
+     - @media (min-width:641px): PC 전용 세부 튜닝
+     - @media (max-width:640px): 스마트폰 세로모드 터치 최적화
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ━━━ CSS 변수 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  --fo-radius: 8px;
+  --fo-surface: rgba(0, 0, 0, 0.35);
+  --fo-border: rgba(255, 255, 255, 0.12);
+}
+
 /* ━━━ 키패드 LCD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .fo-pos-keypad-lcd-wrap { margin-bottom: 0.35rem; }
 .fo-pos-keypad-lcd {
@@ -123,11 +138,134 @@ FO_POS_KPD_CSS = """
   text-align: center;
   font-size: 1.5rem;
   font-weight: 700;
-  padding: 0.55rem 0;
+  padding: 0.45rem 0;
   letter-spacing: 0.04em;
+  background: var(--fo-surface);
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius);
 }
 
-/* ━━━ 스마트폰 세로모드 반응형 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━ 헤더 영역 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[class*="st-key-fo_pos_header"] h1 {
+  margin-top: 0.2rem !important;
+  margin-bottom: 0.1rem !important;
+}
+
+/* ━━━ 섹션 제목 (h5) 간격 축소 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[class*="st-key-fo_pos_main_wrap"] h5 {
+  margin-top: 0.6rem !important;
+  margin-bottom: 0.15rem !important;
+}
+
+/* ━━━ 금액 표시 입력창 (disabled) 우정렬 ━━━━━━━━━━━━━━━━━━━━━━ */
+[class*="st-key-fo_pos_pay_amounts"] .stTextInput input,
+[class*="st-key-fo_pos_disc_row"] .stTextInput input {
+  text-align: right;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+/* ━━━ 합계 metric 강조 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[class*="st-key-fo_pos_main_wrap"] [data-testid="stMetric"] {
+  background: var(--fo-surface);
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius);
+  padding: 0.5rem 0.75rem;
+}
+[class*="st-key-fo_pos_main_wrap"] [data-testid="stMetricValue"] {
+  font-size: 1.55rem !important;
+  font-weight: 700 !important;
+}
+
+/* ━━━ 인라인 그리드 컨테이너 시각 구분 ━━━━━━━━━━━━━━━━━━━━━━━━ */
+[class*="st-key-fo_pos_br_inline_wrap"],
+[class*="st-key-fo_pos_st_inline_wrap"],
+[class*="st-key-fo_pos_co_inline_wrap"] {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius);
+  padding: 0.4rem;
+  margin: 0.2rem 0;
+}
+
+/* ━━━ PC 최적화 (641px 이상) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media screen and (min-width: 641px) {
+  /* 헤더 타이틀 */
+  [class*="st-key-fo_pos_header"] h1 {
+    font-size: 1.55rem !important;
+    line-height: 1.2 !important;
+  }
+  /* 헤더 입력창 컴팩트 */
+  [class*="st-key-fo_pos_header"] .stTextInput input,
+  [class*="st-key-fo_pos_header"] [data-testid="stDateInput"] input {
+    font-size: 0.88rem !important;
+  }
+  /* 판매검색 버튼 */
+  [class*="st-key-fo_pos_header"] .stButton > button {
+    font-size: 0.9rem !important;
+    min-height: 38px !important;
+  }
+  /* 메인 패널 버튼 기본값 */
+  [class*="st-key-fo_pos_main_wrap"] .stButton > button {
+    min-height: 44px !important;
+    font-size: 0.92rem !important;
+  }
+  /* 브랜드/제품번호/칼라 선택 버튼 */
+  [class*="st-key-fo_pos_product_sel"] .stButton > button {
+    min-height: 48px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  /* 수량 +/- */
+  [class*="st-key-fo_pos_qty_row"] .stButton > button {
+    min-height: 44px !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+  }
+  /* 담기 버튼 */
+  [class*="st-key-fo_pos_add_btn"] .stButton > button {
+    min-height: 52px !important;
+    font-size: 1.0rem !important;
+    font-weight: 700 !important;
+  }
+  /* 결제 빠른버튼(카드전액/현금전액/초기화) */
+  [class*="st-key-fo_pos_pay_quick"] .stButton > button {
+    min-height: 44px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+  }
+  /* 금액입력 '입력' 버튼 */
+  [class*="st-key-fo_pos_amt_pop_"] .stButton > button {
+    min-height: 42px !important;
+    font-size: 0.88rem !important;
+  }
+  /* 저장 버튼 */
+  [class*="st-key-fo_pos_save_btn"] .stButton > button {
+    min-height: 56px !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+  }
+  /* 인라인 그리드 버튼 (PC에서는 작게) */
+  [class*="st-key-fo_pos_br_inline_wrap"] .stButton > button,
+  [class*="st-key-fo_pos_st_inline_wrap"] .stButton > button,
+  [class*="st-key-fo_pos_co_inline_wrap"] .stButton > button {
+    min-height: 38px !important;
+    font-size: 0.84rem !important;
+    padding: 4px 6px !important;
+  }
+  /* 장바구니 삭제 버튼 */
+  [class*="st-key-fo_pos_cart_wrap"] .stButton > button {
+    min-height: 38px !important;
+    font-size: 0.82rem !important;
+    padding: 0.1rem 0.4rem !important;
+  }
+}
+
+/* ━━━ 스마트폰 세로모드 반응형 (640px 이하) ━━━━━━━━━━━━━━━━━━━━ */
 @media screen and (max-width: 640px) {
 
   /* ① 메인 상품/결제 컬럼 → 세로 쌓기 */
@@ -140,21 +278,38 @@ FO_POS_KPD_CSS = """
     min-width: 100% !important;
   }
 
-  /* ② 전체 버튼 터치 타깃 */
+  /* ② 헤더 컴팩트 */
+  [class*="st-key-fo_pos_header"] h1 {
+    font-size: 1.3rem !important;
+    margin-top: 0.05rem !important;
+    margin-bottom: 0.05rem !important;
+    line-height: 1.2 !important;
+  }
+  [class*="st-key-fo_pos_header"] .stTextInput input,
+  [class*="st-key-fo_pos_header"] [data-testid="stDateInput"] input {
+    font-size: 0.92rem !important;
+    min-height: 44px !important;
+  }
+  [class*="st-key-fo_pos_header"] .stButton > button {
+    min-height: 44px !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* ③ 전체 버튼 터치 타깃 기본값 */
   .stButton > button {
     min-height: 52px !important;
     font-size: 1.0rem !important;
     line-height: 1.3 !important;
   }
 
-  /* ③ 입력 필드 */
+  /* ④ 입력 필드 */
   .stTextInput input,
   .stNumberInput input {
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
     min-height: 48px !important;
   }
 
-  /* ④ 브랜드/제품번호/칼라 선택 버튼 */
+  /* ⑤ 브랜드/제품번호/칼라 선택 버튼 — 터치 타깃 크게 */
   [class*="st-key-fo_pos_product_sel"] .stButton > button {
     min-height: 60px !important;
     font-size: 1.0rem !important;
@@ -163,61 +318,43 @@ FO_POS_KPD_CSS = """
     word-break: keep-all !important;
   }
 
-  /* ⑤ 수량 +/- 버튼 */
+  /* ⑥ 수량 표시 */
+  .fo-pos-qty-display {
+    font-size: 1.35rem !important;
+    padding: 0.4rem 0 !important;
+  }
+
+  /* ⑦ 수량 +/- 버튼 */
   [class*="st-key-fo_pos_qty_row"] .stButton > button {
-    min-height: 56px !important;
-    font-size: 1.4rem !important;
+    min-height: 58px !important;
+    font-size: 1.5rem !important;
     font-weight: 700 !important;
   }
 
-  /* ⑥ 장바구니 담기 버튼 */
+  /* ⑧ 장바구니 담기 버튼 */
   [class*="st-key-fo_pos_add_btn"] .stButton > button {
     min-height: 68px !important;
-    font-size: 1.2rem !important;
+    font-size: 1.15rem !important;
     font-weight: 700 !important;
   }
 
-  /* ⑦ 전액/초기화 버튼 */
-  [class*="st-key-fo_pos_pay_quick"] .stButton > button {
-    min-height: 56px !important;
-    font-size: 1.05rem !important;
-    font-weight: 600 !important;
+  /* ⑨ 장바구니 아이템 텍스트·삭제 버튼 */
+  [class*="st-key-fo_pos_cart_wrap"] p {
+    font-size: 1.0rem !important;
+    line-height: 1.5 !important;
   }
-
-  /* ⑧ 저장 버튼 */
-  [class*="st-key-fo_pos_save_btn"] .stButton > button {
-    min-height: 76px !important;
-    font-size: 1.3rem !important;
-    font-weight: 700 !important;
-  }
-
-  /* ⑨ 장바구니 삭제 버튼 */
   [class*="st-key-fo_pos_cart_wrap"] .stButton > button {
     min-height: 48px !important;
-    min-width: 44px !important;
-    padding: 0.15rem 0.3rem !important;
+    min-width: 48px !important;
+    font-size: 0.88rem !important;
+    padding: 0.1rem 0.3rem !important;
   }
 
-  /* ⑩ 키패드 다이얼로그: 모바일에서 화면 중앙 */
-  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: translate(-50%, -50%) !important;
-    width: 290px !important;
-    min-width: 290px !important;
-    max-width: 290px !important;
-    margin: 0 !important;
-  }
-  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) > div,
-  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
-  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+  /* ⑩ 결제 빠른버튼(카드전액/현금전액/초기화) */
+  [class*="st-key-fo_pos_pay_quick"] .stButton > button {
+    min-height: 58px !important;
+    font-size: 1.0rem !important;
+    font-weight: 600 !important;
   }
 
   /* ⑪ 카드·현금 입력 → 세로 쌓기 */
@@ -245,14 +382,49 @@ FO_POS_KPD_CSS = """
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-end !important;
-    padding-bottom: 0.25rem !important;
+    padding-bottom: 0.2rem !important;
   }
   [class*="st-key-fo_pos_amt_pop_"] .stButton > button {
-    min-height: 48px !important;
-    font-size: 0.9rem !important;
+    min-height: 50px !important;
+    font-size: 0.95rem !important;
   }
 
-  /* ⑭ 금액 키패드 내부 컬럼 — 절대 세로 쌓기 금지 (3열 그리드 유지) */
+  /* ⑭ 합계 metric 모바일 강조 */
+  [class*="st-key-fo_pos_main_wrap"] [data-testid="stMetricValue"] {
+    font-size: 1.85rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* ⑮ 저장 버튼 — 모바일 최우선 CTA */
+  [class*="st-key-fo_pos_save_btn"] .stButton > button {
+    min-height: 76px !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+  }
+
+  /* ⑯ 금액 키패드 다이얼로그: 모바일에서 화면 중앙 */
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: 290px !important;
+    min-width: 290px !important;
+    max-width: 290px !important;
+    margin: 0 !important;
+  }
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) > div,
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
+    padding: 0.5rem !important;
+    overflow: visible !important;
+    margin: 0 !important;
+  }
+
+  /* ⑰ 금액 키패드 내부 컬럼 — 3열 고정 */
   [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
     gap: 4px !important;
@@ -263,7 +435,6 @@ FO_POS_KPD_CSS = """
     width: auto !important;
     padding: 0 2px !important;
   }
-  /* 키패드 버튼 모바일 크기 고정 */
   [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stButton"] > button {
     width: 100% !important;
     aspect-ratio: 1 / 1 !important;
@@ -278,14 +449,8 @@ FO_POS_KPD_CSS = """
     align-items: center !important;
     justify-content: center !important;
   }
-  /* 다이얼로그 내부 여백 축소로 키패드가 잘리지 않도록 */
-  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
-  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
-    padding: 0.5rem !important;
-    overflow: visible !important;
-  }
 
-  /* ⑮ PIN 키패드 내부 컬럼 — 절대 세로 쌓기 금지 */
+  /* ⑱ PIN 키패드 내부 컬럼 — 3열 고정 */
   [class*="st-key-fo_pos_pin_kpd_scope"] [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
     gap: 4px !important;
@@ -296,7 +461,6 @@ FO_POS_KPD_CSS = """
     width: auto !important;
     padding: 0 2px !important;
   }
-  /* PIN 키패드 버튼 모바일 크기 고정 */
   [class*="st-key-fo_pos_pin_kpd_scope"] [data-testid="stButton"] > button {
     width: 100% !important;
     aspect-ratio: 1 / 1 !important;
@@ -310,7 +474,7 @@ FO_POS_KPD_CSS = """
     align-items: center !important;
     justify-content: center !important;
   }
-  /* PIN 키패드 다이얼로그: 모바일에서 화면 중앙 */
+  /* PIN 키패드 다이얼로그: 화면 중앙 */
   div[data-testid="stDialog"]:has([class*="st-key-fo_pos_pin_kpd_scope"]) {
     position: fixed !important;
     top: 50% !important;
@@ -329,7 +493,8 @@ FO_POS_KPD_CSS = """
     overflow: visible !important;
     margin: 0 !important;
   }
-  /* ⑯ 브랜드/제품번호/칼라 인라인 그리드 — 모바일 컬럼 유지 */
+
+  /* ⑲ 브랜드/제품번호/칼라 인라인 그리드 — 모바일 열 고정 */
   [class*="st-key-fo_pos_br_inline_wrap"] [data-testid="stHorizontalBlock"],
   [class*="st-key-fo_pos_st_inline_wrap"] [data-testid="stHorizontalBlock"],
   [class*="st-key-fo_pos_co_inline_wrap"] [data-testid="stHorizontalBlock"] {
@@ -347,7 +512,8 @@ FO_POS_KPD_CSS = """
   [class*="st-key-fo_pos_st_inline_wrap"] [data-testid="stButton"] > button,
   [class*="st-key-fo_pos_co_inline_wrap"] [data-testid="stButton"] > button {
     width: 100% !important;
-    font-size: 0.78rem !important;
+    min-height: 50px !important;
+    font-size: 0.82rem !important;
     padding: 6px 2px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -377,7 +543,7 @@ FO_POS_KPD_CSS = """
   max-width: 236px;
   margin-left: auto;
   margin-right: auto;
-  border: 5px solid #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 12px;
   padding: 8px;
   box-sizing: border-box;
@@ -425,7 +591,7 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_pin_kpd_scope"]) [role="d
   max-width: 236px;
   margin-left: auto;
   margin-right: auto;
-  border: 5px solid #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 12px;
   padding: 8px;
   box-sizing: border-box;
