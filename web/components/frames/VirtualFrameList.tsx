@@ -3,12 +3,13 @@
 
 'use client';
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { FixedSizeGrid, type GridChildComponentProps } from 'react-window';
 import InfiniteLoader from 'react-window-infinite-loader';
 import { useRouter } from 'next/navigation';
 import { FrameCard } from './FrameCard';
 import { usePrefetchFrame } from '@/hooks/usePrefetch';
+import { useContainerSize } from '@/hooks/useContainerSize';
 import type { Product } from '@/types';
 
 interface VirtualFrameListProps {
@@ -18,9 +19,10 @@ interface VirtualFrameListProps {
 }
 
 const COLUMN_COUNT = 2;
-const ROW_HEIGHT = 220;   // px — 카드 높이
-const CARD_GAP = 12;       // px — 카드 간격
-const PADDING = 16;        // px — 양쪽 패딩
+const ROW_HEIGHT = 220;            // px — 카드 높이
+const CARD_GAP = 12;               // px — 카드 간격
+const MAX_CONTENT_WIDTH = 768;     // px — 상한 (iPad 포트레이트 기준)
+const HEADER_FOOTER_OFFSET = 160;  // px — 상단 헤더 + 하단 탭바
 
 // Cell이 사용할 데이터 뭉치 — itemData 패턴으로 frames 참조 변경 영향 격리
 interface CellData {
@@ -67,13 +69,17 @@ export function VirtualFrameList({
 }: VirtualFrameListProps) {
   const router = useRouter();
   const prefetch = usePrefetchFrame();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const {
+    ref: containerRef,
+    width: measuredWidth,
+    height: gridHeight,
+  } = useContainerSize<HTMLDivElement>(HEADER_FOOTER_OFFSET);
 
   const rowCount = Math.ceil(frames.length / COLUMN_COUNT) + (hasMore ? 1 : 0);
-  const containerWidth = typeof window !== 'undefined'
-    ? Math.min(window.innerWidth, 768) - PADDING * 2
-    : 320;
-  const columnWidth = (containerWidth - CARD_GAP) / COLUMN_COUNT;
+  const containerWidth = Math.min(measuredWidth, MAX_CONTENT_WIDTH);
+  const columnWidth = containerWidth > 0
+    ? (containerWidth - CARD_GAP) / COLUMN_COUNT
+    : 0;
 
   // 클릭 핸들러 메모이제이션 — router 변경 시에만 재생성
   const handleCardClick = useCallback((frame: Product) => {
@@ -124,29 +130,31 @@ export function VirtualFrameList({
   );
 
   return (
-    <div ref={containerRef}>
-      <InfiniteLoader
-        isItemLoaded={isItemLoaded}
-        itemCount={hasMore ? rowCount + 1 : rowCount}
-        loadMoreItems={onLoadMore ?? (() => {})}
-      >
-        {({ onItemsRendered, ref }) => (
-          <FixedSizeGrid
-            ref={ref}
-            columnCount={COLUMN_COUNT}
-            columnWidth={columnWidth}
-            height={typeof window !== 'undefined' ? window.innerHeight - 160 : 600}
-            rowCount={rowCount}
-            rowHeight={ROW_HEIGHT}
-            width={containerWidth}
-            itemData={itemData}
-            onItemsRendered={makeRowOnItemsRendered(onItemsRendered)}
-            overscanRowCount={2}
-          >
-            {Cell}
-          </FixedSizeGrid>
-        )}
-      </InfiniteLoader>
+    <div ref={containerRef} className="w-full">
+      {containerWidth > 0 && gridHeight > 0 && (
+        <InfiniteLoader
+          isItemLoaded={isItemLoaded}
+          itemCount={hasMore ? rowCount + 1 : rowCount}
+          loadMoreItems={onLoadMore ?? (() => {})}
+        >
+          {({ onItemsRendered, ref }) => (
+            <FixedSizeGrid
+              ref={ref}
+              columnCount={COLUMN_COUNT}
+              columnWidth={columnWidth}
+              height={gridHeight}
+              rowCount={rowCount}
+              rowHeight={ROW_HEIGHT}
+              width={containerWidth}
+              itemData={itemData}
+              onItemsRendered={makeRowOnItemsRendered(onItemsRendered)}
+              overscanRowCount={2}
+            >
+              {Cell}
+            </FixedSizeGrid>
+          )}
+        </InfiniteLoader>
+      )}
     </div>
   );
 }
