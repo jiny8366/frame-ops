@@ -198,11 +198,6 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [rol
 header_title, header_search, header_store, header_day = st.columns([2, 1, 2, 2])
 with header_title:
     st.title("POS 판매")
-if not get_configured_supabase_anon_key():
-    st.warning(
-        "**판매 저장** 시 담당자 비밀번호 확인을 위해 `SUPABASE_ANON_KEY`(또는 anon `SUPABASE_KEY`)가 필요합니다. "
-        "Supabase 대시보드 → Project Settings → API 의 **anon public** 키를 `.env` / secrets 에 추가하세요."
-    )
 
 try:
     sb = get_supabase()
@@ -703,11 +698,20 @@ with right:
         st.info("왼쪽에서 상품을 담으면 여기에 표시됩니다.")
     else:
         for i, line in enumerate(st.session_state.fo_cart):
-            c0, c1, c2, c3 = st.columns([4, 1, 1, 1])
+            c0, cm, cq, cp, c2, c3 = st.columns([4, 1, 1, 1, 2, 1])
             with c0:
                 st.write(f"**{line['display_name']}**")
-            with c1:
-                st.write(f"{format_fo_quantity_display(line['quantity'])}개")
+            with cm:
+                if st.button("－", key=f"qty_dn_{i}", use_container_width=True):
+                    if st.session_state.fo_cart[i]["quantity"] > 1:
+                        st.session_state.fo_cart[i]["quantity"] -= 1
+                    st.rerun()
+            with cq:
+                st.write(f"**{format_fo_quantity_display(line['quantity'])}**")
+            with cp:
+                if st.button("＋", key=f"qty_up_{i}", use_container_width=True):
+                    st.session_state.fo_cart[i]["quantity"] += 1
+                    st.rerun()
             with c2:
                 st.write(f"{line['unit_price']:,}원")
             with c3:
@@ -732,6 +736,28 @@ with right:
         st.metric("합계 (부가세 포함)", f"{total:,}원")
 
         st.markdown("##### 결제처리")
+        qb1, qb2, qb3 = st.columns(3)
+        with qb1:
+            if st.button("카드 전액", key="fo_pos_full_card", use_container_width=True):
+                st.session_state["fo_pos_card"] = total
+                st.session_state["fo_pos_card_draft"] = str(total)
+                st.session_state["fo_pos_cash"] = 0
+                st.session_state["fo_pos_cash_draft"] = ""
+                st.rerun()
+        with qb2:
+            if st.button("현금 전액", key="fo_pos_full_cash", use_container_width=True):
+                st.session_state["fo_pos_cash"] = total
+                st.session_state["fo_pos_cash_draft"] = str(total)
+                st.session_state["fo_pos_card"] = 0
+                st.session_state["fo_pos_card_draft"] = ""
+                st.rerun()
+        with qb3:
+            if st.button("초기화", key="fo_pos_reset_pay", use_container_width=True):
+                st.session_state["fo_pos_card"] = 0
+                st.session_state["fo_pos_card_draft"] = ""
+                st.session_state["fo_pos_cash"] = 0
+                st.session_state["fo_pos_cash_draft"] = ""
+                st.rerun()
         p1, p2 = st.columns(2)
         with p1:
             card = _render_amount_keypad("fo_pos_card", "카드")
@@ -775,23 +801,31 @@ if pending_sale:
     def _confirm_sale_dialog() -> None:
         clerks = list_pos_clerks_for_store(sb, str(pending_sale["store_id"]))
         if not clerks:
-            st.error("이 지점에 배정된 담당자가 없습니다. 본사에서 담당자를 등록하세요.")
+            st.error("이 지점에 배정된 담당자가 없습니다. 「지점·매니저·판매사」에서 담당자를 등록하세요.")
             if st.button("취소", key="fo_pos_save_cancel_no_clerk"):
                 st.session_state.pop(K_PENDING_SALE_SAVE, None)
                 st.rerun()
             return
 
-        clerk_names = [c["display_name"] or c["user_id"] for c in clerks]
-        last_idx = min(st.session_state.get("fo_pos_last_clerk_idx", 0), len(clerks) - 1)
+        # 담당자 1명이면 선택 단계 생략 — PIN만 입력
+        single_clerk = len(clerks) == 1
+
+        if single_clerk:
+            clerk_idx = 0
+            st.caption(f"담당자: **{clerks[0]['display_name'] or clerks[0]['user_id']}**")
+        else:
+            clerk_names = [c["display_name"] or c["user_id"] for c in clerks]
+            last_idx = min(st.session_state.get("fo_pos_last_clerk_idx", 0), len(clerks) - 1)
 
         with st.form("fo_pos_confirm_form", clear_on_submit=True):
-            clerk_idx = st.selectbox(
-                "담당자 선택",
-                range(len(clerks)),
-                format_func=lambda i: clerk_names[i],
-                index=last_idx,
-                key="fo_pos_clerk_select",
-            )
+            if not single_clerk:
+                clerk_idx = st.selectbox(
+                    "담당자 선택",
+                    range(len(clerks)),
+                    format_func=lambda i: clerk_names[i],
+                    index=last_idx,
+                    key="fo_pos_clerk_select",
+                )
             clerk_pin = st.text_input(
                 "PIN 번호",
                 type="password",

@@ -227,6 +227,28 @@ else:
         except Exception as ex:
             st.error(str(ex))
 
+    st.divider()
+    st.caption("**POS PIN** — 판매 저장 시 담당자 본인 확인용 (숫자 4~6자리)")
+    new_pin = st.text_input(
+        "POS PIN (변경 시에만 입력)",
+        type="password",
+        max_chars=6,
+        placeholder="변경하지 않으면 빈칸",
+        key=f"fo_sp_pin_{uid}",
+    )
+    if st.button("PIN 저장", key=f"fo_sp_pin_save_{uid}"):
+        p = new_pin.strip()
+        if not p:
+            st.error("PIN을 입력하세요.")
+        elif not p.isdigit() or not (4 <= len(p) <= 6):
+            st.error("PIN은 숫자 4~6자리로 입력하세요.")
+        else:
+            try:
+                sb.table("fo_staff_profiles").update({"pos_pin": p}).eq("user_id", uid).execute()
+                st.success(f"PIN이 저장되었습니다. ({len(p)}자리)")
+            except Exception as ex:
+                st.error(str(ex))
+
     _rc = pr.get("role_code")
     _ri = store_role_options.index(_rc) if _rc in store_role_options else 0
     new_role = st.selectbox(
