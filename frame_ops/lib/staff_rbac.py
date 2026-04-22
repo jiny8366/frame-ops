@@ -571,6 +571,90 @@ def verify_store_actor(
     return uid_expect, dn, rc
 
 
+# ── 메뉴 권한 ─────────────────────────────────────────────────
+
+# 메뉴 코드 → 표시명 매핑
+MENU_LABELS: dict[str, str] = {
+    "pos_sale":     "POS 판매",
+    "inbound":      "입고",
+    "outbound":     "출고",
+    "stock_adjust": "재고 조정",
+    "stock_status": "재고 현황",
+    "order_list":   "주문 리스트",
+    "settlement":   "정산",
+    "returns":      "반품",
+    "interstore":   "매장 간 이동",
+    "report":       "통계 · 리포트",
+    "sales_import": "판매 데이터 가져오기",
+    "purchase":     "매입 처리",
+    "staff_hq":     "본사 · 스태프 · 권한",
+    "staff_store":  "지점 · 매니저 · 판매사",
+    "sale_search":  "판매 검색",
+    "supplier":     "매입처 관리",
+    "product_reg":  "상품 등록",
+}
+
+
+def list_menu_permissions(sb: Client, role_code: str) -> dict[str, bool]:
+    """역할별 메뉴 접근 권한 반환. {menu_code: allowed}"""
+    rows = (
+        sb.table("fo_staff_menu_permissions")
+        .select("menu_code, allowed")
+        .eq("role_code", role_code)
+        .execute()
+        .data
+        or []
+    )
+    return {r["menu_code"]: bool(r["allowed"]) for r in rows}
+
+
+def save_menu_permissions(sb: Client, role_code: str, permissions: dict[str, bool]) -> None:
+    """역할의 메뉴 권한 일괄 저장 (upsert)."""
+    rows = [
+        {"role_code": role_code, "menu_code": mc, "allowed": allowed}
+        for mc, allowed in permissions.items()
+    ]
+    if rows:
+        sb.table("fo_staff_menu_permissions").upsert(
+            rows, on_conflict="role_code,menu_code"
+        ).execute()
+
+
+def list_pos_clerks_for_store(sb: Client, store_id: str) -> list[dict[str, Any]]:
+    """지점 배정 활성 담당자 목록 (POS PIN 인증용)."""
+    POS_ROLES = {"store_manager", "store_salesperson", "store_staff"}
+    scope_rows = (
+        sb.table("fo_staff_store_scopes")
+        .select("user_id")
+        .eq("store_id", store_id)
+        .execute()
+        .data
+        or []
+    )
+    user_ids = [str(r["user_id"]) for r in scope_rows if r.get("user_id")]
+    if not user_ids:
+        return []
+    rows = (
+        sb.table("fo_staff_profiles")
+        .select("user_id, display_name, role_code, active, pos_pin")
+        .in_("user_id", user_ids)
+        .eq("active", True)
+        .execute()
+        .data
+        or []
+    )
+    return [
+        {
+            "user_id": str(r["user_id"]),
+            "display_name": str(r.get("display_name") or ""),
+            "role_code": str(r.get("role_code") or ""),
+            "has_pin": bool((r.get("pos_pin") or "").strip()),
+        }
+        for r in rows
+        if r.get("role_code") in POS_ROLES
+    ]
+
+
 def delete_staff_user(sb: Client, user_id: str) -> None:
     """Auth 사용자 삭제 — fo_staff_* 는 FK ON DELETE CASCADE."""
     sb.auth.admin.delete_user(user_id, should_soft_delete=False)

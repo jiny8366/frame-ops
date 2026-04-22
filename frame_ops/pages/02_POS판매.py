@@ -30,7 +30,8 @@ from lib.constants import (
     today_kst,
 )
 from lib.barcode_decode import decode_barcode_from_bytes, is_barcode_decode_available
-from lib.pos_staff_auth import verify_clerk_for_pos_sale
+from lib.pos_staff_auth import verify_clerk_by_pin
+from lib.staff_rbac import list_pos_clerks_for_store
 from lib.sales_helpers import format_fo_quantity_display, format_pos_keypad_amount_display
 from lib.settlement_guard import is_business_day_settled, settled_warning_message
 from lib.stock import bump_stock, find_product
@@ -483,13 +484,13 @@ def _run_sale_save(
     card: int,
     disc: int,
     dtype_code: str | None,
-    clerk_email: str,
-    clerk_password: str,
+    clerk_user_id: str,
+    clerk_pin: str,
 ) -> None:
-    seller_uid, seller_label, seller_code = verify_clerk_for_pos_sale(
+    seller_uid, seller_label, seller_code = verify_clerk_by_pin(
         sb,
-        email=clerk_email,
-        password=clerk_password,
+        user_id=clerk_user_id,
+        pin=clerk_pin,
         store_id=str(store_id),
     )
 
@@ -772,16 +773,31 @@ pending_sale = st.session_state.get(K_PENDING_SALE_SAVE)
 if pending_sale:
     @st.dialog("판매 담당자 본인 확인")
     def _confirm_sale_dialog() -> None:
-        clerk_email = str(st.session_state.get("fo_pos_clerk_email") or DEFAULT_CLERK_EMAIL).strip()
-        if not clerk_email:
-            st.error("담당자 이메일 설정이 필요합니다. `.env`에 `FO_POS_CLERK_EMAIL`을 설정하세요.")
-            if st.button("취소", key="fo_pos_save_cancel_no_email"):
+        clerks = list_pos_clerks_for_store(sb, str(pending_sale["store_id"]))
+        if not clerks:
+            st.error("이 지점에 배정된 담당자가 없습니다. 본사에서 담당자를 등록하세요.")
+            if st.button("취소", key="fo_pos_save_cancel_no_clerk"):
                 st.session_state.pop(K_PENDING_SALE_SAVE, None)
                 st.rerun()
             return
 
-        with st.form("fo_pos_confirm_form", clear_on_submit=False):
-            clerk_password = st.text_input("담당자 비밀번호", type="password", key="fo_pos_clerk_pw_modal")
+        clerk_names = [c["display_name"] or c["user_id"] for c in clerks]
+        last_idx = min(st.session_state.get("fo_pos_last_clerk_idx", 0), len(clerks) - 1)
+
+        with st.form("fo_pos_confirm_form", clear_on_submit=True):
+            clerk_idx = st.selectbox(
+                "담당자 선택",
+                range(len(clerks)),
+                format_func=lambda i: clerk_names[i],
+                index=last_idx,
+                key="fo_pos_clerk_select",
+            )
+            clerk_pin = st.text_input(
+                "PIN 번호",
+                type="password",
+                placeholder="담당자 PIN 입력",
+                key="fo_pos_clerk_pin",
+            )
             b1, b2 = st.columns(2)
             with b1:
                 cancel = st.form_submit_button("취소")
@@ -793,10 +809,11 @@ if pending_sale:
             st.rerun()
 
         if submit:
-            if not clerk_password:
-                st.error("담당자 비밀번호를 입력하세요.")
+            if not clerk_pin:
+                st.error("PIN을 입력하세요.")
             else:
                 try:
+                    selected = clerks[clerk_idx]
                     _run_sale_save(
                         sb=sb,
                         store_id=str(pending_sale["store_id"]),
@@ -806,23 +823,12 @@ if pending_sale:
                         card=int(pending_sale["card"]),
                         disc=int(pending_sale["disc"]),
                         dtype_code=pending_sale.get("dtype_code"),
-                        clerk_email=clerk_email,
-                        clerk_password=clerk_password,
+                        clerk_user_id=selected["user_id"],
+                        clerk_pin=clerk_pin,
                     )
+                    st.session_state["fo_pos_last_clerk_idx"] = clerk_idx
                 except (ValueError, RuntimeError) as ex:
                     st.error(str(ex))
                 except Exception as ex:
-                    err = str(ex)
-                    if "seller_user_id" in err or "seller_label" in err or "column" in err.lower():
-                        st.error(
-                            "저장 실패: 담당자 식별 컬럼이 없을 수 있습니다. Supabase에 "
-                            "`supabase/migrations/20260422_frame_ops_sales_seller_identity.sql` 을 실행한 뒤 다시 시도하세요.\n\n"
-                            f"원문: {ex}"
-                        )
-                    elif "seller_code" in err:
-                        st.error(
-                            "저장 실패: `seller_code` 컬럼 없음. `20260417_frame_ops_analytics.sql` 적용 여부를 확인하세요."
-                        )
-                    else:
-                        st.error(f"저장 실패: {ex}")
+                    st.error(f"저장 실패: {ex}")
     _confirm_sale_dialog()
