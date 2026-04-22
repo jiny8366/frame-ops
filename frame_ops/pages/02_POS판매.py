@@ -163,10 +163,18 @@ FO_POS_KPD_CSS = """
   border-radius: var(--fo-radius);
 }
 
-/* ━━━ 헤더 영역 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-[class*="st-key-fo_pos_header"] h1 {
-  margin-top: 0.2rem !important;
-  margin-bottom: 0.1rem !important;
+/* ━━━ 헤더 영역 (1행 4컬럼: 타이틀 | 지점명 | 판매일자 | 판매검색) ━━━━ */
+/* 컬럼들 하단 정렬 — 입력창·버튼 베이스라인 맞춤 */
+[class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] {
+  align-items: flex-end !important;
+}
+/* POS 판매 타이틀 (<p> 태그) */
+.fo-pos-title {
+  font-size: 1.55rem !important;
+  font-weight: 700 !important;
+  margin: 0 0 0.45rem 0 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
 }
 
 /* ━━━ 섹션 제목 (h5) 간격 축소 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -208,10 +216,9 @@ FO_POS_KPD_CSS = """
 
 /* ━━━ PC 최적화 (641px 이상) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media screen and (min-width: 641px) {
-  /* 헤더 타이틀 */
-  [class*="st-key-fo_pos_header"] h1 {
-    font-size: 1.55rem !important;
-    line-height: 1.2 !important;
+  /* 헤더 타이틀 (.fo-pos-title) */
+  .fo-pos-title {
+    font-size: 1.45rem !important;
   }
   /* 헤더 입력창 컴팩트 */
   [class*="st-key-fo_pos_header"] .stTextInput input,
@@ -296,18 +303,38 @@ FO_POS_KPD_CSS = """
     min-width: 100% !important;
   }
 
-  /* ② 헤더 컴팩트 */
-  [class*="st-key-fo_pos_header"] h1 {
-    font-size: 1.3rem !important;
-    margin-top: 0.05rem !important;
-    margin-bottom: 0.05rem !important;
-    line-height: 1.2 !important;
+  /* ② 헤더 1행 → 모바일에서 2×2 줄바꿈 */
+  [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+    align-items: flex-end !important;
+    gap: 4px 0 !important;
   }
+  /* 타이틀(col 1)과 검색버튼(col 4) → 첫 번째 행 (각 50%) */
+  [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(1),
+  [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(4) {
+    flex: 0 0 50% !important;
+    width: 50% !important;
+    min-width: 0 !important;
+  }
+  /* 지점명(col 2)과 판매일자(col 3) → 두 번째 행 (각 50%) */
+  [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(2),
+  [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] > [data-testid="column"]:nth-child(3) {
+    flex: 0 0 50% !important;
+    width: 50% !important;
+    min-width: 0 !important;
+  }
+  /* 타이틀 */
+  .fo-pos-title {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.3rem !important;
+  }
+  /* 헤더 입력창·날짜 */
   [class*="st-key-fo_pos_header"] .stTextInput input,
   [class*="st-key-fo_pos_header"] [data-testid="stDateInput"] input {
-    font-size: 0.92rem !important;
+    font-size: 0.9rem !important;
     min-height: 44px !important;
   }
+  /* 판매 검색 버튼 */
   [class*="st-key-fo_pos_header"] .stButton > button {
     min-height: 44px !important;
     font-size: 0.95rem !important;
@@ -761,10 +788,9 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [rol
 )
 
 with st.container(key="fo_pos_header"):
-    header_r1_title, header_r1_search = st.columns([3, 1])
-    header_r2_store, header_r2_day = st.columns(2)
-with header_r1_title:
-    st.title("POS 판매")
+    hc_title, hc_store, hc_day, hc_search = st.columns([2, 4, 3, 2])
+with hc_title:
+    st.markdown('<p class="fo-pos-title">POS 판매</p>', unsafe_allow_html=True)
 
 try:
     sb = get_supabase()
@@ -1351,17 +1377,24 @@ store_idx = default_store_index(stores)
 store_obj = stores[store_idx]
 store_label = f"{store_obj['store_code']} — {store_obj['name']}"
 store_id = store_obj["id"]
-sale_day = today_kst()
 
-with header_r1_search:
-    st.write("")
+# 판매일자 — 세션 상태로 유지 (변경 가능, 달력 컨트롤)
+st.session_state.setdefault("fo_pos_sale_day_picker", today_kst())
+
+with hc_store:
+    st.text_input(
+        "지점명",
+        value=store_label,
+        disabled=True,
+        label_visibility="visible",
+    )
+with hc_day:
+    sale_day = st.date_input("판매일자", key="fo_pos_sale_day_picker")
+with hc_search:
+    st.markdown('<div style="height:1.85rem"></div>', unsafe_allow_html=True)
     if st.button("판매 검색", key="fo_pos_open_sale_search", use_container_width=True):
         st.session_state[K_OPEN_SALE_SEARCH] = True
         st.rerun()
-with header_r2_store:
-    st.text_input("점명", value=store_label, disabled=True)
-with header_r2_day:
-    st.date_input("판매일자", value=sale_day, disabled=True)
 
 if st.session_state.get(K_OPEN_SALE_SEARCH):
 
