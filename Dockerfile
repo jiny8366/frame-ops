@@ -11,4 +11,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD streamlit run frame_ops/hq_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+CMD ["/bin/sh", "-c", "streamlit run frame_ops/hq_app.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.headless true"]
