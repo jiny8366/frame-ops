@@ -31,6 +31,8 @@ interface FrameOpsDB extends DBSchema {
   };
 }
 
+export type SyncStatus = 'pending' | 'syncing' | 'failed' | 'dead';
+
 export interface SyncQueueItem {
   id?: number;
   table: 'frames' | 'orders';
@@ -38,6 +40,10 @@ export interface SyncQueueItem {
   payload: Record<string, unknown>;
   created_at: string;
   retry_count: number;
+  // 아래 3개는 TASK 8에서 추가된 선택 필드 — 기존 레코드와 호환
+  status?: SyncStatus;
+  last_error?: string;
+  updated_at?: string;
 }
 
 // ── DB 열기 (싱글턴) ──────────────────────────────────────────────────────────
@@ -146,6 +152,12 @@ export async function getSyncQueue(): Promise<SyncQueueItem[]> {
 export async function deleteSyncItem(id: number): Promise<void> {
   const db = await getDB();
   await db.delete('sync_queue', id);
+}
+
+/** sync_queue 레코드를 id 기반으로 업서트 (status 변경 시 사용) */
+export async function putSyncItem(item: SyncQueueItem & { id: number }): Promise<void> {
+  const db = await getDB();
+  await db.put('sync_queue', item);
 }
 
 // ── 편의 함수 ─────────────────────────────────────────────────────────────────

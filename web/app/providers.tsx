@@ -40,7 +40,10 @@ export function Providers({ children }: ProvidersProps) {
       }
     })();
 
-    const cleanup = initSyncListeners();
+    const cleanup = initSyncListeners((deadItem) => {
+      // TODO: Toast UI 연동 — 지금은 콘솔 경고만
+      console.warn('[FrameOps Sync] Dead letter (3회 재시도 실패):', deadItem);
+    });
 
     return () => {
       cancelled = true;
