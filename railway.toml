@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+# 기본값: 본사어드민 앱
+# dash_app / store_app은 Railway 대시보드에서 Start Command 개별 설정
+startCommand = "streamlit run frame_ops/hq_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

@@ -25,3 +25,9 @@ opencv-python-headless>=4.8.0,<5.0.0
 # FRAME OPS 상품등록 — 라벨용 QR·Code128 이미지
 qrcode[pil]>=7.4.0,<8.0.0
 python-barcode[images]>=0.15.0,<1.0.0
+
+# FRAME OPS 대시보드 차트
+plotly>=5.0.0
+
+# Railway PostgreSQL 직접 연결
+psycopg2-binary>=2.9.0
