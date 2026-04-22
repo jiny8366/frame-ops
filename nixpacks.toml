@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["python311", "gcc", "libffi", "openssl"]
-
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
-
-[start]
-cmd = "streamlit run frame_ops/hq_app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
