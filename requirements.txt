@@ -20,7 +20,6 @@ openpyxl>=3.1.0,<4.0.0
 matplotlib>=3.7.0
 
 # FRAME OPS POS — 카메라 바코드/QR 인식 (선택, 없으면 해당 기능만 비활성 안내)
-opencv-python-headless>=4.8.0,<5.0.0
 
 # FRAME OPS 상품등록 — 라벨용 QR·Code128 이미지
 qrcode[pil]>=7.4.0,<8.0.0
