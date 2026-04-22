@@ -245,6 +245,39 @@ FO_POS_KPD_CSS = """
     min-height: 48px !important;
     font-size: 0.9rem !important;
   }
+
+  /* ⑭ 금액 키패드 내부 컬럼 — 절대 세로 쌓기 금지 (3열 그리드 유지) */
+  [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+  [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    padding: 0 2px !important;
+  }
+  /* 키패드 버튼 모바일 크기 고정 */
+  [class*="st-key-fo_pos_amt_keypad_scope_"] [data-testid="stButton"] > button {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    max-height: 64px !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  /* 다이얼로그 내부 여백 축소로 키패드가 잘리지 않도록 */
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
+    padding: 0.5rem !important;
+    overflow: visible !important;
+  }
 }
 [class*="st-key-fo_pos_amt_keypad_scope_"] {
   --fo-kpd-side: 68px;
