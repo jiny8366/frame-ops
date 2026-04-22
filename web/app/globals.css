@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Apple HIG 색상 시스템 — 반드시 Tailwind 레이어보다 앞에 import */
+@import './styles/theme.css';
+
+/* ── 테마 전환 기본 설정 ──────────────────────────────────────────────────── */
+@layer base {
+  html {
+    color-scheme: light dark;
+    font-family: var(--font-system, -apple-system, BlinkMacSystemFont, sans-serif);
+  }
+
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-label-primary);
+    /* 테마 전환 부드러운 애니메이션 (0.3s) */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* prefers-reduced-motion: 애니메이션 모두 제거 */
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    * {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
 /* ── 터치 반응성 최적화 (Apple HIG 기반) ─────────────────────────────────── */
 @layer base {
   html {
@@ -141,5 +168,36 @@
   .offline-banner {
     @apply fixed top-0 inset-x-0 z-50 bg-yellow-500 text-white text-center text-footnote py-2 px-4;
     @apply safe-top;
+  }
+}
+
+/* ── Apple vibrancy (헤더 반투명 재질) ──────────────────────────────────── */
+@layer utilities {
+  /* Safari: -webkit-backdrop-filter 접두사 필수 */
+  .vibrancy {
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    background-color: var(--header-bg);
+  }
+
+  /* backdrop-filter 미지원 브라우저 폴백 */
+  @supports not (backdrop-filter: blur(1px)) {
+    .vibrancy {
+      background-color: var(--color-bg-primary);
+    }
+  }
+}
+
+/* ── ThemeToggle 추가 인터랙션 ───────────────────────────────────────────── */
+@layer components {
+  /* 비선택 버튼 hover: 미묘한 배경 오버레이 */
+  .theme-toggle-btn:not([aria-checked='true']):hover {
+    background-color: rgba(var(--color-label-primary-raw, 0, 0, 0), 0.04);
+  }
+
+  /* active: scale down */
+  .theme-toggle-btn:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease-out;
   }
 }

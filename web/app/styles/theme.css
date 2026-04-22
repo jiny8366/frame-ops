@@ -1,0 +1,197 @@
+/* ============================================================
+   Frame Ops — Apple HIG 기반 의미론적 색상 시스템
+   참고: https://developer.apple.com/design/human-interface-guidelines/color
+   ============================================================ */
+
+/* ── 공통 폰트 스택 ────────────────────────────────────────────────────────── */
+:root {
+  --font-system: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', 'Arial', sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* ============================================================
+   § 1. 라이트 모드 (기본값)
+   ============================================================ */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* 배경 계층 (어두울수록 뒤쪽 / 밝을수록 앞쪽) */
+  --color-bg-primary:           #FFFFFF;
+  --color-bg-secondary:         #F2F2F7;
+  --color-bg-tertiary:          #FFFFFF;
+  --color-bg-grouped-primary:   #F2F2F7;
+  --color-bg-grouped-secondary: #FFFFFF;
+  --color-bg-grouped-tertiary:  #F2F2F7;
+
+  /* 라벨 (텍스트) */
+  --color-label-primary:        rgba(0, 0, 0, 1.0);
+  --color-label-secondary:      rgba(60, 60, 67, 0.6);
+  --color-label-tertiary:       rgba(60, 60, 67, 0.3);
+  --color-label-quaternary:     rgba(60, 60, 67, 0.18);
+
+  /* Fill (상태 표시, 입력 배경 등) */
+  --color-fill-primary:         rgba(120, 120, 128, 0.20);
+  --color-fill-secondary:       rgba(120, 120, 128, 0.16);
+  --color-fill-tertiary:        rgba(118, 118, 128, 0.12);
+  --color-fill-quaternary:      rgba(116, 116, 128, 0.08);
+
+  /* 구분선 */
+  --color-separator-opaque:     #C6C6C8;
+  --color-separator-non-opaque: rgba(60, 60, 67, 0.29);
+
+  /* 시스템 컬러 — 라이트 모드 */
+  --color-system-blue:   #007AFF;
+  --color-system-green:  #34C759;
+  --color-system-indigo: #5856D6;
+  --color-system-orange: #FF9500;
+  --color-system-pink:   #FF2D55;
+  --color-system-purple: #AF52DE;
+  --color-system-red:    #FF3B30;
+  --color-system-teal:   #30B0C7;
+  --color-system-yellow: #FFCC00;
+
+  /* 그레이 스케일 — 라이트 모드 */
+  --color-gray:  #8E8E93;
+  --color-gray2: #AEAEB2;
+  --color-gray3: #C7C7CC;
+  --color-gray4: #D1D1D6;
+  --color-gray5: #E5E5EA;
+  --color-gray6: #F2F2F7;
+
+  /* 파생 값 */
+  --color-accent:          var(--color-system-blue);
+  --color-destructive:     var(--color-system-red);
+  --color-success:         var(--color-system-green);
+  --color-warning:         var(--color-system-orange);
+
+  /* 그림자 (라이트 모드는 그림자로 계층 표현) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.07), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.08), 0 10px 10px rgba(0, 0, 0, 0.04);
+
+  /* 헤더 Material */
+  --header-bg: rgba(255, 255, 255, 0.82);
+  --header-border: var(--color-separator-non-opaque);
+}
+
+/* ============================================================
+   § 2. 다크 모드
+   Apple HIG: 어두울수록 뒤쪽 레이어, 밝을수록 앞쪽 레이어
+   ============================================================ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* 배경 계층 */
+  --color-bg-primary:           #000000;
+  --color-bg-secondary:         #1C1C1E;
+  --color-bg-tertiary:          #2C2C2E;
+  --color-bg-grouped-primary:   #000000;
+  --color-bg-grouped-secondary: #1C1C1E;
+  --color-bg-grouped-tertiary:  #2C2C2E;
+
+  /* 라벨 */
+  --color-label-primary:        rgba(255, 255, 255, 1.0);
+  --color-label-secondary:      rgba(235, 235, 245, 0.6);
+  --color-label-tertiary:       rgba(235, 235, 245, 0.3);
+  --color-label-quaternary:     rgba(235, 235, 245, 0.16);
+
+  /* Fill */
+  --color-fill-primary:         rgba(120, 120, 128, 0.36);
+  --color-fill-secondary:       rgba(120, 120, 128, 0.32);
+  --color-fill-tertiary:        rgba(118, 118, 128, 0.24);
+  --color-fill-quaternary:      rgba(118, 118, 128, 0.18);
+
+  /* 구분선 */
+  --color-separator-opaque:     #38383A;
+  --color-separator-non-opaque: rgba(84, 84, 88, 0.65);
+
+  /* 시스템 컬러 — 다크 모드 (더 밝고 선명하게) */
+  --color-system-blue:   #0A84FF;
+  --color-system-green:  #30D158;
+  --color-system-indigo: #5E5CE6;
+  --color-system-orange: #FF9F0A;
+  --color-system-pink:   #FF375F;
+  --color-system-purple: #BF5AF2;
+  --color-system-red:    #FF453A;
+  --color-system-teal:   #40C8E0;
+  --color-system-yellow: #FFD60A;
+
+  /* 그레이 스케일 — 다크 모드 */
+  --color-gray:  #8E8E93;
+  --color-gray2: #636366;
+  --color-gray3: #48484A;
+  --color-gray4: #3A3A3C;
+  --color-gray5: #2C2C2E;
+  --color-gray6: #1C1C1E;
+
+  /* 그림자 (다크 모드는 밝기 차이로 계층 표현) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.45), 0 10px 10px rgba(0, 0, 0, 0.3);
+
+  /* 헤더 Material */
+  --header-bg: rgba(28, 28, 30, 0.82);
+  --header-border: var(--color-separator-non-opaque);
+}
+
+/* ============================================================
+   § 3. 시스템/자동 모드 (OS 설정 따름)
+   사용자가 data-theme을 명시하지 않은 경우만 적용
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    color-scheme: dark;
+
+    --color-bg-primary:           #000000;
+    --color-bg-secondary:         #1C1C1E;
+    --color-bg-tertiary:          #2C2C2E;
+    --color-bg-grouped-primary:   #000000;
+    --color-bg-grouped-secondary: #1C1C1E;
+    --color-bg-grouped-tertiary:  #2C2C2E;
+
+    --color-label-primary:        rgba(255, 255, 255, 1.0);
+    --color-label-secondary:      rgba(235, 235, 245, 0.6);
+    --color-label-tertiary:       rgba(235, 235, 245, 0.3);
+    --color-label-quaternary:     rgba(235, 235, 245, 0.16);
+
+    --color-fill-primary:         rgba(120, 120, 128, 0.36);
+    --color-fill-secondary:       rgba(120, 120, 128, 0.32);
+    --color-fill-tertiary:        rgba(118, 118, 128, 0.24);
+    --color-fill-quaternary:      rgba(118, 118, 128, 0.18);
+
+    --color-separator-opaque:     #38383A;
+    --color-separator-non-opaque: rgba(84, 84, 88, 0.65);
+
+    --color-system-blue:   #0A84FF;
+    --color-system-green:  #30D158;
+    --color-system-indigo: #5E5CE6;
+    --color-system-orange: #FF9F0A;
+    --color-system-pink:   #FF375F;
+    --color-system-purple: #BF5AF2;
+    --color-system-red:    #FF453A;
+    --color-system-teal:   #40C8E0;
+    --color-system-yellow: #FFD60A;
+
+    --color-gray:  #8E8E93;
+    --color-gray2: #636366;
+    --color-gray3: #48484A;
+    --color-gray4: #3A3A3C;
+    --color-gray5: #2C2C2E;
+    --color-gray6: #1C1C1E;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.45), 0 10px 10px rgba(0, 0, 0, 0.3);
+
+    --header-bg: rgba(28, 28, 30, 0.82);
+    --header-border: var(--color-separator-non-opaque);
+  }
+}
