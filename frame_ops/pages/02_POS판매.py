@@ -164,15 +164,15 @@ FO_POS_KPD_CSS = """
 }
 
 /* ━━━ 헤더 영역 (1행 4컬럼: 타이틀 | 지점명 | 판매일자 | 판매검색) ━━━━ */
-/* 컬럼들 하단 정렬 — 입력창·버튼 베이스라인 맞춤 */
+/* 컬럼들 세로 중앙 정렬 — 입력창·버튼·타이틀 한 줄 */
 [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] {
-  align-items: flex-end !important;
+  align-items: center !important;
 }
 /* POS 판매 타이틀 (<p> 태그) */
 .fo-pos-title {
   font-size: 1.55rem !important;
   font-weight: 700 !important;
-  margin: 0 0 0.45rem 0 !important;
+  margin: 0 !important;
   line-height: 1.2 !important;
   white-space: nowrap;
 }
@@ -306,7 +306,7 @@ FO_POS_KPD_CSS = """
   /* ② 헤더 1행 → 모바일에서 2×2 줄바꿈 */
   [class*="st-key-fo_pos_header"] > div > [data-testid="stHorizontalBlock"] {
     flex-wrap: wrap !important;
-    align-items: flex-end !important;
+    align-items: center !important;
     gap: 4px 0 !important;
   }
   /* 타이틀(col 1)과 검색버튼(col 4) → 첫 번째 행 (각 50%) */
@@ -1386,12 +1386,11 @@ with hc_store:
         "지점명",
         value=store_label,
         disabled=True,
-        label_visibility="visible",
+        label_visibility="collapsed",
     )
 with hc_day:
-    sale_day = st.date_input("판매일자", key="fo_pos_sale_day_picker")
+    sale_day = st.date_input("판매일자", key="fo_pos_sale_day_picker", label_visibility="collapsed")
 with hc_search:
-    st.markdown('<div style="height:1.85rem"></div>', unsafe_allow_html=True)
     if st.button("판매 검색", key="fo_pos_open_sale_search", use_container_width=True):
         st.session_state[K_OPEN_SALE_SEARCH] = True
         st.rerun()
