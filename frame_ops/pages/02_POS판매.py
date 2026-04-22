@@ -44,7 +44,42 @@ from lib.fo_product_pick_utils import (
 )
 from lib.sales_search_panel import render_sales_search_panel
 from lib.streamlit_fo_stores import active_fo_stores_list_or_halt
-from lib.supabase_client import get_configured_supabase_anon_key, get_supabase
+from lib.supabase_client import get_configured_supabase_anon_key, get_configured_supabase_url, get_supabase
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_product_by_bsc(supabase_url: str, brand_id: str, style: str, color: str):
+    """브랜드+스타일+색상으로 제품 조회 — 5분 캐싱."""
+    from lib.supabase_client import get_supabase as _gsb
+    _sb = _gsb()
+    pr = (
+        _sb.table("fo_products")
+        .select("id, product_code, display_name, style_code, color_code, sale_price, cost_price")
+        .eq("brand_id", str(brand_id))
+        .eq("style_code", style)
+        .eq("color_code", color)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return pr[0] if pr else None
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_discount_types(supabase_url: str) -> list:
+    """할인유형 목록 — 5분 캐싱."""
+    from lib.supabase_client import get_supabase as _gsb
+    _sb = _gsb()
+    return (
+        _sb.table("fo_discount_types")
+        .select("code, label")
+        .eq("active", True)
+        .order("sort_order")
+        .execute()
+        .data
+        or []
+    )
 
 K_PENDING_SALE_SAVE = "fo_pending_sale_save"
 K_OPEN_SALE_SEARCH = "fo_pos_sale_search_open"
@@ -609,18 +644,7 @@ with left:
     col = (st.session_state.get("fo_pos_color") or "").strip()
     selected_product_row = None
     if bid and sty and col:
-        pr = (
-            sb.table("fo_products")
-            .select("id, product_code, display_name, style_code, color_code, sale_price, cost_price")
-            .eq("brand_id", str(bid))
-            .eq("style_code", sty)
-            .eq("color_code", col)
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        selected_product_row = pr[0] if pr else None
+        selected_product_row = _cached_product_by_bsc(get_configured_supabase_url(), str(bid), sty, col)
 
     qty_add = st.number_input("수량", min_value=1, value=1, step=1)
     if st.button("장바구니에 담기", use_container_width=True):
@@ -695,15 +719,7 @@ with right:
         with d1:
             disc = _render_amount_keypad("fo_pos_disc", "할인 합계(원)")
         with d2:
-            dtypes = (
-                sb.table("fo_discount_types")
-                .select("code, label")
-                .eq("active", True)
-                .order("sort_order")
-                .execute()
-                .data
-                or []
-            )
+            dtypes = _cached_discount_types(get_configured_supabase_url())
             dtype_labels = ["(선택 없음)"] + [f"{d['label']}" for d in dtypes]
             d_pick = st.selectbox("할인 유형", dtype_labels)
             dtype_code = None
