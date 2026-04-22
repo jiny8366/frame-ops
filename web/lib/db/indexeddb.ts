@@ -103,7 +103,7 @@ export async function dbGet<T>(store: StoreName, id: string): Promise<T | undefi
 /** 삽입 또는 업데이트 */
 export async function dbPut<T>(store: StoreName, value: T): Promise<void> {
   const db = await getDB();
-  await db.put(store, value as Parameters<typeof db.put>[1]);
+  await db.put(store, value as Product | Sale);
 }
 
 /** 대량 업서트 */
@@ -129,7 +129,7 @@ export async function dbGetByIndex<T>(
   value: IDBKeyRange | string
 ): Promise<T[]> {
   const db = await getDB();
-  return db.getAllFromIndex(store, indexName, value) as Promise<T[]>;
+  return db.getAllFromIndex(store, indexName as never, value as never) as Promise<T[]>;
 }
 
 // ── sync_queue CRUD ───────────────────────────────────────────────────────────

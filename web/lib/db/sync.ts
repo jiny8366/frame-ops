@@ -57,7 +57,7 @@ export async function writeWithSync<T extends Record<string, unknown>>(
 
   if (!isOnline()) {
     await enqueueSync(item);
-    if (operation !== 'delete') await dbPut(table, payload as never);
+    if (operation !== 'delete') await dbPut(table as 'frames' | 'sales', payload as never);
     return { success: true };
   }
 

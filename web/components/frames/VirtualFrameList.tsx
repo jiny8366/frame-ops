@@ -155,7 +155,7 @@ function FrameCard({
 
       {/* 브랜드 */}
       <p className="text-caption2 font-medium text-brand-600 truncate">
-        {frame.brand?.brand_name ?? ''}
+        {frame.brand?.name ?? ''}
       </p>
       {/* 스타일코드 / 컬러 */}
       <p className="text-footnote font-semibold text-gray-900 truncate">
