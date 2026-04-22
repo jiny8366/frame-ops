@@ -97,6 +97,7 @@ FO_POS_KPD_DLG_RIGHT_PX = 100
 
 FO_POS_KPD_CSS = """
 <style>
+/* ━━━ 키패드 LCD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .fo-pos-keypad-lcd-wrap { margin-bottom: 0.35rem; }
 .fo-pos-keypad-lcd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -110,6 +111,117 @@ FO_POS_KPD_CSS = """
   color: #f5f5f7;
 }
 .fo-pos-keypad-lcd-won { margin-left: 0.3rem; font-size: 0.88em; opacity: 0.88; }
+
+/* ━━━ 수량 표시 (상품 담기) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.fo-pos-qty-display {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 0.55rem 0;
+  letter-spacing: 0.04em;
+}
+
+/* ━━━ 스마트폰 세로모드 반응형 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media screen and (max-width: 640px) {
+
+  /* ① 메인 상품/결제 컬럼 → 세로 쌓기 */
+  [class*="st-key-fo_pos_main_wrap"] > div > [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+  }
+  [class*="st-key-fo_pos_main_wrap"] > div > [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* ② 전체 버튼 터치 타깃 */
+  .stButton > button {
+    min-height: 52px !important;
+    font-size: 1.0rem !important;
+    line-height: 1.3 !important;
+  }
+
+  /* ③ 입력 필드 */
+  .stTextInput input,
+  .stNumberInput input {
+    font-size: 1.1rem !important;
+    min-height: 48px !important;
+  }
+
+  /* ④ 브랜드/제품번호/칼라 선택 버튼 */
+  [class*="st-key-fo_pos_product_sel"] .stButton > button {
+    min-height: 60px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+  }
+
+  /* ⑤ 수량 +/- 버튼 */
+  [class*="st-key-fo_pos_qty_row"] .stButton > button {
+    min-height: 56px !important;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* ⑥ 장바구니 담기 버튼 */
+  [class*="st-key-fo_pos_add_btn"] .stButton > button {
+    min-height: 68px !important;
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* ⑦ 전액/초기화 버튼 */
+  [class*="st-key-fo_pos_pay_quick"] .stButton > button {
+    min-height: 56px !important;
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+  }
+
+  /* ⑧ 저장 버튼 */
+  [class*="st-key-fo_pos_save_btn"] .stButton > button {
+    min-height: 76px !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* ⑨ 장바구니 수량 +/- */
+  [class*="st-key-fo_pos_cart_wrap"] .stButton > button {
+    min-height: 44px !important;
+    font-size: 1.0rem !important;
+  }
+
+  /* ⑩ 키패드 다이얼로그: 모바일에서 화면 중앙 */
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: 290px !important;
+    min-width: 290px !important;
+    max-width: 290px !important;
+    margin: 0 !important;
+  }
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) > div,
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="dialog"],
+  div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [role="document"] {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* ⑪ 헤더 지점명·날짜 컴팩트 */
+  [class*="st-key-fo_pos_header"] [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+  }
+  [class*="st-key-fo_pos_header"] [data-testid="column"] {
+    flex: 0 0 50% !important;
+    min-width: 50% !important;
+  }
+}
 [class*="st-key-fo_pos_amt_keypad_scope_"] {
   --fo-kpd-side: 68px;
   width: 236px;
@@ -195,7 +307,8 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [rol
     "__FO_POS_KPD_DLG_RIGHT_PX__", str(FO_POS_KPD_DLG_RIGHT_PX)
 )
 
-header_title, header_search, header_store, header_day = st.columns([2, 1, 2, 2])
+with st.container(key="fo_pos_header"):
+    header_title, header_search, header_store, header_day = st.columns([2, 1, 2, 2])
 with header_title:
     st.title("POS 판매")
 
@@ -570,7 +683,8 @@ if pos_locked:
 if "fo_cart" not in st.session_state:
     st.session_state.fo_cart = []
 
-left, right = st.columns((5, 7), gap="large")
+with st.container(key="fo_pos_main_wrap"):
+    left, right = st.columns((5, 7), gap="large")
 
 with left:
     st.markdown("##### 상품 담기")
@@ -600,40 +714,44 @@ with left:
                     st.success(f"인식됨: **{raw}** — 수량 확인 후 「장바구니에 담기」를 누르세요.")
                     st.rerun()
 
-    lookup = st.text_input("바코드 스캔", key="fo_lookup")
+    lookup = st.text_input("바코드 / 상품코드 직접 입력", key="fo_lookup",
+                           placeholder="스캔하거나 코드 입력 후 담기")
     st.session_state.setdefault("fo_pos_brand_id", None)
     st.session_state.setdefault("fo_pos_brand_name", "")
     st.session_state.setdefault("fo_pos_style", "")
     st.session_state.setdefault("fo_pos_color", "")
 
-    bc1, bc2, bc3 = st.columns(3)
-    with bc1:
-        st.caption("브랜드")
-        st.text((st.session_state.get("fo_pos_brand_name") or "").strip() or "—")
-        if st.button("브랜드 선택", key="fo_pos_btn_brand"):
-            st.session_state[K_POS_BR_DLG] = True
-            st.session_state[K_POS_BR_PG] = 0
-            st.rerun()
-    with bc2:
-        st.caption("제품번호")
-        st.text((st.session_state.get("fo_pos_style") or "").strip() or "—")
-        if st.button(
-            "제품번호 선택",
-            key="fo_pos_btn_style",
-            disabled=not st.session_state.get("fo_pos_brand_id"),
-        ):
-            st.session_state[K_POS_ST_DLG] = True
-            st.session_state[K_POS_ST_PG] = 0
-            st.rerun()
-    with bc3:
-        st.caption("칼라")
-        st.text((st.session_state.get("fo_pos_color") or "").strip() or "—")
-        bid_c = st.session_state.get("fo_pos_brand_id")
-        st_ok = bool((st.session_state.get("fo_pos_style") or "").strip())
-        if st.button("칼라 선택", key="fo_pos_btn_color", disabled=not (bid_c and st_ok)):
-            st.session_state[K_POS_CO_DLG] = True
-            st.session_state[K_POS_CO_PG] = 0
-            st.rerun()
+    with st.container(key="fo_pos_product_sel"):
+        bc1, bc2, bc3 = st.columns(3)
+        with bc1:
+            st.caption("브랜드")
+            st.text((st.session_state.get("fo_pos_brand_name") or "").strip() or "—")
+            if st.button("브랜드\n선택", key="fo_pos_btn_brand", use_container_width=True):
+                st.session_state[K_POS_BR_DLG] = True
+                st.session_state[K_POS_BR_PG] = 0
+                st.rerun()
+        with bc2:
+            st.caption("제품번호")
+            st.text((st.session_state.get("fo_pos_style") or "").strip() or "—")
+            if st.button(
+                "번호\n선택",
+                key="fo_pos_btn_style",
+                use_container_width=True,
+                disabled=not st.session_state.get("fo_pos_brand_id"),
+            ):
+                st.session_state[K_POS_ST_DLG] = True
+                st.session_state[K_POS_ST_PG] = 0
+                st.rerun()
+        with bc3:
+            st.caption("칼라")
+            st.text((st.session_state.get("fo_pos_color") or "").strip() or "—")
+            bid_c = st.session_state.get("fo_pos_brand_id")
+            st_ok = bool((st.session_state.get("fo_pos_style") or "").strip())
+            if st.button("칼라\n선택", key="fo_pos_btn_color", use_container_width=True,
+                         disabled=not (bid_c and st_ok)):
+                st.session_state[K_POS_CO_DLG] = True
+                st.session_state[K_POS_CO_PG] = 0
+                st.rerun()
 
     bid = st.session_state.get("fo_pos_brand_id")
     sty = (st.session_state.get("fo_pos_style") or "").strip()
@@ -642,29 +760,50 @@ with left:
     if bid and sty and col:
         selected_product_row = _cached_product_by_bsc(get_configured_supabase_url(), str(bid), sty, col)
 
-    qty_add = st.number_input("수량", min_value=1, value=1, step=1)
-    if st.button("장바구니에 담기", use_container_width=True):
-        if pos_locked:
-            st.error("정산된 일자에는 담을 수 없습니다.")
-        else:
-            p = selected_product_row
-            if not p and (lookup or "").strip():
-                p = find_product(sb, lookup)
-            if not p:
-                st.error("상품을 찾을 수 없습니다.")
-            else:
-                st.session_state.fo_cart.append(
-                    {
-                        "product_id": p["id"],
-                        "product_code": p["product_code"],
-                        "display_name": p["display_name"],
-                        "quantity": int(qty_add),
-                        "unit_price": int(p["sale_price"]),
-                        "cost_price": int(p["cost_price"]),
-                    }
-                )
-                st.success("담았습니다.")
+    # 수량 입력 — 터치 최적화 +/- 버튼
+    st.session_state.setdefault("fo_pos_qty_add", 1)
+    with st.container(key="fo_pos_qty_row"):
+        qc1, qc2, qc3 = st.columns([1, 2, 1])
+        with qc1:
+            if st.button("－", key="fo_pos_qty_minus", use_container_width=True):
+                if st.session_state.fo_pos_qty_add > 1:
+                    st.session_state.fo_pos_qty_add -= 1
                 st.rerun()
+        with qc2:
+            st.markdown(
+                f"<div class='fo-pos-qty-display'>{st.session_state.fo_pos_qty_add}개</div>",
+                unsafe_allow_html=True,
+            )
+        with qc3:
+            if st.button("＋", key="fo_pos_qty_plus", use_container_width=True):
+                st.session_state.fo_pos_qty_add += 1
+                st.rerun()
+    qty_add = st.session_state.fo_pos_qty_add
+
+    with st.container(key="fo_pos_add_btn"):
+        if st.button("🛒 장바구니에 담기", use_container_width=True):
+            if pos_locked:
+                st.error("정산된 일자에는 담을 수 없습니다.")
+            else:
+                p = selected_product_row
+                if not p and (lookup or "").strip():
+                    p = find_product(sb, lookup)
+                if not p:
+                    st.error("상품을 찾을 수 없습니다.")
+                else:
+                    st.session_state.fo_cart.append(
+                        {
+                            "product_id": p["id"],
+                            "product_code": p["product_code"],
+                            "display_name": p["display_name"],
+                            "quantity": int(qty_add),
+                            "unit_price": int(p["sale_price"]),
+                            "cost_price": int(p["cost_price"]),
+                        }
+                    )
+                    st.session_state.fo_pos_qty_add = 1  # 담은 뒤 수량 초기화
+                    st.success("담았습니다.")
+                    st.rerun()
 
 if st.session_state.get(K_POS_BR_DLG):
     st.session_state.pop(FO_POS_ACTIVE_AMOUNT_KEYPAD, None)
@@ -695,9 +834,10 @@ with right:
     st.markdown(FO_POS_KPD_CSS, unsafe_allow_html=True)
     st.markdown("##### 장바구니 · 결제")
     if not st.session_state.fo_cart:
-        st.info("왼쪽에서 상품을 담으면 여기에 표시됩니다.")
+        st.info("위에서 상품을 담으면 여기에 표시됩니다.")
     else:
-        for i, line in enumerate(st.session_state.fo_cart):
+        with st.container(key="fo_pos_cart_wrap"):
+          for i, line in enumerate(st.session_state.fo_cart):
             c0, cm, cq, cp, c2, c3 = st.columns([4, 1, 1, 1, 2, 1])
             with c0:
                 st.write(f"**{line['display_name']}**")
@@ -736,28 +876,29 @@ with right:
         st.metric("합계 (부가세 포함)", f"{total:,}원")
 
         st.markdown("##### 결제처리")
-        qb1, qb2, qb3 = st.columns(3)
-        with qb1:
-            if st.button("카드 전액", key="fo_pos_full_card", use_container_width=True):
-                st.session_state["fo_pos_card"] = total
-                st.session_state["fo_pos_card_draft"] = str(total)
-                st.session_state["fo_pos_cash"] = 0
-                st.session_state["fo_pos_cash_draft"] = ""
-                st.rerun()
-        with qb2:
-            if st.button("현금 전액", key="fo_pos_full_cash", use_container_width=True):
-                st.session_state["fo_pos_cash"] = total
-                st.session_state["fo_pos_cash_draft"] = str(total)
-                st.session_state["fo_pos_card"] = 0
-                st.session_state["fo_pos_card_draft"] = ""
-                st.rerun()
-        with qb3:
-            if st.button("초기화", key="fo_pos_reset_pay", use_container_width=True):
-                st.session_state["fo_pos_card"] = 0
-                st.session_state["fo_pos_card_draft"] = ""
-                st.session_state["fo_pos_cash"] = 0
-                st.session_state["fo_pos_cash_draft"] = ""
-                st.rerun()
+        with st.container(key="fo_pos_pay_quick"):
+            qb1, qb2, qb3 = st.columns(3)
+            with qb1:
+                if st.button("카드 전액", key="fo_pos_full_card", use_container_width=True):
+                    st.session_state["fo_pos_card"] = total
+                    st.session_state["fo_pos_card_draft"] = str(total)
+                    st.session_state["fo_pos_cash"] = 0
+                    st.session_state["fo_pos_cash_draft"] = ""
+                    st.rerun()
+            with qb2:
+                if st.button("현금 전액", key="fo_pos_full_cash", use_container_width=True):
+                    st.session_state["fo_pos_cash"] = total
+                    st.session_state["fo_pos_cash_draft"] = str(total)
+                    st.session_state["fo_pos_card"] = 0
+                    st.session_state["fo_pos_card_draft"] = ""
+                    st.rerun()
+            with qb3:
+                if st.button("초기화", key="fo_pos_reset_pay", use_container_width=True):
+                    st.session_state["fo_pos_card"] = 0
+                    st.session_state["fo_pos_card_draft"] = ""
+                    st.session_state["fo_pos_cash"] = 0
+                    st.session_state["fo_pos_cash_draft"] = ""
+                    st.rerun()
         p1, p2 = st.columns(2)
         with p1:
             card = _render_amount_keypad("fo_pos_card", "카드")
@@ -774,26 +915,27 @@ with right:
         if pay_sum != total and total > 0:
             st.error(f"현금+카드 **{pay_sum:,}원** ≠ 합계 **{total:,}원**")
 
-        if st.button("저장", type="primary", use_container_width=True):
-            if pos_locked:
-                st.error("정산된 일자에는 저장할 수 없습니다.")
-            elif cash > 100_000 and not st.session_state.get("fo_cash_warn_ok"):
-                st.error("현금 초과 경고를 확인해 주세요.")
-            elif total <= 0:
-                st.error("합계가 0원 이하입니다.")
-            elif pay_sum != total:
-                st.error("결제 금액을 합계와 맞춰 주세요.")
-            else:
-                st.session_state[K_PENDING_SALE_SAVE] = {
-                    "store_id": str(store_id),
-                    "sale_day": sale_day.isoformat(),
-                    "cash": int(cash),
-                    "card": int(card),
-                    "disc": int(disc),
-                    "dtype_code": dtype_code,
-                    "cart": list(st.session_state.fo_cart),
-                }
-                st.rerun()
+        with st.container(key="fo_pos_save_btn"):
+            if st.button("저장", type="primary", use_container_width=True):
+                if pos_locked:
+                    st.error("정산된 일자에는 저장할 수 없습니다.")
+                elif cash > 100_000 and not st.session_state.get("fo_cash_warn_ok"):
+                    st.error("현금 초과 경고를 확인해 주세요.")
+                elif total <= 0:
+                    st.error("합계가 0원 이하입니다.")
+                elif pay_sum != total:
+                    st.error("결제 금액을 합계와 맞춰 주세요.")
+                else:
+                    st.session_state[K_PENDING_SALE_SAVE] = {
+                        "store_id": str(store_id),
+                        "sale_day": sale_day.isoformat(),
+                        "cash": int(cash),
+                        "card": int(card),
+                        "disc": int(disc),
+                        "dtype_code": dtype_code,
+                        "cart": list(st.session_state.fo_cart),
+                    }
+                    st.rerun()
 
 pending_sale = st.session_state.get(K_PENDING_SALE_SAVE)
 if pending_sale:
