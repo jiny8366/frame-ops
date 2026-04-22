@@ -1,0 +1,188 @@
+// Frame Ops — IndexedDB 유틸리티
+// idb 라이브러리 사용 / frameops_db v1
+
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { Product, Customer, Prescription, Order } from '@/types';
+
+// ── DB 스키마 ─────────────────────────────────────────────────────────────────
+interface FrameOpsDB extends DBSchema {
+  frames: {
+    key: string;
+    value: Product;
+    indexes: {
+      by_brand: string;
+      by_category: string;
+      by_updated_at: string;
+    };
+  };
+  customers: {
+    key: string;
+    value: Customer;
+    indexes: {
+      by_phone: string;
+      by_name: string;
+      by_updated_at: string;
+    };
+  };
+  prescriptions: {
+    key: string;
+    value: Prescription;
+    indexes: {
+      by_customer: string;
+      by_created_at: string;
+    };
+  };
+  orders: {
+    key: string;
+    value: Order;
+    indexes: {
+      by_customer: string;
+      by_date: string;
+    };
+  };
+  sync_queue: {
+    key: number;
+    value: SyncQueueItem;
+    autoIncrement: true;
+  };
+}
+
+export interface SyncQueueItem {
+  id?: number;
+  table: 'frames' | 'customers' | 'prescriptions' | 'orders';
+  operation: 'insert' | 'update' | 'delete';
+  payload: Record<string, unknown>;
+  created_at: string;
+  retry_count: number;
+}
+
+// ── DB 열기 (싱글턴) ──────────────────────────────────────────────────────────
+let _db: IDBPDatabase<FrameOpsDB> | null = null;
+
+export async function getDB(): Promise<IDBPDatabase<FrameOpsDB>> {
+  if (_db) return _db;
+
+  _db = await openDB<FrameOpsDB>('frameops_db', 1, {
+    upgrade(db) {
+      // frames 스토어
+      const framesStore = db.createObjectStore('frames', { keyPath: 'id' });
+      framesStore.createIndex('by_brand', 'brand_id');
+      framesStore.createIndex('by_category', 'category');
+      framesStore.createIndex('by_updated_at', 'updated_at');
+
+      // customers 스토어
+      const customersStore = db.createObjectStore('customers', { keyPath: 'id' });
+      customersStore.createIndex('by_phone', 'phone');
+      customersStore.createIndex('by_name', 'name');
+      customersStore.createIndex('by_updated_at', 'updated_at');
+
+      // prescriptions 스토어
+      const prescriptionsStore = db.createObjectStore('prescriptions', { keyPath: 'id' });
+      prescriptionsStore.createIndex('by_customer', 'customer_id');
+      prescriptionsStore.createIndex('by_created_at', 'created_at');
+
+      // orders 스토어
+      const ordersStore = db.createObjectStore('orders', { keyPath: 'id' });
+      ordersStore.createIndex('by_customer', 'customer_id');
+      ordersStore.createIndex('by_date', 'order_date');
+
+      // sync_queue 스토어
+      db.createObjectStore('sync_queue', {
+        keyPath: 'id',
+        autoIncrement: true,
+      });
+    },
+  });
+
+  return _db;
+}
+
+// ── 범용 CRUD ─────────────────────────────────────────────────────────────────
+type StoreName = 'frames' | 'customers' | 'prescriptions' | 'orders';
+
+/** 전체 조회 */
+export async function dbGetAll<T>(store: StoreName): Promise<T[]> {
+  const db = await getDB();
+  return db.getAll(store) as Promise<T[]>;
+}
+
+/** 단건 조회 */
+export async function dbGet<T>(store: StoreName, id: string): Promise<T | undefined> {
+  const db = await getDB();
+  return db.get(store, id) as Promise<T | undefined>;
+}
+
+/** 삽입 또는 업데이트 */
+export async function dbPut<T>(store: StoreName, value: T): Promise<void> {
+  const db = await getDB();
+  await db.put(store, value as Parameters<typeof db.put>[1]);
+}
+
+/** 대량 업서트 */
+export async function dbPutMany<T>(store: StoreName, values: T[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(store, 'readwrite');
+  await Promise.all([
+    ...values.map((v) => tx.store.put(v as Parameters<typeof tx.store.put>[0])),
+    tx.done,
+  ]);
+}
+
+/** 삭제 */
+export async function dbDelete(store: StoreName, id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(store, id);
+}
+
+/** 인덱스로 조회 */
+export async function dbGetByIndex<T>(
+  store: StoreName,
+  indexName: string,
+  value: IDBKeyRange | string
+): Promise<T[]> {
+  const db = await getDB();
+  return db.getAllFromIndex(store, indexName, value) as Promise<T[]>;
+}
+
+// ── sync_queue CRUD ───────────────────────────────────────────────────────────
+export async function enqueueSync(item: Omit<SyncQueueItem, 'id'>): Promise<void> {
+  const db = await getDB();
+  await db.add('sync_queue', item);
+}
+
+export async function getSyncQueue(): Promise<SyncQueueItem[]> {
+  const db = await getDB();
+  return db.getAll('sync_queue');
+}
+
+export async function deleteSyncItem(id: number): Promise<void> {
+  const db = await getDB();
+  await db.delete('sync_queue', id);
+}
+
+// ── 스토어별 편의 함수 ────────────────────────────────────────────────────────
+
+/** 제품 검색 (style_code prefix) */
+export async function searchProductsByStylePrefix(
+  prefix: string
+): Promise<Product[]> {
+  const all = await dbGetAll<Product>('frames');
+  if (!prefix) return all.slice(0, 30);
+  const lower = prefix.toLowerCase();
+  return all
+    .filter((p) => p.style_code?.toLowerCase().startsWith(lower))
+    .slice(0, 30);
+}
+
+/** 고객 전화번호 검색 */
+export async function searchCustomersByPhone(phone: string): Promise<Customer[]> {
+  const all = await dbGetAll<Customer>('customers');
+  return all.filter((c) => c.phone?.includes(phone)).slice(0, 20);
+}
+
+/** 고객별 처방전 이력 */
+export async function getPrescriptionsByCustomer(
+  customerId: string
+): Promise<Prescription[]> {
+  return dbGetByIndex<Prescription>('prescriptions', 'by_customer', customerId);
+}

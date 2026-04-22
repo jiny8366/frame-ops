@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 터치 반응성 최적화 (Apple HIG 기반) ─────────────────────────────────── */
+@layer base {
+  html {
+    /* 부드러운 스크롤 */
+    scroll-behavior: smooth;
+    /* iOS Safari 탭 하이라이트 제거 */
+    -webkit-tap-highlight-color: transparent;
+    /* 텍스트 크기 자동 조정 방지 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    /* iOS 모멘텀 스크롤 */
+    -webkit-overflow-scrolling: touch;
+    /* 폰트 렌더링 최적화 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 버튼·링크 터치 최적화 */
+  button,
+  a,
+  [role="button"],
+  [tabindex] {
+    /* 탭 하이라이트 제거 */
+    -webkit-tap-highlight-color: transparent;
+    /* 터치 조작 — 패닝/줌 없이 즉시 클릭 */
+    touch-action: manipulation;
+    /* 기본 사용자 선택 방지 (실수 드래그 방지) */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* 텍스트 입력 영역은 선택 허용 */
+  input,
+  textarea,
+  [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+    touch-action: auto;
+  }
+
+  /* 스크롤 가능한 컨테이너 */
+  .scroll-container {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* ── View Transitions API 애니메이션 ─────────────────────────────────────── */
+@layer utilities {
+  /* 페이지 진입 */
+  ::view-transition-new(root) {
+    animation: fade-and-slide-in 0.25s ease-out;
+  }
+
+  /* 페이지 이탈 */
+  ::view-transition-old(root) {
+    animation: fade-and-slide-out 0.2s ease-in;
+  }
+
+  @keyframes fade-and-slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-and-slide-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}
+
+/* ── 안전 영역 인셋 (iPhone 노치/홈바 대응) ─────────────────────────────── */
+@layer utilities {
+  .safe-top    { padding-top:    env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-left   { padding-left:   env(safe-area-inset-left); }
+  .safe-right  { padding-right:  env(safe-area-inset-right); }
+
+  .safe-padding {
+    padding-top:    env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left:   env(safe-area-inset-left);
+    padding-right:  env(safe-area-inset-right);
+  }
+}
+
+/* ── 최소 터치 타겟 (Apple HIG: 44pt) ───────────────────────────────────── */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .touch-target-lg {
+    min-height: 52px;
+    min-width: 52px;
+  }
+}
+
+/* ── 스크롤바 스타일 (Webkit) ────────────────────────────────────────────── */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 9999px;
+  }
+}
+
+/* ── 오프라인 배너 ────────────────────────────────────────────────────────── */
+@layer components {
+  .offline-banner {
+    @apply fixed top-0 inset-x-0 z-50 bg-yellow-500 text-white text-center text-footnote py-2 px-4;
+    @apply safe-top;
+  }
+}

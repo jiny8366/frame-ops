@@ -1,0 +1,43 @@
+{
+  "name": "Frame Ops",
+  "short_name": "FrameOps",
+  "description": "안경 프레임 운영 관리 시스템",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a1a",
+  "lang": "ko-KR",
+  "categories": ["business", "productivity"],
+  "screenshots": [],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "POS 판매",
+      "short_name": "POS",
+      "description": "POS 판매 화면으로 이동",
+      "url": "/pos",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "재고 조회",
+      "short_name": "재고",
+      "description": "프레임 재고 목록",
+      "url": "/frames",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
