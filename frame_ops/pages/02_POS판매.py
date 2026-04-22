@@ -151,8 +151,8 @@ FO_POS_KPD_CSS = """
   /* ④ 브랜드/제품번호/칼라 선택 버튼 */
   [class*="st-key-fo_pos_product_sel"] .stButton > button {
     min-height: 60px !important;
-    font-size: 0.9rem !important;
-    font-weight: 600 !important;
+    font-size: 1.0rem !important;
+    font-weight: 700 !important;
     white-space: normal !important;
     word-break: keep-all !important;
   }
@@ -185,10 +185,11 @@ FO_POS_KPD_CSS = """
     font-weight: 700 !important;
   }
 
-  /* ⑨ 장바구니 수량 +/- */
+  /* ⑨ 장바구니 삭제 버튼 */
   [class*="st-key-fo_pos_cart_wrap"] .stButton > button {
-    min-height: 44px !important;
-    font-size: 1.0rem !important;
+    min-height: 48px !important;
+    min-width: 44px !important;
+    padding: 0.15rem 0.3rem !important;
   }
 
   /* ⑩ 키패드 다이얼로그: 모바일에서 화면 중앙 */
@@ -213,13 +214,36 @@ FO_POS_KPD_CSS = """
     padding-bottom: 0 !important;
   }
 
-  /* ⑪ 헤더 지점명·날짜 컴팩트 */
-  [class*="st-key-fo_pos_header"] [data-testid="stHorizontalBlock"] {
+  /* ⑪ 카드·현금 입력 → 세로 쌓기 */
+  [class*="st-key-fo_pos_pay_amounts"] [data-testid="stHorizontalBlock"] {
     flex-wrap: wrap !important;
   }
-  [class*="st-key-fo_pos_header"] [data-testid="column"] {
-    flex: 0 0 50% !important;
-    min-width: 50% !important;
+  [class*="st-key-fo_pos_pay_amounts"] [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* ⑫ 할인 입력·유형 → 세로 쌓기 */
+  [class*="st-key-fo_pos_disc_row"] [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+  }
+  [class*="st-key-fo_pos_disc_row"] [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* ⑬ 금액입력 '입력' 버튼 — 세로 하단 정렬 */
+  [class*="st-key-fo_pos_amt_pop_"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-end !important;
+    padding-bottom: 0.25rem !important;
+  }
+  [class*="st-key-fo_pos_amt_pop_"] .stButton > button {
+    min-height: 48px !important;
+    font-size: 0.9rem !important;
   }
 }
 [class*="st-key-fo_pos_amt_keypad_scope_"] {
@@ -308,8 +332,9 @@ div[data-testid="stDialog"]:has([class*="st-key-fo_pos_amt_keypad_scope_"]) [rol
 )
 
 with st.container(key="fo_pos_header"):
-    header_title, header_search, header_store, header_day = st.columns([2, 1, 2, 2])
-with header_title:
+    header_r1_title, header_r1_search = st.columns([3, 1])
+    header_r2_store, header_r2_day = st.columns(2)
+with header_r1_title:
     st.title("POS 판매")
 
 try:
@@ -468,15 +493,15 @@ def _render_amount_keypad(field_key: str, label: str) -> int:
     if draft_key not in st.session_state:
         st.session_state[draft_key] = str(current) if current else ""
 
-    show_col, pop_col = st.columns([3, 1])
+    show_col, pop_col = st.columns([4, 1])
     with show_col:
         st.text_input(label, value=f"{current:,}", disabled=True)
     with pop_col:
-        st.write("")
-        if st.button("입력", key=f"{field_key}_open_amount_kp", use_container_width=True):
-            st.session_state[FO_POS_ACTIVE_AMOUNT_KEYPAD] = field_key
-            cur = int(st.session_state.get(field_key, 0) or 0)
-            st.session_state[draft_key] = str(cur) if cur else ""
+        with st.container(key=f"fo_pos_amt_pop_{field_key}"):
+            if st.button("입력", key=f"{field_key}_open_amount_kp", use_container_width=True):
+                st.session_state[FO_POS_ACTIVE_AMOUNT_KEYPAD] = field_key
+                cur = int(st.session_state.get(field_key, 0) or 0)
+                st.session_state[draft_key] = str(cur) if cur else ""
 
     other_dialog_open = any(
         bool(st.session_state.get(k))
@@ -640,6 +665,16 @@ def _run_sale_save(
     st.session_state.fo_cart = []
     st.session_state.pop("fo_cash_warn_ok", None)
     st.session_state.pop(K_PENDING_SALE_SAVE, None)
+    # 결제·할인 금액 초기화
+    for _k in ("fo_pos_card", "fo_pos_cash", "fo_pos_disc"):
+        st.session_state[_k] = 0
+        st.session_state[f"{_k}_draft"] = ""
+    # 브랜드·제품번호·칼라 선택 초기화
+    st.session_state["fo_pos_brand_id"] = None
+    st.session_state["fo_pos_brand_name"] = ""
+    st.session_state["fo_pos_style"] = ""
+    st.session_state["fo_pos_color"] = ""
+    st.session_state["fo_pos_qty_add"] = 1
     st.success(f"저장 완료 · 전표 `{sale_id[:8]}…` · 담당자 반영됨")
     st.balloons()
     st.rerun()
@@ -650,14 +685,14 @@ store_label = f"{store_obj['store_code']} — {store_obj['name']}"
 store_id = store_obj["id"]
 sale_day = today_kst()
 
-with header_search:
+with header_r1_search:
     st.write("")
-    if st.button("판매 검색", key="fo_pos_open_sale_search"):
+    if st.button("판매 검색", key="fo_pos_open_sale_search", use_container_width=True):
         st.session_state[K_OPEN_SALE_SEARCH] = True
         st.rerun()
-with header_store:
+with header_r2_store:
     st.text_input("점명", value=store_label, disabled=True)
-with header_day:
+with header_r2_day:
     st.date_input("판매일자", value=sale_day, disabled=True)
 
 if st.session_state.get(K_OPEN_SALE_SEARCH):
@@ -692,7 +727,7 @@ with left:
     # 카메라 ON/OFF 토글
     st.session_state.setdefault("fo_pos_camera_on", False)
     cam_label = "📷 카메라 끄기" if st.session_state.fo_pos_camera_on else "📷 카메라로 스캔"
-    if st.button(cam_label, key="fo_pos_cam_toggle", use_container_width=True):
+    if st.button(cam_label, key="fo_pos_cam_toggle"):
         st.session_state.fo_pos_camera_on = not st.session_state.fo_pos_camera_on
         st.rerun()
 
@@ -730,13 +765,13 @@ with left:
 
         bc1, bc2, bc3 = st.columns(3)
         with bc1:
-            _lbl_brand = f"브랜드\n{_brand_name}" if _brand_name else "브랜드\n선택"
+            _lbl_brand = _brand_name if _brand_name else "브랜드"
             if st.button(_lbl_brand, key="fo_pos_btn_brand", use_container_width=True):
                 st.session_state[K_POS_BR_DLG] = True
                 st.session_state[K_POS_BR_PG] = 0
                 st.rerun()
         with bc2:
-            _lbl_style = f"제품번호\n{_style_code}" if _style_code else "제품번호\n선택"
+            _lbl_style = _style_code if _style_code else "제품번호"
             if st.button(
                 _lbl_style,
                 key="fo_pos_btn_style",
@@ -747,7 +782,7 @@ with left:
                 st.session_state[K_POS_ST_PG] = 0
                 st.rerun()
         with bc3:
-            _lbl_color = f"칼라\n{_color_code}" if _color_code else "칼라\n선택"
+            _lbl_color = _color_code if _color_code else "칼라"
             bid_c = st.session_state.get("fo_pos_brand_id")
             st_ok = bool(_style_code)
             if st.button(_lbl_color, key="fo_pos_btn_color", use_container_width=True,
@@ -840,30 +875,62 @@ with right:
         st.info("위에서 상품을 담으면 여기에 표시됩니다.")
     else:
         with st.container(key="fo_pos_cart_wrap"):
-          for i, line in enumerate(st.session_state.fo_cart):
-            c0, cm, cq, cp, c2, c3 = st.columns([4, 1, 1, 1, 2, 1])
-            with c0:
-                st.write(f"**{line['display_name']}**")
-            with cm:
-                if st.button("－", key=f"qty_dn_{i}", use_container_width=True):
-                    if st.session_state.fo_cart[i]["quantity"] > 1:
-                        st.session_state.fo_cart[i]["quantity"] -= 1
-                    st.rerun()
-            with cq:
-                st.write(f"**{format_fo_quantity_display(line['quantity'])}**")
-            with cp:
-                if st.button("＋", key=f"qty_up_{i}", use_container_width=True):
-                    st.session_state.fo_cart[i]["quantity"] += 1
-                    st.rerun()
-            with c2:
-                st.write(f"{line['unit_price']:,}원")
-            with c3:
-                if st.button("삭제", key=f"rm_{i}"):
-                    st.session_state.fo_cart.pop(i)
-                    st.rerun()
+            for i, line in enumerate(st.session_state.fo_cart):
+                c0, c2, c3 = st.columns([6, 2, 1])
+                with c0:
+                    st.write(f"**{line['display_name']}** ×{line['quantity']}")
+                with c2:
+                    st.write(f"{line['unit_price']:,}원")
+                with c3:
+                    if st.button("삭제", key=f"rm_{i}"):
+                        st.session_state.fo_cart.pop(i)
+                        st.rerun()
 
         subtotal = sum(int(line["unit_price"] * line["quantity"]) for line in st.session_state.fo_cart)
-        d1, d2 = st.columns(2)
+        # 현재 할인값(세션)으로 합계 미리 계산 — 빠른결제 버튼에 사용
+        _disc_now = int(st.session_state.get("fo_pos_disc", 0) or 0)
+        _total_now = max(0, subtotal - _disc_now)
+
+        st.markdown("##### 결제처리")
+        with st.container(key="fo_pos_pay_quick"):
+            qb1, qb2, qb3 = st.columns(3)
+            with qb1:
+                if st.button("카드 전액", key="fo_pos_full_card", use_container_width=True):
+                    st.session_state["fo_pos_card"] = _total_now
+                    st.session_state["fo_pos_card_draft"] = str(_total_now)
+                    st.session_state["fo_pos_cash"] = 0
+                    st.session_state["fo_pos_cash_draft"] = ""
+                    st.rerun()
+            with qb2:
+                if st.button("현금 전액", key="fo_pos_full_cash", use_container_width=True):
+                    st.session_state["fo_pos_cash"] = _total_now
+                    st.session_state["fo_pos_cash_draft"] = str(_total_now)
+                    st.session_state["fo_pos_card"] = 0
+                    st.session_state["fo_pos_card_draft"] = ""
+                    st.rerun()
+            with qb3:
+                if st.button("초기화", key="fo_pos_reset_pay", use_container_width=True):
+                    st.session_state["fo_pos_card"] = 0
+                    st.session_state["fo_pos_card_draft"] = ""
+                    st.session_state["fo_pos_cash"] = 0
+                    st.session_state["fo_pos_cash_draft"] = ""
+                    st.rerun()
+        with st.container(key="fo_pos_pay_amounts"):
+            p1, p2 = st.columns(2)
+        with p1:
+            card = _render_amount_keypad("fo_pos_card", "카드")
+        with p2:
+            cash = _render_amount_keypad("fo_pos_cash", "현금")
+
+        if cash > 100_000:
+            st.warning(
+                "현금 10만 원 초과 — 현금영수증·자진발급 안내 확인 (실제 발행은 시스템 외)."
+            )
+            st.checkbox("위 내용을 확인했습니다.", key="fo_cash_warn_ok")
+
+        st.markdown("##### 할인")
+        with st.container(key="fo_pos_disc_row"):
+            d1, d2 = st.columns(2)
         with d1:
             disc = _render_amount_keypad("fo_pos_disc", "할인 합계(원)")
         with d2:
@@ -877,42 +944,6 @@ with right:
 
         total = max(0, subtotal - disc)
         st.metric("합계 (부가세 포함)", f"{total:,}원")
-
-        st.markdown("##### 결제처리")
-        with st.container(key="fo_pos_pay_quick"):
-            qb1, qb2, qb3 = st.columns(3)
-            with qb1:
-                if st.button("카드 전액", key="fo_pos_full_card", use_container_width=True):
-                    st.session_state["fo_pos_card"] = total
-                    st.session_state["fo_pos_card_draft"] = str(total)
-                    st.session_state["fo_pos_cash"] = 0
-                    st.session_state["fo_pos_cash_draft"] = ""
-                    st.rerun()
-            with qb2:
-                if st.button("현금 전액", key="fo_pos_full_cash", use_container_width=True):
-                    st.session_state["fo_pos_cash"] = total
-                    st.session_state["fo_pos_cash_draft"] = str(total)
-                    st.session_state["fo_pos_card"] = 0
-                    st.session_state["fo_pos_card_draft"] = ""
-                    st.rerun()
-            with qb3:
-                if st.button("초기화", key="fo_pos_reset_pay", use_container_width=True):
-                    st.session_state["fo_pos_card"] = 0
-                    st.session_state["fo_pos_card_draft"] = ""
-                    st.session_state["fo_pos_cash"] = 0
-                    st.session_state["fo_pos_cash_draft"] = ""
-                    st.rerun()
-        p1, p2 = st.columns(2)
-        with p1:
-            card = _render_amount_keypad("fo_pos_card", "카드")
-        with p2:
-            cash = _render_amount_keypad("fo_pos_cash", "현금")
-
-        if cash > 100_000:
-            st.warning(
-                "현금 10만 원 초과 — 현금영수증·자진발급 안내 확인 (실제 발행은 시스템 외)."
-            )
-            st.checkbox("위 내용을 확인했습니다.", key="fo_cash_warn_ok")
 
         pay_sum = int(cash) + int(card)
         if pay_sum != total and total > 0:
