@@ -1,40 +1,30 @@
-// Frame Ops — SWR + IndexedDB 통합 훅
-// 첫 렌더: IndexedDB 즉시 반환 → 백그라운드 Supabase 갱신 (stale-while-revalidate)
+// Frame Ops Web — 제품 데이터 훅
+// /api/products → 서버사이드 Supabase → 브라우저로 반환
+// Supabase를 직접 호출하지 않음
 
 'use client';
 
 import useSWR from 'swr';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { productsApi } from '@/lib/api-client';
 import { dbGetAll, dbPutMany } from '@/lib/db/indexeddb';
 import type { Product, TableFilters } from '@/types';
 
-// ── Supabase fetcher ──────────────────────────────────────────────────────────
-async function fetchFramesFromSupabase(filters: TableFilters): Promise<Product[]> {
-  let query = supabase
-    .from('fo_products')
-    .select('*, brand:fo_brands(id, brand_code, brand_name)')
-    .eq('is_active', true)
-    .order('style_code', { ascending: true });
+// ── Fetcher ───────────────────────────────────────────────────────────────────
+async function fetchProducts(filters: TableFilters): Promise<Product[]> {
+  const params: Record<string, string | number> = {};
+  if (filters.search)   params.search   = filters.search;
+  if (filters.page)     params.page     = filters.page;
+  if (filters.pageSize) params.limit    = filters.pageSize;
 
-  if (filters.search) {
-    query = query.or(
-      `style_code.ilike.%${filters.search}%,display_name.ilike.%${filters.search}%`
-    );
-  }
-
-  const pageSize = filters.pageSize ?? 50;
-  const page = filters.page ?? 0;
-  query = query.range(page * pageSize, (page + 1) * pageSize - 1);
-
-  const { data, error } = await query;
-  if (error) throw error;
+  const { data, error } = await productsApi.list(params);
+  if (error) throw new Error(error);
   return (data ?? []) as Product[];
 }
 
-// ── 메인 훅 ──────────────────────────────────────────────────────────────────
+// ── 제품 목록 훅 ──────────────────────────────────────────────────────────────
 export function useFramesData(filters: TableFilters = {}) {
-  // IndexedDB에서 즉시 fallback 데이터 로드
+  // IndexedDB 즉시 fallback
   const [idbFallback, setIdbFallback] = useState<Product[] | undefined>(undefined);
 
   useEffect(() => {
@@ -47,19 +37,13 @@ export function useFramesData(filters: TableFilters = {}) {
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<Product[]>(
     cacheKey,
-    () => fetchFramesFromSupabase(filters),
+    () => fetchProducts(filters),
     {
-      // IndexedDB 캐시를 SWR fallback으로 사용
       fallbackData: idbFallback,
-      // 5분마다 재검증
       refreshInterval: 5 * 60 * 1000,
-      // 포커스 시 재검증 (탭 전환 후 돌아올 때)
       revalidateOnFocus: true,
-      // 마운트 시 항상 재검증
       revalidateOnMount: true,
-      // 에러 시 재시도 3회
       errorRetryCount: 3,
-      // 데이터 수신 후 IndexedDB 업데이트
       onSuccess(freshData) {
         if (freshData?.length) {
           dbPutMany('frames', freshData).catch(console.error);
@@ -70,30 +54,11 @@ export function useFramesData(filters: TableFilters = {}) {
 
   return {
     frames: data ?? idbFallback ?? [],
-    isLoading: isLoading && !idbFallback,  // IndexedDB 데이터 있으면 로딩 아님
+    isLoading: isLoading && !idbFallback,
     isValidating,
     error,
     mutate,
   };
-}
-
-// ── 단건 훅 ──────────────────────────────────────────────────────────────────
-export function useFrameDetail(id: string | null) {
-  const { data, error, isLoading } = useSWR<Product | null>(
-    id ? ['frame', id] : null,
-    async () => {
-      const { data, error } = await supabase
-        .from('fo_products')
-        .select('*, brand:fo_brands(*)')
-        .eq('id', id!)
-        .single();
-      if (error) throw error;
-      return data as Product;
-    },
-    { revalidateOnFocus: false }
-  );
-
-  return { frame: data, isLoading, error };
 }
 
 // ── 브랜드별 제품 훅 ──────────────────────────────────────────────────────────
@@ -101,15 +66,24 @@ export function useFramesByBrand(brandId: string | null) {
   return useSWR<Product[]>(
     brandId ? ['frames-by-brand', brandId] : null,
     async () => {
-      const { data, error } = await supabase
-        .from('fo_products')
-        .select('*')
-        .eq('brand_id', brandId!)
-        .eq('is_active', true)
-        .order('style_code');
-      if (error) throw error;
+      const { data, error } = await productsApi.list({ brand_id: brandId!, limit: 100 });
+      if (error) throw new Error(error);
       return (data ?? []) as Product[];
     },
     { revalidateOnFocus: false }
+  );
+}
+
+// ── 브랜드 목록 훅 ────────────────────────────────────────────────────────────
+export function useBrands() {
+  return useSWR(
+    'brands',
+    async () => {
+      const { brandsApi } = await import('@/lib/api-client');
+      const { data, error } = await brandsApi.list();
+      if (error) throw new Error(error);
+      return data ?? [];
+    },
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 }

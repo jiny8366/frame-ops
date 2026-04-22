@@ -1,9 +1,9 @@
-// Frame Ops — 오프라인 동기화 로직
-// 오프라인 변경사항을 sync_queue에 쌓고, 온라인 복귀 시 Supabase와 동기화
+// Frame Ops Web — 오프라인 동기화
+// sync_queue에 쌓인 변경사항을 API Routes를 통해 서버에 전송
+// Supabase 직접 호출 없음
 
 'use client';
 
-import { supabase } from '@/lib/supabase/client';
 import {
   enqueueSync,
   getSyncQueue,
@@ -14,125 +14,111 @@ import {
 
 // ── 상태 ──────────────────────────────────────────────────────────────────────
 let _isSyncing = false;
-let _syncListenersAttached = false;
+let _listenersAttached = false;
 
-// ── 온라인 상태 감지 ──────────────────────────────────────────────────────────
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
 }
 
-/** online/offline 이벤트 리스너 등록 (앱 초기화 시 한 번만 호출) */
 export function initSyncListeners(): () => void {
-  if (_syncListenersAttached || typeof window === 'undefined') {
-    return () => {};
-  }
-  _syncListenersAttached = true;
+  if (_listenersAttached || typeof window === 'undefined') return () => {};
+  _listenersAttached = true;
 
   const handleOnline = () => {
     console.log('[FrameOps Sync] 온라인 복귀 — 동기화 시작');
     flushSyncQueue();
   };
-
   const handleOffline = () => {
-    console.log('[FrameOps Sync] 오프라인 전환 — 변경사항은 큐에 저장됩니다');
+    console.log('[FrameOps Sync] 오프라인 전환 — 큐에 저장합니다');
   };
 
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
+  if (navigator.onLine) flushSyncQueue();
 
-  // 초기 온라인 상태라면 즉시 큐 플러시
-  if (navigator.onLine) {
-    flushSyncQueue();
-  }
-
-  // 클린업 함수 반환
   return () => {
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
-    _syncListenersAttached = false;
+    _listenersAttached = false;
   };
 }
 
 // ── 쓰기 인터셉터 ─────────────────────────────────────────────────────────────
-/**
- * Supabase에 쓰기 시도 → 오프라인이면 sync_queue에 저장
- * 온라인이면 Supabase에 직접 저장 후 IndexedDB도 업데이트
- */
 export async function writeWithSync<T extends Record<string, unknown>>(
   table: SyncQueueItem['table'],
   operation: SyncQueueItem['operation'],
   payload: T
 ): Promise<{ success: boolean; error?: string }> {
   const item: Omit<SyncQueueItem, 'id'> = {
-    table,
-    operation,
-    payload,
+    table, operation, payload,
     created_at: new Date().toISOString(),
     retry_count: 0,
   };
 
   if (!isOnline()) {
-    // 오프라인: 큐에 저장 + IndexedDB 낙관적 업데이트
     await enqueueSync(item);
-    if (operation !== 'delete') {
-      await dbPut(table, payload as never);
-    }
+    if (operation !== 'delete') await dbPut(table, payload as never);
     return { success: true };
   }
 
-  // 온라인: Supabase 직접 호출
-  return applyToSupabase(item);
+  return applyViaApi(item);
 }
 
 // ── 큐 플러시 ─────────────────────────────────────────────────────────────────
 export async function flushSyncQueue(): Promise<void> {
   if (_isSyncing || !isOnline()) return;
   _isSyncing = true;
-
   try {
     const queue = await getSyncQueue();
-    if (queue.length === 0) return;
-
-    console.log(`[FrameOps Sync] ${queue.length}개 항목 동기화 중...`);
+    if (!queue.length) return;
 
     for (const item of queue) {
-      const result = await applyToSupabase(item);
+      const result = await applyViaApi(item);
       if (result.success) {
         await deleteSyncItem(item.id!);
-      } else {
-        console.error(`[FrameOps Sync] 실패 (id=${item.id}):`, result.error);
-        // 최대 3회 재시도 후 포기
-        if (item.retry_count >= 3) {
-          await deleteSyncItem(item.id!);
-          console.error('[FrameOps Sync] 최대 재시도 초과 — 항목 폐기');
-        }
+      } else if ((item.retry_count ?? 0) >= 3) {
+        await deleteSyncItem(item.id!);
+        console.error('[FrameOps Sync] 최대 재시도 초과 — 폐기:', item);
       }
     }
-
-    console.log('[FrameOps Sync] 동기화 완료');
   } finally {
     _isSyncing = false;
   }
 }
 
-// ── Supabase 적용 ─────────────────────────────────────────────────────────────
-async function applyToSupabase(
+// ── API Routes를 통한 서버 적용 ───────────────────────────────────────────────
+const TABLE_TO_ENDPOINT: Record<string, string> = {
+  frames:        '/api/products',
+  customers:     '/api/customers',
+  prescriptions: '/api/customers',
+  orders:        '/api/orders',
+};
+
+async function applyViaApi(
   item: SyncQueueItem | Omit<SyncQueueItem, 'id'>
 ): Promise<{ success: boolean; error?: string }> {
+  const endpoint = TABLE_TO_ENDPOINT[item.table];
+  if (!endpoint) return { success: false, error: `알 수 없는 테이블: ${item.table}` };
+
   try {
-    let error: unknown = null;
+    const method = item.operation === 'insert' ? 'POST'
+      : item.operation === 'update'  ? 'PUT'
+      : 'DELETE';
 
-    if (item.operation === 'insert') {
-      ({ error } = await supabase.from(item.table).insert(item.payload));
-    } else if (item.operation === 'update') {
-      const { id, ...rest } = item.payload;
-      ({ error } = await supabase.from(item.table).update(rest).eq('id', id));
-    } else if (item.operation === 'delete') {
-      ({ error } = await supabase.from(item.table).delete().eq('id', item.payload.id));
-    }
+    const res = await fetch(
+      method === 'DELETE'
+        ? `${endpoint}/${(item.payload as Record<string, unknown>).id}`
+        : endpoint,
+      {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method !== 'DELETE' ? JSON.stringify(item.payload) : undefined,
+      }
+    );
 
-    if (error) {
-      return { success: false, error: String(error) };
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { success: false, error: body.error ?? `HTTP ${res.status}` };
     }
     return { success: true };
   } catch (e) {
