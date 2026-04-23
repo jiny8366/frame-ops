@@ -7,6 +7,8 @@ from typing import Any
 import streamlit as st
 from supabase import Client
 
+from lib.perf_log import perf_timed
+
 
 def brand_page_size(n: int) -> int:
     if n <= 4:
@@ -114,7 +116,9 @@ def _cached_style_codes(supabase_url: str, brand_id: str) -> list[str]:
     )
 
 
+@perf_timed("load_distinct_style_codes", include_args=False)
 def load_distinct_style_codes(sb: Client, brand_id: str) -> list[str]:
+    # 캐시 hit 시 ~0.5ms 미만, miss 시 DB 왕복 포함 시간 로깅됨.
     from lib.supabase_client import get_configured_supabase_url
     return _cached_style_codes(get_configured_supabase_url(), brand_id)
 
@@ -147,6 +151,7 @@ def _cached_color_codes(supabase_url: str, brand_id: str, style_code_val: str) -
     )
 
 
+@perf_timed("load_distinct_color_codes", include_args=False)
 def load_distinct_color_codes(sb: Client, brand_id: str, style_code_val: str) -> list[str]:
     from lib.supabase_client import get_configured_supabase_url
     return _cached_color_codes(get_configured_supabase_url(), brand_id, style_code_val)
