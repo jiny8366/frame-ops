@@ -5,7 +5,7 @@
 'use client';
 
 import { Sun, Moon, Monitor } from 'lucide-react';
-import { useRef, useEffect, useState, useCallback, type KeyboardEvent } from 'react';
+import { memo, useRef, useEffect, useState, useCallback, type KeyboardEvent } from 'react';
 import { useTheme, type Theme } from '@/contexts/ThemeContext';
 
 // ── 한국어 기본, i18n 교체 용이하도록 상수 분리 ──────────────────────────────
@@ -90,7 +90,7 @@ export function ThemeToggle({ className = '', variant = 'full' }: ThemeTogglePro
   }, [updateIndicator]);
 
   // ── 키보드 네비게이션 ──────────────────────────────────────────────────────
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
     const currentIdx = OPTIONS.findIndex((o) => o.value === theme);
 
     switch (e.key) {
@@ -124,7 +124,15 @@ export function ThemeToggle({ className = '', variant = 'full' }: ThemeTogglePro
         break;
       }
     }
-  };
+  }, [theme, setTheme]);
+
+  // 각 옵션 버튼의 ref 를 컨테이너 측 배열에 등록 — useCallback 안정 참조
+  const handleRegisterButtonRef = useCallback(
+    (index: number, el: HTMLButtonElement | null) => {
+      buttonRefs.current[index] = el;
+    },
+    []
+  );
 
   return (
     <div
@@ -159,65 +167,102 @@ export function ThemeToggle({ className = '', variant = 'full' }: ThemeTogglePro
       />
 
       {/* ── 옵션 버튼들 ─────────────────────────────────────────────────── */}
-      {OPTIONS.map((opt, idx) => {
-        const isSelected = theme === opt.value;
-
-        return (
-          <button
-            key={opt.value}
-            ref={(el) => { buttonRefs.current[idx] = el; }}
-            role="radio"
-            aria-checked={isSelected}
-            aria-label={`${opt.label} 모드`}
-            tabIndex={isSelected ? 0 : -1}
-            onClick={() => setTheme(opt.value)}
-            className={[
-              // 기본 레이아웃
-              'relative z-10 flex items-center gap-1.5',
-              'px-3 py-1.5',
-              'rounded-[6px]',
-              'text-[13px] font-[500]',
-              'leading-none select-none',
-              // 전환 (색상만)
-              'transition-colors duration-[200ms]',
-              // 터치 최적화
-              'touch-action-manipulation',
-              // 색상
-              isSelected
-                ? 'text-[var(--color-label-primary)]'
-                : 'text-[var(--color-label-secondary)]',
-              // 비선택 호버: 미묘한 밝기 변화
-              !isSelected && 'hover:text-[var(--color-label-primary)]',
-              // 클릭 액티브: scale down
-              'active:scale-95 transition-transform',
-              // 포커스 링 (키보드 접근성)
-              'focus-visible:outline-2',
-              'focus-visible:outline-[var(--color-system-blue)]',
-              'focus-visible:outline-offset-1',
-              'focus-visible:rounded-[6px]',
-              'outline-none',
-            ].join(' ')}
-          >
-            {/* 아이콘 — 선택 시 애니메이션 */}
-            <span
-              className={[
-                'transition-transform duration-[250ms] ease-out',
-                isSelected ? opt.selectedIconClass : '',
-              ].join(' ')}
-            >
-              {opt.icon}
-            </span>
-
-            {/* 라벨 — variant에 따라 표시 여부 */}
-            {variant === 'full' && (
-              <span className="whitespace-nowrap">{opt.label}</span>
-            )}
-          </button>
-        );
-      })}
+      {OPTIONS.map((opt, idx) => (
+        <ThemeButton
+          key={opt.value}
+          option={opt}
+          index={idx}
+          isSelected={theme === opt.value}
+          variant={variant}
+          onSelect={setTheme}
+          onRegisterRef={handleRegisterButtonRef}
+        />
+      ))}
     </div>
   );
 }
+
+// ── 개별 옵션 버튼 — memo + 안정 핸들러로 선택 상태 변경에만 리렌더 ───────────
+interface ThemeButtonProps {
+  option: ThemeOption;
+  index: number;
+  isSelected: boolean;
+  variant: 'icon-only' | 'full';
+  onSelect: (value: Theme) => void;
+  onRegisterRef: (index: number, el: HTMLButtonElement | null) => void;
+}
+
+const ThemeButton = memo(function ThemeButton({
+  option,
+  index,
+  isSelected,
+  variant,
+  onSelect,
+  onRegisterRef,
+}: ThemeButtonProps) {
+  const handleClick = useCallback(() => {
+    onSelect(option.value);
+  }, [onSelect, option.value]);
+
+  const handleRef = useCallback(
+    (el: HTMLButtonElement | null) => {
+      onRegisterRef(index, el);
+    },
+    [index, onRegisterRef]
+  );
+
+  return (
+    <button
+      ref={handleRef}
+      role="radio"
+      aria-checked={isSelected}
+      aria-label={`${option.label} 모드`}
+      tabIndex={isSelected ? 0 : -1}
+      onClick={handleClick}
+      className={[
+        // 기본 레이아웃
+        'relative z-10 flex items-center gap-1.5',
+        'px-3 py-1.5',
+        'rounded-[6px]',
+        'text-[13px] font-[500]',
+        'leading-none select-none',
+        // 전환 (색상만)
+        'transition-colors duration-[200ms]',
+        // 터치 최적화
+        'touch-action-manipulation',
+        // 색상
+        isSelected
+          ? 'text-[var(--color-label-primary)]'
+          : 'text-[var(--color-label-secondary)]',
+        // 비선택 호버: 미묘한 밝기 변화
+        !isSelected && 'hover:text-[var(--color-label-primary)]',
+        // 클릭 액티브: scale down
+        'active:scale-95 transition-transform',
+        // 포커스 링 (키보드 접근성)
+        'focus-visible:outline-2',
+        'focus-visible:outline-[var(--color-system-blue)]',
+        'focus-visible:outline-offset-1',
+        'focus-visible:rounded-[6px]',
+        'outline-none',
+      ].join(' ')}
+    >
+      {/* 아이콘 — 선택 시 애니메이션 */}
+      <span
+        className={[
+          'transition-transform duration-[250ms] ease-out',
+          isSelected ? option.selectedIconClass : '',
+        ].join(' ')}
+      >
+        {option.icon}
+      </span>
+
+      {/* 라벨 — variant에 따라 표시 여부 */}
+      {variant === 'full' && (
+        <span className="whitespace-nowrap">{option.label}</span>
+      )}
+    </button>
+  );
+});
 
 // ── 모바일용 아이콘 전용 변형 ─────────────────────────────────────────────────
 export function ThemeToggleMobile({ className = '' }: { className?: string }) {
