@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -135,6 +136,24 @@ def describe_database_connection() -> tuple[str, str | None]:
     )
 
 
+@lru_cache(maxsize=4)
+def _build_supabase_client(url: str, key: str) -> Client:
+    """실제 create_client 호출을 (url, key) 기준으로 프로세스 단위 공유.
+
+    서비스 롤 키 기반 클라이언트라 stateless(persistSession=False, 세션 저장 없음)이므로
+    재사용 시 사이드이펙트 없음. 환경 변경(.env 수정) 시 프로세스 재시작이 필요하지만
+    이는 현재 동작과 동일.
+    """
+    return create_client(
+        url,
+        key,
+        options=SyncClientOptions(
+            postgrest_client_timeout=120,
+            storage_client_timeout=120,
+        ),
+    )
+
+
 def get_supabase() -> Client:
     url = get_configured_supabase_url()
     key = get_configured_supabase_key()
@@ -157,16 +176,10 @@ def get_supabase() -> Client:
         except Exception:
             pass
     strict = strict_raw in ("1", "true", "yes")
+    # strict 검증은 매 호출 수행(환경 변경 즉시 반영). 클라이언트 생성만 캐시.
     if strict and not is_probably_remote_supabase(url):
         raise RuntimeError(
             "`FRAME_OPS_REQUIRE_HOSTED_SUPABASE=1` 인데 `SUPABASE_URL`이 로컬입니다. "
             "서버 DB만 허용하려면 URL을 `https://xxxx.supabase.co` 형태로 설정하세요."
         )
-    return create_client(
-        url,
-        key,
-        options=SyncClientOptions(
-            postgrest_client_timeout=120,
-            storage_client_timeout=120,
-        ),
-    )
+    return _build_supabase_client(url, key)

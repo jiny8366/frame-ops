@@ -104,17 +104,9 @@ K_POS_PIN_DRAFT = "fo_pos_pin_kpd_draft"
 K_OPEN_SALE_SEARCH = "fo_pos_sale_search_open"
 # 인라인 그리드 토글 (dialog 대체 — fragment 재실행만 유발)
 K_POS_SHOW_BR = "fo_pos_show_br_grid"
-K_POS_SHOW_ST = "fo_pos_show_st_grid"   # 하위 호환 (미사용)
-K_POS_SHOW_CO = "fo_pos_show_co_grid"   # 하위 호환 (미사용)
 K_POS_SHOW_STCO = "fo_pos_show_stco_dlg"   # 제품번호/칼라 통합 검색 다이얼로그
 K_POS_STCO_DRAFT = "fo_pos_stco_draft"     # 제품번호/칼라 키패드 입력 버퍼
 K_POS_BR_PG = "fo_pos_brand_grid_page"
-K_POS_ST_PG = "fo_pos_style_grid_page"  # 하위 호환 (미사용)
-K_POS_CO_PG = "fo_pos_color_grid_page"  # 하위 호환 (미사용)
-# 하위 호환: 예전 dialog 키 (더 이상 쓰지 않음)
-K_POS_BR_DLG = "fo_pos_brand_dlg_open"
-K_POS_ST_DLG = "fo_pos_style_dlg_open"
-K_POS_CO_DLG = "fo_pos_color_dlg_open"
 DEFAULT_CLERK_EMAIL = os.getenv("FO_POS_CLERK_EMAIL", "").strip()
 FO_POS_ACTIVE_AMOUNT_KEYPAD = "fo_pos_active_amount_keypad_field"
 FO_POS_KPD_DLG_TOP_PX = 100
@@ -1127,86 +1119,6 @@ def _brand_select_dialog() -> None:
         st.rerun()
 
 
-def _style_inline_grid(sb) -> None:
-    """제품번호 인라인 선택 그리드."""
-    st.divider()
-    bid_s = st.session_state.get("fo_pos_brand_id")
-    if not bid_s:
-        st.error("브랜드를 먼저 선택하세요.")
-        return
-    styles = load_distinct_style_codes(sb, str(bid_s))
-    if not styles:
-        st.info("이 브랜드에 등록된 제품번호가 없습니다.")
-        if st.button("닫기", key="st_il_close_none"):
-            st.session_state[K_POS_SHOW_ST] = False
-        return
-    page_sz = 15
-    pg = int(st.session_state.get(K_POS_ST_PG, 0))
-    st0 = pg * page_sz
-    page_styles = styles[st0 : st0 + page_sz]
-    st.caption(f"총 **{len(styles)}**개 · {pg + 1}페이지")
-    n_cols = 5
-    with st.container(key="fo_pos_st_inline_wrap"):
-        for row_i in range(0, len(page_styles), n_cols):
-            row_items = page_styles[row_i : row_i + n_cols]
-            cols = st.columns(n_cols)
-            for j, sc in enumerate(row_items):
-                with cols[j]:
-                    if st.button(sc, key=f"st_il_{st0}_{row_i}_{j}", use_container_width=True):
-                        st.session_state["fo_pos_style"] = sc
-                        st.session_state["fo_pos_color"] = ""
-                        st.session_state[K_POS_SHOW_ST] = False
-                        st.session_state.pop(K_POS_ST_PG, None)
-    nav_sl, nav_sr = st.columns([4, 1])
-    with nav_sl:
-        if st.button("닫기", key="st_il_close"):
-            st.session_state[K_POS_SHOW_ST] = False
-    with nav_sr:
-        if st0 + page_sz < len(styles):
-            if st.button("다음→", key="st_il_next"):
-                st.session_state[K_POS_ST_PG] = pg + 1
-
-
-def _color_inline_grid(sb) -> None:
-    """칼라 인라인 선택 그리드."""
-    st.divider()
-    bid_c = st.session_state.get("fo_pos_brand_id")
-    stv = (st.session_state.get("fo_pos_style") or "").strip()
-    if not bid_c or not stv:
-        st.error("브랜드와 제품번호를 먼저 선택하세요.")
-        return
-    colors = load_distinct_color_codes(sb, str(bid_c), stv)
-    if not colors:
-        st.info("해당 제품번호에 등록된 칼라가 없습니다.")
-        if st.button("닫기", key="co_il_close_none"):
-            st.session_state[K_POS_SHOW_CO] = False
-        return
-    page_sz = 6
-    pg = int(st.session_state.get(K_POS_CO_PG, 0))
-    c0 = pg * page_sz
-    page_colors = colors[c0 : c0 + page_sz]
-    st.caption(f"총 **{len(colors)}**개 · {pg + 1}페이지")
-    n_cols = 3
-    with st.container(key="fo_pos_co_inline_wrap"):
-        for row_i in range(0, len(page_colors), n_cols):
-            row_items = page_colors[row_i : row_i + n_cols]
-            cols = st.columns(n_cols)
-            for j, cc in enumerate(row_items):
-                with cols[j]:
-                    if st.button(cc, key=f"co_il_{c0}_{row_i}_{j}", use_container_width=True):
-                        st.session_state["fo_pos_color"] = cc
-                        st.session_state[K_POS_SHOW_CO] = False
-                        st.session_state.pop(K_POS_CO_PG, None)
-    nav_cl, nav_cr = st.columns([4, 1])
-    with nav_cl:
-        if st.button("닫기", key="co_il_close"):
-            st.session_state[K_POS_SHOW_CO] = False
-    with nav_cr:
-        if c0 + page_sz < len(colors):
-            if st.button("다음→", key="co_il_next"):
-                st.session_state[K_POS_CO_PG] = pg + 1
-
-
 @st.fragment
 def _product_pick_panel(*, sb, store_id: str, pos_locked: bool) -> None:
     """상품 담기 패널 — fragment로 감싸 좌측만 재실행, 전체 깜빡임 없음."""
@@ -1332,8 +1244,6 @@ def _product_pick_panel(*, sb, store_id: str, pos_locked: bool) -> None:
                     )
                     st.session_state.fo_pos_qty_add = 1
                     st.session_state[K_POS_SHOW_BR] = False
-                    st.session_state[K_POS_SHOW_ST] = False
-                    st.session_state[K_POS_SHOW_CO] = False
                     st.success("담았습니다.")
                     st.rerun()  # 전체 재실행: 우측 카트 패널 업데이트
 
