@@ -5,6 +5,7 @@
 
 import { SWRConfig, unstable_serialize } from 'swr';
 import { useEffect, useState, type ReactNode } from 'react';
+import { Toaster, toast } from 'sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 import { initSyncListeners } from '@/lib/db/sync';
@@ -41,8 +42,16 @@ export function Providers({ children }: ProvidersProps) {
     })();
 
     const cleanup = initSyncListeners((deadItem) => {
-      // TODO: Toast UI 연동 — 지금은 콘솔 경고만
-      console.warn('[FrameOps Sync] Dead letter (3회 재시도 실패):', deadItem);
+      // Phase 2: Toast UI 연동 (sonner). 사용자에게 직접 알림.
+      const label =
+        deadItem.table === 'orders' ? '판매 저장' :
+        deadItem.table === 'frames' ? '제품 업데이트' :
+        '데이터';
+      toast.error(`${label} 동기화 실패 (3회 재시도)`, {
+        description: '네트워크 확인 후 수동 재전송 필요',
+        duration: 8000,
+      });
+      console.warn('[FrameOps Sync] Dead letter:', deadItem);
     });
 
     return () => {
@@ -77,6 +86,18 @@ export function Providers({ children }: ProvidersProps) {
         }}
       >
         {children}
+        {/* Phase 2: sonner Toast — 결제 완료/실패, Dead Letter 등 UI 알림 */}
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          expand={false}
+          toastOptions={{
+            style: {
+              fontSize: '15px',
+            },
+          }}
+        />
       </SWRConfig>
     </ThemeProvider>
   );
