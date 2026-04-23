@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import os
 import sys
+import time as _perf_time
 import uuid
 from pathlib import Path
 
@@ -21,6 +22,17 @@ st.set_page_config(
 )
 
 from lib.service_portal import render_frame_ops_chrome  # noqa: E402
+from lib.perf_log import PERF_LOG_ENABLED as _PERF_ON, emit_perf as _perf_emit  # noqa: E402
+
+# ── Perf: 스크립트 rerun 마커 ────────────────────────────────────────────────
+_pos_script_t0 = _perf_time.perf_counter()
+if _PERF_ON:
+    st.session_state["_pos_rerun_count"] = int(st.session_state.get("_pos_rerun_count", 0)) + 1
+    _perf_emit(
+        "POS script rerun start",
+        0.0,
+        f"#{st.session_state['_pos_rerun_count']}",
+    )
 
 render_frame_ops_chrome()
 
@@ -47,6 +59,7 @@ from lib.sales_search_panel import render_sales_search_panel
 from lib.streamlit_fo_stores import active_fo_stores_list_or_halt
 from lib.supabase_client import get_configured_supabase_anon_key, get_configured_supabase_url, get_supabase
 from lib.fo_pos_css import FO_POS_CSS
+from lib.perf_log import perf_timed
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -84,9 +97,14 @@ def _cached_discount_types(supabase_url: str) -> list:
     )
 
 
+@perf_timed("_cached_products_by_style_prefix")
 @st.cache_data(ttl=60, show_spinner=False)
 def _cached_products_by_style_prefix(supabase_url: str, brand_id: str, style_prefix: str) -> list:
-    """브랜드 + 제품번호 앞자리로 제품 목록 검색 — 1분 캐싱."""
+    """브랜드 + 제품번호 앞자리로 제품 목록 검색 — 1분 캐싱.
+
+    perf 로그: cache hit은 ~0.5ms 미만, miss는 DB 왕복 포함 시간 기록.
+    키패드 숫자 입력마다 새 prefix 로 호출되므로 대부분 miss 일 가능성 큼.
+    """
     from lib.supabase_client import get_supabase as _gsb
     _sb = _gsb()
     q = (
@@ -1614,3 +1632,13 @@ if pending_sale:
                         st.session_state[K_POS_PIN_DRAFT] = ""
                         st.error(f"저장 실패: {ex}")
     _confirm_sale_dialog()
+
+
+# ── Perf: 스크립트 rerun 종료 마커 — 서버 측 전체 처리 시간 ──────────────────
+if _PERF_ON:
+    _pos_script_dt_ms = (_perf_time.perf_counter() - _pos_script_t0) * 1000
+    _perf_emit(
+        "POS script rerun end",
+        _pos_script_dt_ms,
+        f"#{st.session_state.get('_pos_rerun_count', '?')}",
+    )

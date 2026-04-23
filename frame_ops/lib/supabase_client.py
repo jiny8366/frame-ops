@@ -143,8 +143,20 @@ def _build_supabase_client(url: str, key: str) -> Client:
     서비스 롤 키 기반 클라이언트라 stateless(persistSession=False, 세션 저장 없음)이므로
     재사용 시 사이드이펙트 없음. 환경 변경(.env 수정) 시 프로세스 재시작이 필요하지만
     이는 현재 동작과 동일.
+
+    perf 로그 활성 시 실제 create_client 호출이 한 번만 일어나는지(캐시 정상 작동)
+    확인 가능.
     """
-    return create_client(
+    # 지연 import: perf_log 자체가 streamlit 의존 — 직접 import 하면 tests 등 비-Streamlit
+    # 컨텍스트에서 supabase_client import 시 연쇄 영향 가능. 함수 호출 시점에 import.
+    try:
+        from lib.perf_log import PERF_LOG_ENABLED, emit_perf
+    except Exception:
+        PERF_LOG_ENABLED = False
+        emit_perf = None  # type: ignore[assignment]
+    import time as _time
+    _t0 = _time.perf_counter() if PERF_LOG_ENABLED else 0.0
+    client = create_client(
         url,
         key,
         options=SyncClientOptions(
@@ -152,6 +164,9 @@ def _build_supabase_client(url: str, key: str) -> Client:
             storage_client_timeout=120,
         ),
     )
+    if PERF_LOG_ENABLED and emit_perf is not None:
+        emit_perf("_build_supabase_client (cache miss)", (_time.perf_counter() - _t0) * 1000)
+    return client
 
 
 def get_supabase() -> Client:
