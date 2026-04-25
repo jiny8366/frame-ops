@@ -23,9 +23,15 @@ interface StatsResponse {
     style_code: string | null;
     color_code: string | null;
     display_name: string | null;
+    category: string | null;
+    product_line: string | null;
     total_quantity: number;
     total_revenue: number;
   }>;
+}
+
+function joinParts(parts: Array<string | null | undefined>, sep = '/'): string {
+  return parts.filter((p): p is string => !!p && p.trim().length > 0).join(sep);
 }
 
 const fetcher = async (url: string): Promise<StatsResponse> => {
@@ -160,8 +166,9 @@ export default function StatsPage() {
                   <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)]">
                     <tr>
                       <th className="text-left p-3">상품</th>
+                      <th className="text-left p-3">분류</th>
                       <th className="text-right p-3 w-20">수량</th>
-                      <th className="text-right p-3 w-32">매출</th>
+                      <th className="text-right p-3 w-32">금액</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,19 +177,11 @@ export default function StatsPage() {
                         key={p.product_id}
                         className="border-t border-[var(--color-separator-opaque)]"
                       >
-                        <td className="p-3">
-                          <div className="text-caption2 text-[var(--color-label-secondary)]">
-                            {p.brand_name ?? '—'}
-                          </div>
-                          <div className="font-semibold">
-                            {p.style_code ?? '—'}
-                            {p.color_code ? ` / ${p.color_code}` : ''}
-                          </div>
-                          {p.display_name && p.display_name !== p.style_code && (
-                            <div className="text-caption2 text-[var(--color-label-tertiary)] truncate max-w-[260px]">
-                              {p.display_name}
-                            </div>
-                          )}
+                        <td className="p-3 font-semibold">
+                          {joinParts([p.brand_name, p.style_code, p.color_code]) || '—'}
+                        </td>
+                        <td className="p-3 text-caption1 text-[var(--color-label-secondary)]">
+                          {joinParts([p.category, p.product_line]) || '—'}
                         </td>
                         <td className="p-3 text-right tabular-nums font-semibold">
                           {p.total_quantity}
