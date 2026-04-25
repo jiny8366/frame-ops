@@ -183,18 +183,20 @@ export default function StoreAdminPage() {
             {/* ── 출퇴근 위치 정책 ─────────────────────────────────────── */}
             <div className="rounded-lg border border-[var(--color-separator-opaque)] p-3 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-callout font-semibold">출퇴근 위치 검증 (모바일)</span>
+                <span className="text-callout font-semibold">위치정보 사용 (출퇴근 검증)</span>
                 <label className="flex items-center gap-2 text-caption1">
                   <input
                     type="checkbox"
                     checked={geoRequired}
                     onChange={(e) => setGeoRequired(e.target.checked)}
                   />
-                  활성
+                  {geoRequired ? '사용' : '비사용'}
                 </label>
               </div>
               <p className="text-caption2 text-[var(--color-label-tertiary)]">
-                활성 시: 모바일 사용자가 매장 좌표 반경 안에서만 로그인 가능. 데스크톱 / 본사 사용자는 영향 없음.
+                <strong>사용</strong>: 모바일 사용자가 매장 좌표 반경 안에서만 로그인/로그아웃 가능 (출근·퇴근 자동 기록).
+                <br />
+                <strong>비사용</strong>: 어디서든 로그인/로그아웃 가능 (출퇴근 기록 없음). 데스크톱·본사 사용자는 항상 영향 없음.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Field label="위도 (lat)">
