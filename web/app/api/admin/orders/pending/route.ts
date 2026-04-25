@@ -6,8 +6,11 @@ import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 
 function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
+
+const UNASSIGNED_KEY = '__unassigned__';
+const UNASSIGNED_NAME = '매입처 미지정';
 
 export async function GET(request: Request) {
   const session = await getServerSession();
@@ -46,18 +49,19 @@ export async function GET(request: Request) {
   >();
 
   for (const r of rows) {
-    let g = groupsMap.get(r.supplier_id);
+    const key = r.supplier_id ?? UNASSIGNED_KEY;
+    let g = groupsMap.get(key);
     if (!g) {
       g = {
-        supplier_id: r.supplier_id,
-        supplier_name: r.supplier_name,
+        supplier_id: r.supplier_id ?? UNASSIGNED_KEY,
+        supplier_name: r.supplier_name ?? UNASSIGNED_NAME,
         supplier_code: r.supplier_code,
         items: [],
         total_quantity: 0,
         total_revenue: 0,
         total_cost: 0,
       };
-      groupsMap.set(r.supplier_id, g);
+      groupsMap.set(key, g);
     }
     g.items.push(r);
     g.total_quantity += r.total_quantity;
