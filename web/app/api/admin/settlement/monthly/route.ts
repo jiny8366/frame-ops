@@ -15,8 +15,9 @@ interface DayRow {
 }
 
 function thisYearMonth(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  // KST 기준 영업월 (RPC 가 Asia/Seoul 일자로 버킷팅하므로 일관 유지)
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+  return ymd.slice(0, 7);
 }
 
 export async function GET(request: Request) {

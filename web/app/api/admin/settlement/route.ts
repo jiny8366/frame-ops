@@ -20,8 +20,9 @@ interface CloseBody {
   expenses?: ExpenseLine[];
 }
 
+// 서버 기준 한국 영업일자 — RPC 일자 버킷팅(Asia/Seoul)과 일치.
 function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
 export async function GET(request: Request) {
