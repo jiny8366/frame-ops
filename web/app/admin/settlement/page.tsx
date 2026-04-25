@@ -59,8 +59,9 @@ function makeFetcher<T>() {
 const summaryFetcher = makeFetcher<SummaryResponse>();
 const monthlyFetcher = makeFetcher<MonthlyResponse>();
 
+// 서버(한국 영업일자) 기준 오늘 — Asia/Seoul 캘린더 일자 반환.
 function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
 function ymOf(date: string): string {
@@ -72,8 +73,8 @@ function fmtMD(date: string): string {
 }
 
 function addDays(date: string, days: number): string {
-  const d = new Date(date + 'T00:00:00');
-  d.setDate(d.getDate() + days);
+  const d = new Date(date + 'T00:00:00Z'); // UTC 자정 기준 단순 산술 — 결과는 다시 YYYY-MM-DD 로 잘라냄
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
