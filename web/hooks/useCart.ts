@@ -13,7 +13,9 @@ import { useCallback, useMemo, useState } from 'react';
 export interface CartItem {
   id: string;              // 로컬 임시 ID
   product_id: string;
+  brand_name: string;
   style_code: string;
+  color_code: string;
   display_name: string;
   unit_price: number;      // 판매 시점 단가 고정
   quantity: number;
@@ -23,7 +25,9 @@ export interface CartItem {
 /** 검색 결과(Product 또는 RPC 결과)에서 장바구니에 담을 때 필요한 최소 필드. */
 export interface CartProductSnapshot {
   id: string;
+  brand_name: string | null;
   style_code: string | null;
+  color_code: string | null;
   display_name: string | null;
   sale_price: number | null;
 }
@@ -56,7 +60,9 @@ export function useCart(): UseCartReturn {
         {
           id: `cart-${Date.now()}-${product.id}`,
           product_id: product.id,
+          brand_name: product.brand_name ?? '',
           style_code: product.style_code ?? '',
+          color_code: product.color_code ?? '',
           display_name: product.display_name ?? product.style_code ?? '',
           unit_price: product.sale_price ?? 0,
           quantity: 1,
