@@ -19,7 +19,7 @@ export async function GET() {
       .order('sort_order', { ascending: true }),
     db
       .from('fo_staff_job_titles')
-      .select('code, label, sort_order')
+      .select('code, label, sort_order, scope')
       .eq('active', true)
       .order('sort_order', { ascending: true }),
   ]);
