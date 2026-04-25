@@ -76,16 +76,7 @@ export const CartItem = memo(function CartItem({
       </div>
 
       {/* ── 2행 (모바일) / 우측 컨트롤 (데스크톱): [-] 수량 [+] + 금액 ── */}
-      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
-        {/* 모바일 전용: 단가·할인 캡션 (좌측) */}
-        <button
-          type="button"
-          onClick={handleDiscount}
-          className="pressable text-caption2 text-[var(--color-label-tertiary)] underline-offset-2 hover:underline sm:hidden"
-        >
-          ₩{item.unit_price.toLocaleString()} · 할인 ₩{item.discount_amount.toLocaleString()}
-        </button>
-
+      <div className="flex items-center justify-end gap-2 sm:gap-3">
         {/* 수량 ± */}
         <div className="flex items-center gap-1 shrink-0">
           <button
