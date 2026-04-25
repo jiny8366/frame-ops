@@ -41,6 +41,9 @@ export async function GET(request: Request) {
       supplier_id: string;
       supplier_name: string;
       supplier_code: string | null;
+      supplier_business_number: string | null;
+      supplier_address: string | null;
+      supplier_contact: string | null;
       items: typeof rows;
       total_quantity: number;
       total_revenue: number;
@@ -56,6 +59,9 @@ export async function GET(request: Request) {
         supplier_id: r.supplier_id ?? UNASSIGNED_KEY,
         supplier_name: r.supplier_name ?? UNASSIGNED_NAME,
         supplier_code: r.supplier_code,
+        supplier_business_number: null,
+        supplier_address: null,
+        supplier_contact: null,
         items: [],
         total_quantity: 0,
         total_revenue: 0,
@@ -67,6 +73,25 @@ export async function GET(request: Request) {
     g.total_quantity += r.total_quantity;
     g.total_revenue += r.total_quantity * r.unit_price;
     g.total_cost += r.total_quantity * r.cost_price;
+  }
+
+  // 매입처 상세 정보 일괄 조회 (PDF 인쇄용 발주처/수주처 표시)
+  const supplierIds = Array.from(groupsMap.values())
+    .map((g) => g.supplier_id)
+    .filter((id) => id !== UNASSIGNED_KEY);
+  if (supplierIds.length > 0) {
+    const { data: suppliers } = await db
+      .from('fo_suppliers')
+      .select('id, business_number, address, contact')
+      .in('id', supplierIds);
+    for (const s of suppliers ?? []) {
+      const g = groupsMap.get(s.id);
+      if (g) {
+        g.supplier_business_number = s.business_number;
+        g.supplier_address = s.address;
+        g.supplier_contact = s.contact;
+      }
+    }
   }
 
   // 매장 정보

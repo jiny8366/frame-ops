@@ -1,10 +1,12 @@
-// Frame Ops Web — 주문리스트 인쇄용 페이지
-// 부모 창에서 supplier_id, from, to 쿼리 → /api/admin/orders/pending 호출 → 해당 그룹만 표시.
-// 자동 window.print() 트리거 (사용자가 PDF 로 저장).
+// Frame Ops Web — 발주서 인쇄용 페이지
+// 1) 상단: 발주처(매장) + 수주처(매입처) 정보
+// 2) 중간: 발주 상품 리스트
+// 3) 하단: 합계
+// mark=1 쿼리 시 데이터 로드 후 발주 처리 마킹 호출.
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface OrderItem {
@@ -22,6 +24,9 @@ interface SupplierGroup {
   supplier_id: string;
   supplier_name: string;
   supplier_code: string | null;
+  supplier_business_number: string | null;
+  supplier_address: string | null;
+  supplier_contact: string | null;
   items: OrderItem[];
   total_quantity: number;
   total_revenue: number;
@@ -45,10 +50,12 @@ export default function OrdersPrintPage() {
   const supplierId = params.get('supplier_id') ?? '';
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
+  const shouldMark = params.get('mark') === '1';
 
   const [data, setData] = useState<OrdersResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [printed, setPrinted] = useState(false);
+  const markedRef = useRef(false);
 
   useEffect(() => {
     if (!supplierId || !from || !to) {
@@ -70,22 +77,43 @@ export default function OrdersPrintPage() {
     })();
   }, [supplierId, from, to]);
 
-  // 데이터 로드 후 자동 인쇄
+  // 데이터 로드 후 자동 인쇄 + (요청 시) 발주 처리 마킹
   useEffect(() => {
-    if (data && !printed) {
-      // 페이지 렌더 후 약간 딜레이
-      const t = window.setTimeout(() => {
-        window.print();
-        setPrinted(true);
-      }, 300);
-      return () => window.clearTimeout(t);
+    if (!data || printed) return;
+
+    // 인쇄 트리거
+    const t = window.setTimeout(() => {
+      window.print();
+      setPrinted(true);
+    }, 300);
+
+    // 마킹은 한 번만 — 인쇄 페이지가 데이터 fetch 완료 → 그 다음 마킹.
+    if (shouldMark && !markedRef.current) {
+      markedRef.current = true;
+      void (async () => {
+        try {
+          const res = await fetch('/api/admin/orders/place', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ supplier_id: supplierId, from, to }),
+          });
+          if (!res.ok) {
+            // 마킹 실패는 인쇄에 영향을 주지 않음 (사용자가 새로고침해서 재시도 가능)
+            console.error('mark_orders_placed failed', await res.text());
+          }
+        } catch (e) {
+          console.error('mark_orders_placed error', e);
+        }
+      })();
     }
-  }, [data, printed]);
+
+    return () => window.clearTimeout(t);
+  }, [data, printed, shouldMark, supplierId, from, to]);
 
   if (error) {
     return (
       <main className="p-8">
-        <p className="text-system-red">{error}</p>
+        <p className="text-red-600">{error}</p>
       </main>
     );
   }
@@ -105,6 +133,8 @@ export default function OrdersPrintPage() {
       </main>
     );
   }
+
+  const issueDate = new Date().toLocaleDateString('ko-KR');
 
   return (
     <main className="print-root mx-auto max-w-[210mm] p-8 bg-white text-black">
@@ -149,6 +179,59 @@ export default function OrdersPrintPage() {
         .print-root .right {
           text-align: right;
         }
+        .party-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .party-box {
+          border: 1px solid #ccc;
+          padding: 10px 12px;
+          font-size: 10.5pt;
+        }
+        .party-box .label {
+          font-size: 9pt;
+          color: #555;
+          margin-bottom: 4px;
+          letter-spacing: 0.5px;
+        }
+        .party-box .name {
+          font-size: 13pt;
+          font-weight: 700;
+          margin-bottom: 6px;
+        }
+        .party-box .row {
+          display: flex;
+          gap: 6px;
+          margin-top: 2px;
+        }
+        .party-box .row strong {
+          min-width: 60px;
+          color: #333;
+          font-weight: 600;
+        }
+        .totals {
+          margin-top: 16px;
+          border-top: 2px solid #000;
+          padding-top: 10px;
+          display: flex;
+          justify-content: flex-end;
+          gap: 28px;
+          font-size: 12pt;
+        }
+        .totals .item {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+        }
+        .totals .item .label {
+          font-size: 9pt;
+          color: #666;
+        }
+        .totals .item .value {
+          font-weight: 700;
+        }
       `}</style>
 
       <div className="no-print mb-4 flex items-center gap-3">
@@ -167,72 +250,108 @@ export default function OrdersPrintPage() {
           창 닫기
         </button>
         <span className="text-xs text-gray-500">
-          인쇄 대화상자에서 “PDF 로 저장” 선택 가능
+          인쇄 대화상자에서 "PDF 로 저장" 선택 가능
         </span>
       </div>
 
-      {/* 매장 헤더 */}
-      <header className="mb-6 border-b-2 border-black pb-3">
-        <div className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold">발주서 (주문리스트)</h1>
-          <span className="text-sm text-gray-600">
-            발행일: {new Date().toLocaleDateString('ko-KR')}
-          </span>
-        </div>
-        <div className="mt-2 text-sm">
-          <div>
-            <strong>발주 매장:</strong> {data.store?.name} ({data.store?.store_code})
+      {/* 제목 */}
+      <header className="mb-4 border-b-2 border-black pb-2 flex items-baseline justify-between">
+        <h1 className="text-2xl font-bold">발 주 서</h1>
+        <span className="text-sm text-gray-700">발행일: {issueDate}</span>
+      </header>
+
+      {/* 상단: 발주처 / 수주처 */}
+      <section className="party-grid">
+        {/* 발주처 = 매장 */}
+        <div className="party-box">
+          <div className="label">발 주 처 (Buyer)</div>
+          <div className="name">
+            {data.store?.name ?? '—'}
+            {data.store?.store_code && (
+              <span className="ml-2 text-sm font-mono font-normal text-gray-600">
+                {data.store.store_code}
+              </span>
+            )}
           </div>
+          {data.store?.business_reg_no && (
+            <div className="row">
+              <strong>사업자번호</strong>
+              <span>{data.store.business_reg_no}</span>
+            </div>
+          )}
           {data.store?.address && (
-            <div>
-              <strong>주소:</strong> {data.store.address}
+            <div className="row">
+              <strong>주소</strong>
+              <span>{data.store.address}</span>
             </div>
           )}
           {data.store?.phone && (
-            <div>
-              <strong>연락처:</strong> {data.store.phone}
-            </div>
-          )}
-          {data.store?.business_reg_no && (
-            <div>
-              <strong>사업자번호:</strong> {data.store.business_reg_no}
+            <div className="row">
+              <strong>연락처</strong>
+              <span>{data.store.phone}</span>
             </div>
           )}
         </div>
-      </header>
 
-      {/* 매입처 + 기간 */}
-      <section className="mb-4 text-sm">
-        <div>
-          <strong>매입처:</strong> {group.supplier_name}{' '}
-          {group.supplier_code && <span className="text-gray-500">({group.supplier_code})</span>}
-        </div>
-        <div>
-          <strong>기간:</strong> {data.period.from} ~ {data.period.to}
+        {/* 수주처 = 매입처 */}
+        <div className="party-box">
+          <div className="label">수 주 처 (Supplier)</div>
+          <div className="name">
+            {group.supplier_name}
+            {group.supplier_code && (
+              <span className="ml-2 text-sm font-mono font-normal text-gray-600">
+                {group.supplier_code}
+              </span>
+            )}
+          </div>
+          {group.supplier_business_number && (
+            <div className="row">
+              <strong>사업자번호</strong>
+              <span>{group.supplier_business_number}</span>
+            </div>
+          )}
+          {group.supplier_address && (
+            <div className="row">
+              <strong>주소</strong>
+              <span>{group.supplier_address}</span>
+            </div>
+          )}
+          {group.supplier_contact && (
+            <div className="row">
+              <strong>연락처</strong>
+              <span>{group.supplier_contact}</span>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* 항목 테이블 */}
+      <p className="mb-2 text-sm">
+        <strong>판매 발생 기간:</strong> {data.period.from} ~ {data.period.to}
+      </p>
+
+      {/* 중간: 발주 상품 리스트 */}
       <table>
         <thead>
           <tr>
+            <th style={{ width: '8%' }}>No</th>
             <th>브랜드</th>
             <th>스타일</th>
             <th>색상</th>
             <th>제품명</th>
-            <th className="right">수량</th>
-            <th className="right">원가</th>
-            <th className="right">합계</th>
+            <th className="right" style={{ width: '8%' }}>수량</th>
+            <th className="right" style={{ width: '12%' }}>원가</th>
+            <th className="right" style={{ width: '14%' }}>합계</th>
           </tr>
         </thead>
         <tbody>
-          {group.items.map((it) => (
+          {group.items.map((it, idx) => (
             <tr key={it.product_id}>
+              <td>{idx + 1}</td>
               <td>{it.brand_name}</td>
               <td>{it.style_code ?? '—'}</td>
               <td>{it.color_code ?? '—'}</td>
               <td>{it.display_name ?? ''}</td>
-              <td className="right">{it.total_quantity}</td>
+              <td className="right">{it.total_quantity.toLocaleString()}</td>
               <td className="right">₩{it.cost_price.toLocaleString()}</td>
               <td className="right">
                 ₩{(it.total_quantity * it.cost_price).toLocaleString()}
@@ -240,19 +359,34 @@ export default function OrdersPrintPage() {
             </tr>
           ))}
         </tbody>
-        <tfoot>
-          <tr>
-            <th colSpan={4} className="right">
-              합계
-            </th>
-            <th className="right">{group.total_quantity}</th>
-            <th></th>
-            <th className="right">₩{group.total_cost.toLocaleString()}</th>
-          </tr>
-        </tfoot>
       </table>
 
-      {/* 푸터 */}
+      {/* 하단: 합계 */}
+      <section className="totals">
+        <div className="item">
+          <span className="label">총 품목 수</span>
+          <span className="value">{group.items.length.toLocaleString()}</span>
+        </div>
+        <div className="item">
+          <span className="label">총 수량</span>
+          <span className="value">{group.total_quantity.toLocaleString()}</span>
+        </div>
+        <div className="item">
+          <span className="label">총 원가 합계</span>
+          <span className="value">₩{group.total_cost.toLocaleString()}</span>
+        </div>
+      </section>
+
+      {/* 발행자 사인 영역 */}
+      <section className="mt-12 grid grid-cols-2 gap-8 text-sm">
+        <div>
+          <div className="border-t border-black pt-2">발 주 자: ____________________</div>
+        </div>
+        <div>
+          <div className="border-t border-black pt-2">수 주 자: ____________________</div>
+        </div>
+      </section>
+
       <footer className="mt-12 text-xs text-gray-600">
         <p>본 자료는 Frame Ops 시스템에서 자동 생성된 발주 자료입니다.</p>
       </footer>
