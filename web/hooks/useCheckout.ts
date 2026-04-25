@@ -1,6 +1,6 @@
-// Frame Ops — POS 결제 훅 (Optimistic UI)
-// 결제 버튼 클릭 → 즉시 토스트 + 홈 라우팅 → 백그라운드 저장.
-// 네트워크 실패 시 sync_queue 로 폴백 (오프라인 복원력).
+// Frame Ops — POS 결제 훅
+// 결제 시 실제 서버 응답을 기다린 뒤 성공/실패 토스트. 실패 시 sync_queue 폴백.
+// (이전: optimistic 즉시 성공 토스트 → 실패해도 사용자 인지 어려움. 신뢰성 우선으로 변경)
 
 'use client';
 
@@ -11,27 +11,24 @@ import { enqueueSync } from '@/lib/db/indexeddb';
 import type { SaleInput } from '@/types';
 
 export interface UseCheckoutReturn {
-  submit: (saleData: SaleInput) => Promise<void>;
+  /** 성공이면 true, 실패(폴백 큐 보관 포함) 면 false. POS 페이지가 카트 비울지 결정. */
+  submit: (saleData: SaleInput) => Promise<boolean>;
 }
 
 export function useCheckout(): UseCheckoutReturn {
-  const submit = useCallback(
-    async (saleData: SaleInput): Promise<void> => {
-      // ① 즉시 UI 반영 — POS 화면 잔류, 카트 비움은 호출자가 처리
-      toast.success('판매 완료', { duration: 2000 });
+  const submit = useCallback(async (saleData: SaleInput): Promise<boolean> => {
+    if (!saleData.store_id) {
+      toast.error('매장 정보가 없어 판매를 등록할 수 없습니다. 다시 로그인하세요.');
+      return false;
+    }
 
-      try {
-        // ② 백그라운드 저장 — RPC create_sale_with_items 통해
-        //    fo_sales + fo_sale_items + stock_quantity 차감 원자 처리.
-        const { data, error } = await salesApi.createWithItems(saleData);
-        if (error) throw new Error(error);
-        if (!data) throw new Error('서버 응답이 비어있습니다.');
+    try {
+      const { data, error } = await salesApi.createWithItems(saleData);
+      if (error) {
+        console.error('[useCheckout] API error:', error);
+        toast.error(`판매 등록 실패: ${error}`);
 
-        // 성공: 별도 IDB 백업 없음. RPC 가 모든 부수효과 처리.
-        // (Phase 1 의 fo_sales raw insert 경로와 달리 RPC 는 sale_id 만 반환)
-      } catch (err) {
-        // ③ 실패: sync_queue 'sales' table 로 enqueue → /api/sales/create 재전송
-        //    (Phase 1 TASK 8 DLQ 가 3회 실패 후 status='dead' 보존)
+        // 네트워크 단절 가능성 — sync_queue 에 보관 (재전송)
         const now = new Date().toISOString();
         await enqueueSync({
           table: 'sales',
@@ -42,14 +39,40 @@ export function useCheckout(): UseCheckoutReturn {
           status: 'pending',
           updated_at: now,
         });
-
-        toast.warning('네트워크 복구 시 자동 전송됩니다.', { duration: 4000 });
-        // 사용자는 이미 다음 고객 응대 중이므로 UI 에서 차단하지 않음.
-        console.error('[useCheckout] 백그라운드 저장 실패, sync_queue 에 보관:', err);
+        toast.info('네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+        return false;
       }
-    },
-    []
-  );
+      if (!data) {
+        console.error('[useCheckout] empty response');
+        toast.error('판매 등록 응답이 비어있습니다.');
+        return false;
+      }
+      toast.success('판매 완료', { duration: 2000 });
+      return true;
+    } catch (err) {
+      console.error('[useCheckout] exception:', err);
+      const msg = err instanceof Error ? err.message : '네트워크 오류';
+      toast.error(`판매 등록 실패: ${msg}`);
+
+      // 네트워크 예외 — sync_queue 폴백
+      try {
+        const now = new Date().toISOString();
+        await enqueueSync({
+          table: 'sales',
+          operation: 'insert',
+          payload: saleData as unknown as Record<string, unknown>,
+          created_at: now,
+          retry_count: 0,
+          status: 'pending',
+          updated_at: now,
+        });
+        toast.info('네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+      } catch {
+        // ignore IDB failure
+      }
+      return false;
+    }
+  }, []);
 
   return { submit };
 }

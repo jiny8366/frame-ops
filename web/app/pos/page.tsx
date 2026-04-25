@@ -96,7 +96,7 @@ export default function PosPage() {
   const handleCheckout = useCallback(
     async (payment: PaymentInput) => {
       setPaymentOpen(false);
-      await submit({
+      const ok = await submit({
         store_id: storeId,
         items: cart.items.map((i) => ({
           product_id: i.product_id,
@@ -113,9 +113,12 @@ export default function PosPage() {
         idempotency_key: `sale-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
       });
 
-      cart.clear();
-      setGlobalDiscount(0);
-      setSaleDate(todayIso());
+      // 성공 시에만 카트 비움. 실패면 사용자가 재시도 가능.
+      if (ok) {
+        cart.clear();
+        setGlobalDiscount(0);
+        setSaleDate(todayIso());
+      }
     },
     [cart, globalDiscount, submit, storeId, saleDate, buildSoldAt]
   );
