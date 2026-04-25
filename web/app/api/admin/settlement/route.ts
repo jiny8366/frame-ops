@@ -87,6 +87,21 @@ export async function POST(request: Request) {
     }
 
     const db = getDB();
+
+    // 이미 마감된 영업일은 수정 불가
+    const { data: existing } = await db
+      .from('fo_settlements')
+      .select('id')
+      .eq('store_id', session.store_id)
+      .eq('business_date', body.business_date)
+      .maybeSingle();
+    if (existing) {
+      return NextResponse.json(
+        { data: null, error: '이미 마감된 영업일입니다. 수정할 수 없습니다.' },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await db.rpc('close_daily_settlement', {
       p_store_id: session.store_id,
       p_business_date: body.business_date,
