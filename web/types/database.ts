@@ -1360,6 +1360,45 @@ export type Database = {
       }
     }
     Functions: {
+      close_daily_settlement: {
+        Args: {
+          p_store_id: string
+          p_business_date: string
+          p_cash_counted: number
+          p_deposit?: number
+          p_note?: string | null
+          p_expenses?: Json
+        }
+        Returns: {
+          settlement_id: string
+          total_cash_sales: number
+          total_card_sales: number
+          total_expense: number
+          cash_expected: number
+          variance: number
+          cash_on_hand: number
+        }[]
+      }
+      get_daily_settlement_summary: {
+        Args: {
+          p_store_id: string
+          p_business_date: string
+        }
+        Returns: {
+          settlement_id: string | null
+          starting_cash: number
+          total_cash_sales: number
+          total_card_sales: number
+          total_expense: number
+          cash_counted: number | null
+          cash_expected: number | null
+          variance: number | null
+          deposit: number
+          cash_on_hand: number
+          note: string | null
+          is_closed: boolean
+        }[]
+      }
       create_inbound_receipt: {
         Args: {
           p_store_id: string
