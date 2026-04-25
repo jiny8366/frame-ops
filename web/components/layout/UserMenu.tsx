@@ -15,6 +15,7 @@ interface UserMenuProps {
 interface MenuItem {
   label: string;
   enabled: boolean;
+  href?: string;
   onClick?: () => void;
   divider?: boolean;
 }
@@ -37,6 +38,14 @@ export function UserMenu({ session }: UserMenuProps) {
     setOpen(false);
   }, []);
 
+  const navigate = useCallback(
+    (href: string) => {
+      setOpen(false);
+      router.push(href);
+    },
+    [router]
+  );
+
   // 바깥 클릭 시 닫기
   useEffect(() => {
     if (!open) return;
@@ -54,7 +63,7 @@ export function UserMenu({ session }: UserMenuProps) {
     };
   }, [open]);
 
-  // 메뉴 구성: Phase A 는 로그아웃만 동작. 추후 phase 별 enabled=true 로 전환.
+  // 메뉴 구성: Phase A=로그아웃, Phase B1=직원/매장 추가됨. 후속 phase 에서 enabled=true 로 전환.
   const items: MenuItem[] = [
     { label: '판매통계', enabled: false, onClick: showSoon },
     { label: '판매내역 검색', enabled: false, onClick: showSoon },
@@ -62,8 +71,8 @@ export function UserMenu({ session }: UserMenuProps) {
     { label: '주문리스트', enabled: false, onClick: showSoon },
     { label: '매입처리', enabled: false, onClick: showSoon },
     { divider: true, label: '', enabled: false },
-    { label: '직원 관리', enabled: false, onClick: showSoon },
-    { label: '매장 정보', enabled: false, onClick: showSoon },
+    { label: '직원 관리', enabled: true, href: '/admin/staff' },
+    { label: '매장 정보', enabled: true, href: '/admin/store' },
     { label: '매입 등록', enabled: false, onClick: showSoon },
     { label: '일일 마감', enabled: false, onClick: showSoon },
     { divider: true, label: '', enabled: false },
@@ -132,7 +141,7 @@ export function UserMenu({ session }: UserMenuProps) {
                   key={item.label}
                   type="button"
                   role="menuitem"
-                  onClick={item.onClick}
+                  onClick={item.href ? () => navigate(item.href!) : item.onClick}
                   disabled={!item.enabled}
                   className={[
                     'w-full text-left px-3 py-2',
