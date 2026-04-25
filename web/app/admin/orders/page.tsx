@@ -152,15 +152,28 @@ export default function OrdersPage() {
     }
   }, [data, selected, markPlaced]);
 
-  const handlePrint = useCallback(async () => {
+  const handlePrint = useCallback(() => {
     if (!selected) return;
     setPickerOpen(false);
-    // 마킹은 인쇄 페이지에서 직접 호출 (race 방지) — 부모는 창만 열고 끝.
+    // PDF 인쇄: 인쇄 페이지가 fetch 후 자체 마킹.
     const params = new URLSearchParams({
       supplier_id: selected.supplier_id,
       from,
       to,
       mark: '1',
+    });
+    window.open(`/admin/orders/print?${params.toString()}`, '_blank');
+  }, [selected, from, to]);
+
+  const handlePreview = useCallback(() => {
+    if (!selected) return;
+    setPickerOpen(false);
+    // 미리보기: 마킹 없이 발주서 화면만 노출. 인쇄도 자동 트리거 안 함.
+    const params = new URLSearchParams({
+      supplier_id: selected.supplier_id,
+      from,
+      to,
+      preview: '1',
     });
     window.open(`/admin/orders/print?${params.toString()}`, '_blank');
   }, [selected, from, to]);
@@ -278,6 +291,7 @@ export default function OrdersPage() {
             pickerOpen={pickerOpen}
             onTogglePicker={() => setPickerOpen((v) => !v)}
             onClosePicker={() => setPickerOpen(false)}
+            onPreview={handlePreview}
             onExcel={handleExcel}
             onPrint={handlePrint}
           />
@@ -302,6 +316,7 @@ function SupplierContent({
   pickerOpen,
   onTogglePicker,
   onClosePicker,
+  onPreview,
   onExcel,
   onPrint,
 }: {
@@ -310,6 +325,7 @@ function SupplierContent({
   pickerOpen: boolean;
   onTogglePicker: () => void;
   onClosePicker: () => void;
+  onPreview: () => void;
   onExcel: () => void;
   onPrint: () => void;
 }) {
@@ -347,16 +363,26 @@ function SupplierContent({
               <div className="fixed inset-0 z-40" onClick={onClosePicker} aria-hidden />
               <div
                 role="menu"
-                className="absolute right-0 mt-2 z-50 min-w-[200px] rounded-xl bg-[var(--color-bg-elevated,var(--color-bg-secondary))] shadow-lg ring-1 ring-[var(--color-separator-opaque)] overflow-hidden"
+                className="absolute right-0 mt-2 z-50 min-w-[220px] rounded-xl bg-[var(--color-bg-elevated,var(--color-bg-secondary))] shadow-lg ring-1 ring-[var(--color-separator-opaque)] overflow-hidden"
               >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={onPreview}
+                  className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
+                >
+                  <span className="text-[var(--color-label-primary)] font-semibold">미리보기</span>
+                  <span className="text-caption2 text-[var(--color-label-tertiary)]">발주 처리 안 함</span>
+                </button>
+                <div className="border-t border-[var(--color-separator-opaque)]" />
                 <button
                   type="button"
                   role="menuitem"
                   onClick={onExcel}
                   className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
                 >
-                  <span className="text-[var(--color-system-green)] font-semibold">Excel</span>
-                  <span className="text-caption2 text-[var(--color-label-tertiary)]">.xlsx 다운로드</span>
+                  <span className="text-[var(--color-system-green)] font-semibold">EXCEL</span>
+                  <span className="text-caption2 text-[var(--color-label-tertiary)]">.xlsx + 발주 처리</span>
                 </button>
                 <div className="border-t border-[var(--color-separator-opaque)]" />
                 <button
@@ -365,8 +391,8 @@ function SupplierContent({
                   onClick={onPrint}
                   className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
                 >
-                  <span className="text-[var(--color-system-blue)] font-semibold">PDF</span>
-                  <span className="text-caption2 text-[var(--color-label-tertiary)]">인쇄/저장</span>
+                  <span className="text-[var(--color-system-blue)] font-semibold">PDF인쇄</span>
+                  <span className="text-caption2 text-[var(--color-label-tertiary)]">인쇄/저장 + 발주 처리</span>
                 </button>
               </div>
             </>

@@ -1,8 +1,11 @@
-// Frame Ops Web — 발주서 인쇄용 페이지
+// Frame Ops Web — 발주서 인쇄/미리보기 페이지
 // 1) 상단: 발주처(매장) + 수주처(매입처) 정보
 // 2) 중간: 발주 상품 리스트
 // 3) 하단: 합계
-// mark=1 쿼리 시 데이터 로드 후 발주 처리 마킹 호출.
+// 모드:
+//   · preview=1 → 미리보기. 자동 인쇄·마킹 없음.
+//   · mark=1    → 데이터 로드 후 발주 처리 마킹 + 자동 인쇄.
+//   · 둘 다 없음 → 자동 인쇄만 (구버전 호환).
 
 'use client';
 
@@ -50,7 +53,9 @@ export default function OrdersPrintPage() {
   const supplierId = params.get('supplier_id') ?? '';
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
-  const shouldMark = params.get('mark') === '1';
+  const isPreview = params.get('preview') === '1';
+  const shouldMark = !isPreview && params.get('mark') === '1';
+  const shouldAutoPrint = !isPreview;
 
   const [data, setData] = useState<OrdersResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,15 +82,20 @@ export default function OrdersPrintPage() {
     })();
   }, [supplierId, from, to]);
 
-  // 데이터 로드 후 자동 인쇄 + (요청 시) 발주 처리 마킹
+  // 데이터 로드 후 자동 인쇄(인쇄 모드) + (요청 시) 발주 처리 마킹
   useEffect(() => {
     if (!data || printed) return;
 
-    // 인쇄 트리거
-    const t = window.setTimeout(() => {
-      window.print();
+    // 인쇄 트리거 — 미리보기 모드일 땐 생략
+    let t: number | undefined;
+    if (shouldAutoPrint) {
+      t = window.setTimeout(() => {
+        window.print();
+        setPrinted(true);
+      }, 300);
+    } else {
       setPrinted(true);
-    }, 300);
+    }
 
     // 마킹은 한 번만 — 인쇄 페이지가 데이터 fetch 완료 → 그 다음 마킹.
     if (shouldMark && !markedRef.current) {
@@ -107,8 +117,10 @@ export default function OrdersPrintPage() {
       })();
     }
 
-    return () => window.clearTimeout(t);
-  }, [data, printed, shouldMark, supplierId, from, to]);
+    return () => {
+      if (t !== undefined) window.clearTimeout(t);
+    };
+  }, [data, printed, shouldMark, shouldAutoPrint, supplierId, from, to]);
 
   if (error) {
     return (
@@ -234,13 +246,18 @@ export default function OrdersPrintPage() {
         }
       `}</style>
 
-      <div className="no-print mb-4 flex items-center gap-3">
+      <div className="no-print mb-4 flex items-center gap-3 flex-wrap">
+        {isPreview && (
+          <span className="rounded-md bg-amber-100 text-amber-800 px-2 py-1 text-xs font-semibold">
+            미리보기 (발주 처리 안 됨)
+          </span>
+        )}
         <button
           type="button"
           onClick={() => window.print()}
           className="rounded-md bg-blue-600 px-3 py-1.5 text-white text-sm"
         >
-          다시 인쇄
+          {isPreview ? '인쇄' : '다시 인쇄'}
         </button>
         <button
           type="button"
