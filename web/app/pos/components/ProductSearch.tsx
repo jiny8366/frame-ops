@@ -6,6 +6,7 @@
 
 import { memo, useCallback, useState } from 'react';
 import useSWR from 'swr';
+import { ProductSearchDialog } from './ProductSearchDialog';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { CartProductSnapshot } from '@/hooks/useCart';
@@ -27,6 +28,7 @@ export interface ProductSearchProps {
 
 export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSearchProps) {
   const [query, setQuery] = useState('');
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const debouncedQuery = useDebounce(query, 200);
 
   // 검색어가 비어있으면 SWR 호출 자체를 중단 (빈 q 로 RPC 호출 시 전체 활성 제품
@@ -49,37 +51,49 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 
   const handleClear = useCallback(() => setQuery(''), []);
 
+  const handleOpenKeypad = useCallback(() => setKeypadOpen(true), []);
+  const handleCloseKeypad = useCallback(() => setKeypadOpen(false), []);
+
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* 검색 입력 */}
-      <div className="relative">
-        <input
-          type="search"
-          value={query}
-          onChange={handleQueryChange}
-          placeholder="스타일코드 / 제품명 / 색상코드 검색"
-          className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-4 py-3 placeholder:text-[var(--color-label-tertiary)] focus:border-[var(--color-system-blue)] focus:outline-none"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={handleClear}
-            aria-label="검색어 지움"
-            className="pressable absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-tertiary)]"
-          >
-            ✕
-          </button>
-        )}
-        {isValidating && (
-          <div className="absolute right-10 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
-        )}
+      {/* 검색 입력 + 상품검색 버튼 */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="search"
+            value={query}
+            onChange={handleQueryChange}
+            placeholder="키보드 검색…"
+            className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-4 py-3 placeholder:text-[var(--color-label-tertiary)] focus:border-[var(--color-system-blue)] focus:outline-none"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={handleClear}
+              aria-label="검색어 지움"
+              className="pressable absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-tertiary)]"
+            >
+              ✕
+            </button>
+          )}
+          {isValidating && (
+            <div className="absolute right-10 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenKeypad}
+          className="pressable touch-target-lg rounded-xl px-5 bg-[var(--color-system-blue)] text-white font-semibold whitespace-nowrap"
+        >
+          상품검색
+        </button>
       </div>
 
       {/* 결과 그리드 */}
       <div className="flex-1 overflow-auto">
         {results.length === 0 ? (
           <div className="flex items-center justify-center h-full text-[var(--color-label-tertiary)] text-callout">
-            {debouncedQuery ? `"${debouncedQuery}" 결과 없음` : '검색어를 입력하세요'}
+            {debouncedQuery ? `"${debouncedQuery}" 결과 없음` : '검색어를 입력하거나 우측 "상품검색" 버튼으로 키패드를 사용하세요'}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -89,6 +103,11 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
           </div>
         )}
       </div>
+
+      {/* 키패드 다이얼로그 */}
+      {keypadOpen && (
+        <ProductSearchDialog onSelect={onSelect} onClose={handleCloseKeypad} />
+      )}
     </div>
   );
 });
