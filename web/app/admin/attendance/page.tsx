@@ -47,12 +47,6 @@ function todayDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
 function fmtDateTime(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -60,7 +54,7 @@ function fmtDateTime(iso: string): string {
 
 export default function AttendancePage() {
   const [storeId, setStoreId] = useState<string>('');
-  const [from, setFrom] = useState<string>(daysAgo(6));
+  const [from, setFrom] = useState<string>(todayDate());
   const [to, setTo] = useState<string>(todayDate());
 
   const url = `/api/admin/attendance?from=${from}&to=${to}${storeId ? `&store_id=${storeId}` : ''}`;
@@ -136,10 +130,10 @@ export default function AttendancePage() {
                 <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)] sticky top-0">
                   <tr>
                     <th className="text-left p-3 whitespace-nowrap">일시</th>
-                    <th className="text-left p-3">직원</th>
-                    {data.is_hq && <th className="text-left p-3">매장</th>}
+                    <th className="text-left p-3">직원이름</th>
+                    <th className="text-left p-3">매장명</th>
                     <th className="text-left p-3 w-20">구분</th>
-                    <th className="text-right p-3 w-20 hidden sm:table-cell">거리(m)</th>
+                    <th className="text-left p-3 w-24">위치정보</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,19 +151,17 @@ export default function AttendancePage() {
                           {e.login_id ?? ''}
                         </div>
                       </td>
-                      {data.is_hq && (
-                        <td className="p-3 text-caption1">
-                          {e.store_name ?? '—'}{' '}
-                          <span className="text-[var(--color-label-tertiary)] font-mono">
-                            {e.store_code ?? ''}
-                          </span>
-                        </td>
-                      )}
+                      <td className="p-3 text-caption1">
+                        {e.store_name ?? '—'}{' '}
+                        <span className="text-[var(--color-label-tertiary)] font-mono">
+                          {e.store_code ?? ''}
+                        </span>
+                      </td>
                       <td className="p-3">
                         <EventBadge event={e.event} />
                       </td>
-                      <td className="p-3 text-right tabular-nums hidden sm:table-cell">
-                        {e.distance_m != null ? `${e.distance_m}m` : '—'}
+                      <td className="p-3 text-caption1">
+                        <GeoBadge applied={e.distance_m != null} />
                       </td>
                     </tr>
                   ))}
@@ -196,6 +188,19 @@ function EventBadge({ event }: { event: string }) {
   const isIn = event === 'clock_in';
   const c = isIn ? 'var(--color-system-green)' : 'var(--color-system-orange)';
   const label = isIn ? '출근' : '퇴근';
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-caption2 font-medium"
+      style={{ color: c, backgroundColor: `color-mix(in srgb, ${c} 15%, transparent)` }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function GeoBadge({ applied }: { applied: boolean }) {
+  const c = applied ? 'var(--color-system-blue)' : 'var(--color-label-tertiary)';
+  const label = applied ? '적용' : '미적용';
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-full text-caption2 font-medium"
