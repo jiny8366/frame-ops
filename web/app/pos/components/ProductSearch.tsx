@@ -10,6 +10,7 @@ import useSWR from 'swr';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { CartProductSnapshot } from '@/hooks/useCart';
+import { Modal } from './Modal';
 
 interface SearchResultRow {
   id: string;
@@ -60,7 +61,10 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
     setDraft(e.target.value.slice(0, 30));
   }, []);
 
-  const handleProductClick = useCallback(
+  // 재고 1 (전시상품) 인 경우 사용자 확인을 받기 위한 보류 상태
+  const [pending, setPending] = useState<SearchResultRow | null>(null);
+
+  const addToCart = useCallback(
     (row: SearchResultRow) => {
       onSelect({
         id: row.id,
@@ -70,11 +74,31 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
         display_name: row.display_name,
         sale_price: row.sale_price,
       });
-      // 입력 초기화 → 연속 추가 가능
       setDraft('');
     },
     [onSelect]
   );
+
+  const handleProductClick = useCallback(
+    (row: SearchResultRow) => {
+      // 재고가 정확히 1 이면 전시상품 가능성 — 확인 모달 후 진행
+      if (row.stock_quantity === 1) {
+        setPending(row);
+        return;
+      }
+      addToCart(row);
+    },
+    [addToCart]
+  );
+
+  const handleConfirmPending = useCallback(() => {
+    if (pending) addToCart(pending);
+    setPending(null);
+  }, [pending, addToCart]);
+
+  const handleCancelPending = useCallback(() => {
+    setPending(null);
+  }, []);
 
   return (
     <div className="flex flex-col gap-3 h-full">
@@ -134,6 +158,60 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
           )}
         </div>
       </div>
+
+      {/* 재고 1 (전시상품) 확인 모달 */}
+      {pending && (
+        <Modal onClose={handleCancelPending}>
+          <div className="flex flex-col gap-4 p-5 w-full max-w-[420px]">
+            <div className="flex items-start gap-3">
+              <span className="text-title2" aria-hidden>
+                ⚠️
+              </span>
+              <div className="flex-1">
+                <h3 className="text-headline font-semibold text-[var(--color-label-primary)]">
+                  마지막 1개 (전시상품)
+                </h3>
+                <p className="mt-1 text-callout text-[var(--color-label-secondary)]">
+                  판매 시 고객 고지 후 진행하세요.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-[var(--color-fill-quaternary)] p-3 text-callout">
+              <div className="text-caption2 text-[var(--color-label-tertiary)]">
+                {pending.brand_name}
+              </div>
+              <div className="font-semibold text-[var(--color-label-primary)]">
+                {[pending.brand_name, pending.style_code, pending.color_code]
+                  .filter(Boolean)
+                  .join('/')}
+              </div>
+              {pending.sale_price !== null && (
+                <div className="mt-1 text-caption1 tabular-nums text-[var(--color-label-secondary)]">
+                  ₩{pending.sale_price.toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={handleCancelPending}
+                className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPending}
+                className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-system-orange)] text-white font-semibold"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 });
