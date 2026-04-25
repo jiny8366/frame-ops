@@ -16,6 +16,8 @@ interface CreateStaffBody {
   password: string;
   /** 명시 권한 — null/빈배열이면 role 기본값 사용 */
   permissions?: string[] | null;
+  /** 지점 역할의 근무지 매장. 미지정 시 현재 세션 매장 사용. */
+  store_id?: string | null;
 }
 
 export async function GET() {
@@ -48,7 +50,9 @@ export async function GET() {
     return NextResponse.json({ data: null, error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data, error: null });
+  // 현재 세션 매장 스코프 기준으로 조회된 행이므로 모두 같은 store_id.
+  const enriched = (data ?? []).map((row) => ({ ...row, store_id: session.store_id }));
+  return NextResponse.json({ data: enriched, error: null });
 }
 
 export async function POST(request: Request) {
@@ -116,10 +120,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // 매장 스코프 자동 연결
+    // 근무지 매장: 지점 역할이고 body 에 명시되면 그 매장, 아니면 현재 세션 매장.
+    const isStoreRole = roleCode.startsWith('store_');
+    const targetStoreId = isStoreRole && body.store_id ? body.store_id : session.store_id;
+
     const { error: scopeErr } = await db.from('fo_staff_store_scopes').insert({
       user_id: created.user_id,
-      store_id: session.store_id,
+      store_id: targetStoreId,
     });
     if (scopeErr) {
       // 롤백: 방금 만든 프로필 제거

@@ -1,5 +1,5 @@
-// Frame Ops Web — 직원 추가/편집 모달
-// role 선택 + 메뉴별 접근권한 (체크박스 그리드) 지원.
+// Frame Ops Web — 계정 추가/편집 모달
+// role 선택 + 메뉴별 접근권한 (체크박스 그리드) + 지점 역할 시 근무지 선택.
 
 'use client';
 
@@ -21,11 +21,19 @@ interface StaffRow {
   phone: string | null;
   active: boolean;
   permissions?: string[] | null;
+  store_id?: string | null;
 }
 
 interface RolesResponse {
   roles: Array<{ code: string; label: string; sort_order: number }>;
   job_titles: Array<{ code: string; label: string; sort_order: number }>;
+}
+
+interface StoreOpt {
+  id: string;
+  store_code: string;
+  name: string;
+  active: boolean;
 }
 
 interface StaffFormDialogProps {
@@ -42,8 +50,16 @@ const fetcher = async (url: string) => {
   return json.data!;
 };
 
+const storesFetcher = async (url: string): Promise<StoreOpt[]> => {
+  const res = await fetch(url);
+  const json = (await res.json()) as { data: StoreOpt[] | null; error: string | null };
+  if (json.error) throw new Error(json.error);
+  return json.data ?? [];
+};
+
 export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDialogProps) {
   const { data: opts } = useSWR<RolesResponse>('/api/admin/staff/roles', fetcher);
+  const { data: stores } = useSWR<StoreOpt[]>('/api/hq/stores', storesFetcher);
 
   const [loginId, setLoginId] = useState(initial?.login_id ?? '');
   const [displayName, setDisplayName] = useState(initial?.display_name ?? '');
@@ -52,8 +68,15 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [active, setActive] = useState(initial?.active ?? true);
   const [password, setPassword] = useState('');
+  const [storeId, setStoreId] = useState<string>(initial?.store_id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isStoreRole = roleCode.startsWith('store_');
+  const activeStores = useMemo(
+    () => (stores ?? []).filter((s) => s.active),
+    [stores]
+  );
 
   // 권한 — 명시 override 사용 여부 + 체크된 권한 키 집합
   const [useCustomPerms, setUseCustomPerms] = useState<boolean>(
@@ -107,6 +130,13 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
       setError(null);
 
       const permissionsPayload = useCustomPerms ? Array.from(perms) : null;
+      const storeIdPayload = isStoreRole && storeId ? storeId : null;
+
+      if (isStoreRole && !storeIdPayload) {
+        setError('지점 역할은 근무지를 선택해야 합니다.');
+        setSubmitting(false);
+        return;
+      }
 
       try {
         if (mode === 'create') {
@@ -121,6 +151,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
               phone: phone || null,
               password,
               permissions: permissionsPayload,
+              store_id: storeIdPayload,
             }),
           });
           const json = (await res.json()) as { data: unknown; error: string | null };
@@ -137,6 +168,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
             phone: phone || null,
             active,
             permissions: permissionsPayload,
+            store_id: storeIdPayload,
           };
           if (password) update.password = password;
 
@@ -158,7 +190,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
         setSubmitting(false);
       }
     },
-    [mode, initial, loginId, displayName, roleCode, jobTitleCode, phone, active, password, useCustomPerms, perms, submitting, onSaved]
+    [mode, initial, loginId, displayName, roleCode, jobTitleCode, phone, active, password, useCustomPerms, perms, isStoreRole, storeId, submitting, onSaved]
   );
 
   return (
@@ -175,7 +207,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
         {/* 헤더 */}
         <header className="px-5 py-3 border-b border-[var(--color-separator-opaque)]">
           <h2 className="text-headline font-semibold text-[var(--color-label-primary)]">
-            {mode === 'create' ? '직원 추가' : '직원 편집'}
+            {mode === 'create' ? '계정 추가' : '계정 편집'}
           </h2>
         </header>
 
@@ -264,6 +296,27 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
                 />
                 <span className="text-callout">활성 상태 (체크 해제 시 로그인 차단)</span>
               </label>
+            )}
+
+            {isStoreRole && (
+              <Field label="근무지">
+                <select
+                  value={storeId}
+                  onChange={(e) => setStoreId(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                >
+                  <option value="">매장 선택</option>
+                  {activeStores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.store_code})
+                    </option>
+                  ))}
+                </select>
+                <span className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+                  지점 역할은 한 매장에 소속됩니다.
+                </span>
+              </Field>
             )}
           </div>
 

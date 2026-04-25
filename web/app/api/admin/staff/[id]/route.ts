@@ -19,6 +19,8 @@ interface PatchBody {
   password?: string;
   /** 명시 권한. null/빈배열 → role 기본값 사용. 미전송 → 변경 안 함 */
   permissions?: string[] | null;
+  /** 지점 역할의 근무지 매장. 변경 시 fo_staff_store_scopes 교체. */
+  store_id?: string | null;
 }
 
 async function ensureScoped(userId: string, storeId: string): Promise<boolean> {
@@ -69,18 +71,35 @@ export async function PATCH(
           : null;
     }
 
-    if (Object.keys(update).length === 0) {
-      return NextResponse.json({ data: null, error: '변경할 항목이 없습니다.' }, { status: 400 });
+    const db = getDB();
+
+    if (Object.keys(update).length > 0) {
+      const { error: updErr } = await db
+        .from('fo_staff_profiles')
+        .update(update)
+        .eq('user_id', id);
+      if (updErr) {
+        return NextResponse.json({ data: null, error: updErr.message }, { status: 500 });
+      }
     }
 
-    const db = getDB();
+    // 근무지 매장: 지점 역할이고 store_id 가 명시된 경우 스코프 교체.
+    const isStoreRole = body.role_code?.startsWith('store_') ?? false;
+    if (body.store_id !== undefined && body.store_id !== null && isStoreRole) {
+      await db.from('fo_staff_store_scopes').delete().eq('user_id', id);
+      const { error: scopeErr } = await db
+        .from('fo_staff_store_scopes')
+        .insert({ user_id: id, store_id: body.store_id });
+      if (scopeErr) {
+        return NextResponse.json({ data: null, error: scopeErr.message }, { status: 500 });
+      }
+    }
+
     const { data, error } = await db
       .from('fo_staff_profiles')
-      .update(update)
-      .eq('user_id', id)
       .select('user_id, login_id, display_name, role_code, job_title_code, phone, active')
+      .eq('user_id', id)
       .single();
-
     if (error) {
       return NextResponse.json({ data: null, error: error.message }, { status: 500 });
     }
