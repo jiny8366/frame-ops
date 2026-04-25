@@ -59,25 +59,25 @@ export default function LoginPage() {
             Frame Ops 로그인
           </h1>
           <p className="text-caption1 text-[var(--color-label-secondary)]">
-            지점 코드와 본인 비밀번호를 입력하세요
+            지점 코드 또는 본사 ID 와 비밀번호를 입력하세요
           </p>
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-callout text-[var(--color-label-secondary)]">지점 코드</span>
-          {/* 영문 키보드 기본: pattern + lang="en" + autoCapitalize="characters" 조합 (iOS/Android) */}
+          <span className="text-callout text-[var(--color-label-secondary)]">아이디</span>
+          {/* 영문 + _ 허용 — 지점 코드(BKC01) 또는 본사 login_id(hq_admin) */}
           <input
             type="text"
             inputMode="text"
-            autoCapitalize="characters"
+            autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
             autoComplete="username"
             lang="en"
-            pattern="[A-Za-z0-9]*"
+            pattern="[A-Za-z0-9_-]*"
             value={storeCode}
             onChange={(e) => setStoreCode(e.target.value)}
-            placeholder="예: BKC01"
+            placeholder="지점코드 (BKC01) 또는 본사ID (hq_admin)"
             className="rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-4 py-3 text-body focus:border-[var(--color-system-blue)] focus:outline-none"
             required
             autoFocus={!defaultStoreCode}
