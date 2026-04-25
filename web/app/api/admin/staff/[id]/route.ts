@@ -1,0 +1,83 @@
+// Frame Ops Web — /api/admin/staff/[id]
+// PATCH: 직원 정보·비밀번호·활성 상태 업데이트.
+// 권한: 현재 세션 매장에 속한 직원만 수정 가능.
+
+import { NextResponse } from 'next/server';
+import { getDB } from '@/lib/supabase/server';
+import { getServerSession } from '@/lib/auth/server-session';
+import { hashPassword } from '@/lib/auth/password';
+import type { Database } from '@/types/database';
+
+type StaffUpdate = Database['public']['Tables']['fo_staff_profiles']['Update'];
+
+interface PatchBody {
+  display_name?: string;
+  role_code?: string;
+  job_title_code?: string | null;
+  phone?: string | null;
+  active?: boolean;
+  password?: string;
+}
+
+async function ensureScoped(userId: string, storeId: string): Promise<boolean> {
+  const db = getDB();
+  const { data } = await db
+    .from('fo_staff_store_scopes')
+    .select('user_id')
+    .eq('user_id', userId)
+    .eq('store_id', storeId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({ data: null, error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  if (!(await ensureScoped(id, session.store_id))) {
+    return NextResponse.json(
+      { data: null, error: '해당 매장 소속 직원이 아닙니다.' },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const body = (await request.json()) as PatchBody;
+    const update: StaffUpdate = {};
+    if (body.display_name !== undefined) update.display_name = body.display_name.trim();
+    if (body.role_code !== undefined) update.role_code = body.role_code;
+    if (body.job_title_code !== undefined) update.job_title_code = body.job_title_code;
+    if (body.phone !== undefined) update.phone = body.phone;
+    if (body.active !== undefined) update.active = body.active;
+    if (body.password) {
+      update.password_hash = await hashPassword(body.password);
+      update.password_updated_at = new Date().toISOString();
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ data: null, error: '변경할 항목이 없습니다.' }, { status: 400 });
+    }
+
+    const db = getDB();
+    const { data, error } = await db
+      .from('fo_staff_profiles')
+      .update(update)
+      .eq('user_id', id)
+      .select('user_id, login_id, display_name, role_code, job_title_code, phone, active')
+      .single();
+
+    if (error) {
+      return NextResponse.json({ data: null, error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ data, error: null });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ data: null, error: msg }, { status: 500 });
+  }
+}
