@@ -38,7 +38,7 @@ export const CartItem = memo(function CartItem({
   const lineTotal = item.unit_price * item.quantity - item.discount_amount;
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[var(--color-separator-opaque)] last:border-b-0">
+    <div className="flex items-center gap-3 px-3 py-1.5 border-b border-[var(--color-separator-opaque)] last:border-b-0">
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="text-callout font-medium text-[var(--color-label-primary)] truncate">
