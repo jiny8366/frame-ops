@@ -1,5 +1,5 @@
-// Frame Ops Web — 직원 관리
-// 현재 매장 직원 리스트 + 추가/편집 모달.
+// Frame Ops Web — 계정설정
+// 현재 매장 소속 계정 리스트 + 추가/편집 모달.
 
 'use client';
 
@@ -18,6 +18,7 @@ interface StaffRow {
   password_updated_at: string | null;
   created_at: string;
   permissions?: string[] | null;
+  store_id?: string | null;
 }
 
 const fetcher = async (url: string): Promise<StaffRow[]> => {
@@ -47,13 +48,13 @@ export default function StaffAdminPage() {
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <div className="max-w-[900px] mx-auto flex flex-col gap-4">
         <header className="flex items-center justify-between">
-          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">직원 관리</h1>
+          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">계정설정</h1>
           <button
             type="button"
             onClick={handleAdd}
             className="pressable touch-target rounded-xl bg-[var(--color-system-blue)] px-4 py-2 text-callout font-semibold text-white"
           >
-            + 직원 추가
+            + 계정 추가
           </button>
         </header>
 
@@ -63,7 +64,7 @@ export default function StaffAdminPage() {
           </p>
         ) : !staff || staff.length === 0 ? (
           <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
-            등록된 직원이 없습니다. 우상단 “직원 추가” 버튼으로 추가하세요.
+            등록된 계정이 없습니다. 우상단 “계정 추가” 버튼으로 추가하세요.
           </p>
         ) : (
           <div className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">

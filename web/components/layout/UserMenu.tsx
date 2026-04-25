@@ -96,7 +96,7 @@ export function UserMenu({ session }: UserMenuProps) {
     { divider: true, label: '', enabled: false },
 
     // ── 지점 관리 ───────────────────────────────────────────────────
-    { label: '직원 관리', enabled: true, href: '/admin/staff', perm: 'store_staff_manage' },
+    { label: '계정설정', enabled: true, href: '/admin/staff', perm: 'store_staff_manage' },
     // HQ 사용자는 '매장 관리' 에 매장 정보가 통합되어 있으므로 '매장 정보' 메뉴 회피
     // HQ 사용자는 본사 그룹의 '근태관리' 사용
     ...(!isHq
