@@ -217,7 +217,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-[800px] h-[600px] max-h-[calc(100vh-2rem)] flex flex-col rounded-2xl bg-[var(--color-bg-secondary)] overflow-hidden"
+        className="w-full max-w-[1080px] max-h-[calc(100vh-2rem)] flex flex-col rounded-2xl bg-[var(--color-bg-secondary)] overflow-hidden"
       >
         {/* 헤더 */}
         <header className="px-5 py-3 border-b border-[var(--color-separator-opaque)]">
@@ -227,7 +227,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
         </header>
 
         {/* 본문: 2-column (기본 정보 좌측 / 권한 우측) */}
-        <div className="flex-1 overflow-auto px-5 py-4 grid grid-cols-1 md:grid-cols-[300px_1fr] gap-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 grid grid-cols-1 md:grid-cols-[280px_1fr] gap-5">
           {/* ── 좌측: 기본 정보 ─────────────────────────────────────── */}
           <div className="flex flex-col gap-3">
             <Field label="로그인 ID">
@@ -336,7 +336,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
           </div>
 
           {/* ── 우측: 메뉴별 접근 권한 ───────────────────────────────── */}
-          <div className="flex flex-col gap-2 min-h-0">
+          <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <label className="flex items-center gap-2">
                 <input
@@ -358,7 +358,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
               체크 해제 시 역할(role)의 기본 권한을 사용. 직접 지정하면 아래 체크박스가 우선합니다.
             </p>
             <div
-              className={`flex-1 overflow-auto rounded-lg border border-[var(--color-separator-opaque)] p-2 flex flex-col gap-2 ${
+              className={`rounded-lg border border-[var(--color-separator-opaque)] p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 ${
                 useCustomPerms ? '' : 'opacity-50 pointer-events-none'
               }`}
             >
@@ -367,7 +367,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
                   <summary className="cursor-pointer text-caption1 font-semibold text-[var(--color-label-primary)]">
                     {group} ({list.filter((p) => perms.has(p.key)).length}/{list.length})
                   </summary>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5 mt-2">
+                  <div className="grid grid-cols-1 gap-0.5 mt-2">
                     {list.map((p) => (
                       <label
                         key={p.key}
