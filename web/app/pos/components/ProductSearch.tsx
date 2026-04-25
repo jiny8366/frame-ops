@@ -54,6 +54,12 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 
   const handleClear = useCallback(() => setDraft(''), []);
 
+  // 키보드 타이핑 입력 — 키패드 state 와 동일한 draft 갱신.
+  // inputMode="numeric" 으로 모바일에선 숫자 키보드 힌트, 데스크톱에선 일반 문자 가능.
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(e.target.value.slice(0, 30));
+  }, []);
+
   const handleProductClick = useCallback(
     (row: SearchResultRow) => {
       onSelect({
@@ -70,17 +76,20 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* 입력 디스플레이 */}
-      <div className="px-4 py-3 rounded-xl bg-[var(--color-fill-tertiary)] min-h-[60px] flex items-center justify-between gap-3">
-        {draft ? (
-          <span className="text-title1 font-semibold tabular-nums text-[var(--color-label-primary)] truncate">
-            {draft}
-          </span>
-        ) : (
-          <span className="text-callout text-[var(--color-label-tertiary)]">
-            숫자를 입력하세요
-          </span>
-        )}
+      {/* 입력 (키보드 + 키패드 공용) — 두 입력 모두 같은 draft state 갱신 */}
+      <div className="px-4 py-3 rounded-xl bg-[var(--color-fill-tertiary)] min-h-[60px] flex items-center gap-3">
+        <input
+          type="text"
+          value={draft}
+          onChange={handleInputChange}
+          inputMode="numeric"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="제품번호 입력 (키보드 또는 키패드)"
+          aria-label="제품번호"
+          className="flex-1 min-w-0 bg-transparent text-title1 font-semibold tabular-nums text-[var(--color-label-primary)] placeholder:text-[var(--color-label-tertiary)] placeholder:font-normal placeholder:text-callout focus:outline-none truncate"
+        />
         <span className="text-caption1 text-[var(--color-label-secondary)] tabular-nums flex-none">
           {isValidating && results.length === 0
             ? '검색 중…'
