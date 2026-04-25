@@ -113,8 +113,13 @@ export default function PosPage() {
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding">
-      <div className="grid grid-cols-1 lg:grid-cols-[5fr_7fr] gap-4 p-4 h-screen">
-        {/* 좌측: 장바구니 + 가격 + 액션 */}
+      <div className="grid grid-cols-1 lg:grid-cols-[7fr_5fr] gap-4 p-4 h-screen">
+        {/* 좌측: 제품 검색 + 결과 */}
+        <section className="flex flex-col gap-3 min-h-0">
+          <ProductSearch onSelect={handleAddProduct} />
+        </section>
+
+        {/* 우측: 장바구니 + 가격 + 액션 */}
         <section className="flex flex-col gap-3 min-h-0">
           <h1 className="text-title3 font-bold text-[var(--color-label-primary)]">
             POS 판매
@@ -158,11 +163,6 @@ export default function PosPage() {
               ⚠️ NEXT_PUBLIC_DEFAULT_STORE_ID 환경변수가 설정되지 않아 결제 비활성됩니다
             </p>
           )}
-        </section>
-
-        {/* 우측: 제품 검색 */}
-        <section className="flex flex-col gap-3 min-h-0">
-          <ProductSearch onSelect={handleAddProduct} />
         </section>
       </div>
 
