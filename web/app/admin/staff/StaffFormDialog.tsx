@@ -26,7 +26,7 @@ interface StaffRow {
 
 interface RolesResponse {
   roles: Array<{ code: string; label: string; sort_order: number }>;
-  job_titles: Array<{ code: string; label: string; sort_order: number }>;
+  job_titles: Array<{ code: string; label: string; sort_order: number; scope?: 'hq' | 'store' | 'both' }>;
 }
 
 interface StoreOpt {
@@ -77,6 +77,21 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
     () => (stores ?? []).filter((s) => s.active),
     [stores]
   );
+
+  // 역할 scope 에 맞는 직급만 노출 (지점 역할 → store, 본사 역할 → hq, 그 외 → both 포함)
+  const visibleJobTitles = useMemo(() => {
+    const all = opts?.job_titles ?? [];
+    const target: 'hq' | 'store' = isStoreRole ? 'store' : 'hq';
+    return all.filter((t) => !t.scope || t.scope === target || t.scope === 'both');
+  }, [opts?.job_titles, isStoreRole]);
+
+  // 역할 변경 시 현재 직급이 새 scope 에 없으면 초기화
+  useEffect(() => {
+    if (!jobTitleCode) return;
+    if (!visibleJobTitles.some((t) => t.code === jobTitleCode)) {
+      setJobTitleCode('');
+    }
+  }, [visibleJobTitles, jobTitleCode]);
 
   // 권한 — 명시 override 사용 여부 + 체크된 권한 키 집합
   const [useCustomPerms, setUseCustomPerms] = useState<boolean>(
@@ -258,7 +273,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
                 className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
               >
                 <option value="">선택 없음</option>
-                {(opts?.job_titles ?? []).map((t) => (
+                {visibleJobTitles.map((t) => (
                   <option key={t.code} value={t.code}>
                     {t.label}
                   </option>
