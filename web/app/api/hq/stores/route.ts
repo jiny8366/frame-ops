@@ -1,6 +1,6 @@
 // Frame Ops Web — /api/hq/stores
-// GET: 전 매장 리스트 (활성/비활성 모두)
-// POST: 신규 매장 등록
+// GET: 전 매장 리스트 (활성/비활성 모두) + geo 정보
+// POST: 신규 매장 등록 (선택적으로 geo 포함)
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
@@ -14,7 +14,9 @@ export async function GET() {
   const db = getDB();
   const { data, error } = await db
     .from('fo_stores')
-    .select('id, store_code, name, address, phone, business_reg_no, active, created_at')
+    .select(
+      'id, store_code, name, address, phone, business_reg_no, active, lat, lng, geo_radius_m, geo_required, created_at'
+    )
     .order('active', { ascending: false })
     .order('store_code', { ascending: true });
   if (error) return NextResponse.json({ data: null, error: error.message }, { status: 500 });
@@ -27,6 +29,10 @@ interface CreateBody {
   address?: string | null;
   phone?: string | null;
   business_reg_no?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  geo_radius_m?: number | null;
+  geo_required?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -53,9 +59,15 @@ export async function POST(request: Request) {
         address: body.address?.trim() ?? undefined,
         phone: body.phone?.trim() ?? undefined,
         business_reg_no: body.business_reg_no?.trim() ?? undefined,
+        lat: body.lat,
+        lng: body.lng,
+        geo_radius_m: body.geo_radius_m,
+        geo_required: body.geo_required ?? false,
         active: true,
       })
-      .select('id, store_code, name, address, phone, business_reg_no, active')
+      .select(
+        'id, store_code, name, address, phone, business_reg_no, active, lat, lng, geo_radius_m, geo_required'
+      )
       .single();
     if (error) return NextResponse.json({ data: null, error: error.message }, { status: 500 });
     return NextResponse.json({ data, error: null });

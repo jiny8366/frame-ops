@@ -15,6 +15,10 @@ interface PatchBody {
   phone?: string | null;
   business_reg_no?: string | null;
   active?: boolean;
+  lat?: number | null;
+  lng?: number | null;
+  geo_radius_m?: number | null;
+  geo_required?: boolean;
 }
 
 export async function PATCH(
@@ -36,6 +40,10 @@ export async function PATCH(
     if (body.business_reg_no !== undefined)
       update.business_reg_no = body.business_reg_no?.trim() || undefined;
     if (body.active !== undefined) update.active = body.active;
+    if (body.lat !== undefined) update.lat = body.lat;
+    if (body.lng !== undefined) update.lng = body.lng;
+    if (body.geo_radius_m !== undefined) update.geo_radius_m = body.geo_radius_m;
+    if (body.geo_required !== undefined) update.geo_required = body.geo_required;
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ data: null, error: '변경할 항목이 없습니다.' }, { status: 400 });
@@ -46,7 +54,9 @@ export async function PATCH(
       .from('fo_stores')
       .update(update)
       .eq('id', id)
-      .select('id, store_code, name, address, phone, business_reg_no, active')
+      .select(
+        'id, store_code, name, address, phone, business_reg_no, active, lat, lng, geo_radius_m, geo_required'
+      )
       .single();
     if (error) return NextResponse.json({ data: null, error: error.message }, { status: 500 });
     return NextResponse.json({ data, error: null });
