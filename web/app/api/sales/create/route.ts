@@ -22,6 +22,8 @@ interface CreateSalePayload {
   seller_label?: string;
   clerk_note?: string;
   idempotency_key: string;
+  /** ISO timestamp; null/undefined → 서버 NOW() 사용 */
+  sold_at?: string | null;
 }
 
 export async function POST(request: Request) {
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
       p_seller_label: body.seller_label,
       p_clerk_note: body.clerk_note,
       p_idempotency_key: body.idempotency_key,
+      p_sold_at: body.sold_at ?? null,
     });
 
     if (error) {

@@ -98,6 +98,8 @@ export interface SaleInput {
   clerk_note?: string;
   /** 중복 결제 방지 — RPC 측에서 기존 sale 재사용. 필수. */
   idempotency_key: string;
+  /** 판매일자 ISO timestamp (백데이팅 지원). null/undefined → 서버 NOW() */
+  sold_at?: string | null;
 }
 
 // ── 공통 유틸 타입 ────────────────────────────────────────────────────────────
