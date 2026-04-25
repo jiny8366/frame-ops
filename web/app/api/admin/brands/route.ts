@@ -1,10 +1,11 @@
 // Frame Ops Web — /api/admin/brands
 // GET: 전체 브랜드 리스트 (이름 오름차순)
-// POST: 신규 브랜드 추가
+// POST: 신규 브랜드 추가 — name + code (3자 영문 약자)
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
+import { normalizeShortCode } from '@/lib/product-codes';
 
 export async function GET() {
   const session = await getServerSession();
@@ -15,13 +16,18 @@ export async function GET() {
   const db = getDB();
   const { data, error } = await db
     .from('fo_brands')
-    .select('id, name, created_at')
+    .select('id, name, code, created_at')
     .order('name', { ascending: true });
 
   if (error) {
     return NextResponse.json({ data: null, error: error.message }, { status: 500 });
   }
   return NextResponse.json({ data: data ?? [], error: null });
+}
+
+interface CreateBrandBody {
+  name: string;
+  code?: string;
 }
 
 export async function POST(request: Request) {
@@ -31,17 +37,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { name: string };
+    const body = (await request.json()) as CreateBrandBody;
     const name = (body.name ?? '').trim();
     if (!name) {
       return NextResponse.json({ data: null, error: '이름은 필수입니다.' }, { status: 400 });
     }
+    const code = body.code ? normalizeShortCode(body.code) : normalizeShortCode(name);
 
     const db = getDB();
     const { data, error } = await db
       .from('fo_brands')
-      .insert({ name })
-      .select('id, name, created_at')
+      .insert({ name, code })
+      .select('id, name, code, created_at')
       .single();
 
     if (error) {

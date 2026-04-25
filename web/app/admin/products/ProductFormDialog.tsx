@@ -13,7 +13,11 @@ import {
   LINE_FRM,
   LINE_LABELS,
   LINE_SUN,
+  normalizeColorCode,
   normalizeProductLine,
+  normalizeShortCode,
+  normalizeStyleCode,
+  yymmFromDate,
 } from '@/lib/product-codes';
 
 export interface ProductRow {
@@ -38,11 +42,13 @@ export interface ProductRow {
 interface BrandRow {
   id: string;
   name: string;
+  code: string | null;
 }
 
 interface CategoryRow {
   id: string;
   label: string;
+  code: string | null;
   sort_order: number;
 }
 
@@ -87,8 +93,10 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
 
   const [showAddBrand, setShowAddBrand] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
+  const [newBrandCode, setNewBrandCode] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [newCategoryCode, setNewCategoryCode] = useState('');
 
   // 첫 진입 시 카테고리 디폴트
   useEffect(() => {
@@ -107,12 +115,30 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
   }, [onClose, submitting]);
 
   const brand = useMemo(() => brands.find((b) => b.id === brandId), [brands, brandId]);
+  const categoryRow = useMemo(
+    () => categories.find((c) => c.label === category),
+    [categories, category]
+  );
 
-  // 미리보기 코드/표시명
+  // 미리보기: {LINE}_{CAT}/{BRAND}/{YYMM}/{STYLE4}/{COLOR2}
   const codePreview = useMemo(() => {
-    if (!brand || !styleCode.trim() || !colorCode.trim()) return '';
-    return buildProductCodeBase(productLine, brand.name, styleCode, colorCode);
-  }, [brand, productLine, styleCode, colorCode]);
+    if (!brand || !brand.code) return '';
+    if (!categoryRow || !categoryRow.code) return '';
+    if (!styleCode.trim() || !colorCode.trim()) return '';
+    // 수정 모드는 created_at 기준 yymm 유지, 신규는 오늘
+    const yymm =
+      mode === 'edit' && initial?.created_at
+        ? yymmFromDate(new Date(initial.created_at))
+        : yymmFromDate();
+    return buildProductCodeBase({
+      productLine,
+      categoryCode: categoryRow.code,
+      brandCode: brand.code,
+      yymm,
+      styleCode,
+      colorCode,
+    });
+  }, [brand, categoryRow, productLine, styleCode, colorCode, mode, initial]);
   const displayPreview = useMemo(() => {
     if (!brand) return '';
     return displayNameThreePart(brand.name, styleCode, colorCode);
@@ -120,12 +146,13 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
 
   const handleAddBrand = useCallback(async () => {
     const name = newBrandName.trim();
+    const code = normalizeShortCode(newBrandCode || name);
     if (!name) return;
     try {
       const res = await fetch('/api/admin/brands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, code }),
       });
       const json = (await res.json()) as { data: BrandRow | null; error: string | null };
       if (!res.ok || json.error || !json.data) {
@@ -135,21 +162,23 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
       await mutateBrands();
       setBrandId(json.data.id);
       setNewBrandName('');
+      setNewBrandCode('');
       setShowAddBrand(false);
-      toast.success(`브랜드 추가: ${json.data.name}`);
+      toast.success(`브랜드 추가: ${json.data.name} (${json.data.code ?? '-'})`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '네트워크 오류');
     }
-  }, [newBrandName, mutateBrands]);
+  }, [newBrandName, newBrandCode, mutateBrands]);
 
   const handleAddCategory = useCallback(async () => {
     const label = newCategoryLabel.trim();
+    const code = normalizeShortCode(newCategoryCode || label);
     if (!label) return;
     try {
       const res = await fetch('/api/admin/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label }),
+        body: JSON.stringify({ label, code }),
       });
       const json = (await res.json()) as { data: CategoryRow | null; error: string | null };
       if (!res.ok || json.error || !json.data) {
@@ -159,12 +188,13 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
       await mutateCategories();
       setCategory(json.data.label);
       setNewCategoryLabel('');
+      setNewCategoryCode('');
       setShowAddCategory(false);
-      toast.success(`카테고리 추가: ${json.data.label}`);
+      toast.success(`카테고리 추가: ${json.data.label} (${json.data.code ?? '-'})`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '네트워크 오류');
     }
-  }, [newCategoryLabel, mutateCategories]);
+  }, [newCategoryLabel, newCategoryCode, mutateCategories]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
@@ -268,6 +298,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
                 {categories.map((c) => (
                   <option key={c.id} value={c.label}>
                     {c.label}
+                    {c.code ? ` (${c.code})` : ''}
                   </option>
                 ))}
               </select>
@@ -284,18 +315,28 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         </div>
 
         {showAddCategory && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <input
               type="text"
               value={newCategoryLabel}
               onChange={(e) => setNewCategoryLabel(e.target.value)}
-              placeholder="새 카테고리명 (예: 나일론)"
+              placeholder="이름 (예: 나일론)"
               className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+            />
+            <input
+              type="text"
+              value={newCategoryCode}
+              onChange={(e) => setNewCategoryCode(e.target.value.toUpperCase())}
+              placeholder="약자 (영문3자, 예: NYL)"
+              maxLength={3}
+              autoCapitalize="characters"
+              pattern="[A-Z]{3}"
+              className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
             />
             <button
               type="button"
               onClick={handleAddCategory}
-              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 text-white text-caption1 font-semibold"
+              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
             >
               저장
             </button>
@@ -314,6 +355,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               {brands.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
+                  {b.code ? ` (${b.code})` : ''}
                 </option>
               ))}
             </select>
@@ -329,7 +371,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         </Field>
 
         {showAddBrand && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <input
               type="text"
               value={newBrandName}
@@ -337,10 +379,20 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               placeholder="새 브랜드명"
               className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
             />
+            <input
+              type="text"
+              value={newBrandCode}
+              onChange={(e) => setNewBrandCode(e.target.value.toUpperCase())}
+              placeholder="약자 (영문3자)"
+              maxLength={3}
+              autoCapitalize="characters"
+              pattern="[A-Z]{3}"
+              className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
+            />
             <button
               type="button"
               onClick={handleAddBrand}
-              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 text-white text-caption1 font-semibold"
+              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
             >
               저장
             </button>
@@ -348,24 +400,32 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="제품번호 (스타일)">
+          <Field label="제품번호 (숫자 4자리)">
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={4}
+              pattern="[0-9]{4}"
               value={styleCode}
-              onChange={(e) => setStyleCode(e.target.value)}
+              onChange={(e) => setStyleCode(e.target.value.replace(/[^0-9]/g, ''))}
+              onBlur={(e) => setStyleCode(normalizeStyleCode(e.target.value))}
               required
-              autoCapitalize="characters"
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              placeholder="0101"
+              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tabular-nums"
             />
           </Field>
-          <Field label="컬러">
+          <Field label="컬러 (숫자 2자리)">
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]{2}"
               value={colorCode}
-              onChange={(e) => setColorCode(e.target.value)}
+              onChange={(e) => setColorCode(e.target.value.replace(/[^0-9]/g, ''))}
+              onBlur={(e) => setColorCode(normalizeColorCode(e.target.value))}
               required
-              autoCapitalize="characters"
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              placeholder="01"
+              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tabular-nums"
             />
           </Field>
         </div>
