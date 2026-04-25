@@ -17,6 +17,10 @@ export async function GET(req: NextRequest) {
     const db = getDB();
     // 클라이언트가 실제로 사용하는 컬럼만 명시 (supplier_id 등 서버 전용 컬럼 제외)
     // brand는 !inner로 INNER JOIN 강제 — brand_id가 null인 제품은 카탈로그에서 배제
+    //
+    // 2026-04-25: "콜론 포함 = 레거시" 라는 Phase 1 마스터 스펙 가정이 실제 데이터와
+    // 맞지 않아 제거. 현재 DB 의 정상 데이터(예: style_code "01:01")가 콜론 형식이며,
+    // /api/inventory 등 다른 경로는 그대로 반환 중이라 일관성 위해 통일.
     let query = db
       .from('fo_products')
       .select(`
@@ -37,7 +41,6 @@ export async function GET(req: NextRequest) {
         updated_at,
         brand:fo_brands!inner(id, name)
       `)
-      .not('style_code', 'like', '%:%')   // 콜론 포함 제품 제외
       .order('style_code', { ascending: true })
       .range(page * limit, (page + 1) * limit - 1);
 
