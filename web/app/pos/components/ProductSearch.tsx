@@ -29,14 +29,18 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 200);
 
+  // 검색어가 비어있으면 SWR 호출 자체를 중단 (빈 q 로 RPC 호출 시 전체 활성 제품
+  // 50개 반환됨 → 첫 화면에 의도하지 않은 상품 노출 방지).
+  const swrKey = debouncedQuery.trim() ? (['pos-search', debouncedQuery] as const) : null;
+
   const { data: results = [], isValidating } = useSWR<SearchResultRow[]>(
-    ['pos-search', debouncedQuery],
+    swrKey,
     async () => {
-      const { data, error } = await productsSearch(debouncedQuery || null, null, 50, 0);
+      const { data, error } = await productsSearch(debouncedQuery, null, 50, 0);
       if (error) throw new Error(error);
       return (data ?? []) as SearchResultRow[];
     },
-    { revalidateOnFocus: false, keepPreviousData: true }
+    { revalidateOnFocus: false, keepPreviousData: false }
   );
 
   const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
