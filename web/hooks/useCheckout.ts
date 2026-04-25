@@ -5,7 +5,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { salesApi } from '@/lib/api-client';
 import { enqueueSync } from '@/lib/db/indexeddb';
@@ -16,13 +15,10 @@ export interface UseCheckoutReturn {
 }
 
 export function useCheckout(): UseCheckoutReturn {
-  const router = useRouter();
-
   const submit = useCallback(
     async (saleData: SaleInput): Promise<void> => {
-      // ① 즉시 UI 반영 — 사용자는 다음 고객으로 바로 전환 가능
+      // ① 즉시 UI 반영 — POS 화면 잔류, 카트 비움은 호출자가 처리
       toast.success('판매 완료', { duration: 2000 });
-      router.push('/');
 
       try {
         // ② 백그라운드 저장 — RPC create_sale_with_items 통해
@@ -52,7 +48,7 @@ export function useCheckout(): UseCheckoutReturn {
         console.error('[useCheckout] 백그라운드 저장 실패, sync_queue 에 보관:', err);
       }
     },
-    [router]
+    []
   );
 
   return { submit };

@@ -10,7 +10,8 @@ import { mutate } from 'swr';
 export default function LoginPage() {
   const router = useRouter();
   const search = useSearchParams();
-  const next = search.get('next') ?? '/';
+  /** 명시적 next 가 있으면 우선. 없으면 role 따라 기본 경로. */
+  const explicitNext = search.get('next');
 
   const defaultStoreCode = process.env.NEXT_PUBLIC_DEFAULT_STORE_CODE ?? '';
   const [storeCode, setStoreCode] = useState(defaultStoreCode);
@@ -30,21 +31,40 @@ export default function LoginPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ store_code: storeCode.trim(), password }),
         });
-        const json = (await res.json()) as { data: unknown; error: string | null };
-        if (!res.ok || json.error) {
+        const json = (await res.json()) as {
+          data: {
+            role_code?: string;
+            accessible_stores?: Array<{ id: string; store_code: string; name: string }>;
+          } | null;
+          error: string | null;
+        };
+        if (!res.ok || json.error || !json.data) {
           setError(json.error ?? '로그인에 실패했습니다.');
           setSubmitting(false);
           return;
         }
         // /api/auth/me SWR 캐시 갱신
         await mutate('/api/auth/me');
-        router.replace(next);
+
+        const role = json.data.role_code ?? '';
+        const stores = json.data.accessible_stores ?? [];
+        const isHq = role.startsWith('hq_');
+
+        // 본사 + 다중 매장이면 매장 선택 화면. 그 외엔 명시 next 또는 role 별 기본.
+        const target = explicitNext
+          ? explicitNext
+          : isHq && stores.length > 1
+            ? `/select-store?next=/hq`
+            : isHq
+              ? '/hq'
+              : '/';
+        router.replace(target);
       } catch (err) {
         setError(err instanceof Error ? err.message : '네트워크 오류');
         setSubmitting(false);
       }
     },
-    [storeCode, password, submitting, router, next]
+    [storeCode, password, submitting, router, explicitNext]
   );
 
   return (
