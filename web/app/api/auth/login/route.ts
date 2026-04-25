@@ -12,11 +12,18 @@ import { verifyPassword } from '@/lib/auth/password';
 import { signSession, SESSION_COOKIE } from '@/lib/auth/session';
 import { effectivePermissions, isHqRole } from '@/lib/auth/permissions';
 import { listAccessibleStores } from '@/lib/auth/accessible-stores';
+import { haversineMeters } from '@/lib/geo';
 
 interface LoginBody {
   /** 지점 코드 또는 본사 사용자 login_id */
   store_code: string;
   password: string;
+  /** 모바일 여부 — 클라이언트가 User-Agent 검사로 결정 */
+  is_mobile?: boolean;
+  /** 위치 좌표 — 모바일에서만 전달 */
+  geo?: { lat: number; lng: number };
+  /** 위치 권한 거부 여부 — 모바일에서만 의미 있음 */
+  geo_denied?: boolean;
 }
 
 interface SessionData {
@@ -61,8 +68,14 @@ export async function POST(request: Request) {
     }
     // hqResult.kind === 'not_found' → 지점 로그인 시도로 넘어감
 
-    // ── 2) 지점 로그인 시도 (store_code + 매장 직원 password) ─────────────────
-    const storeResult = await tryStoreLogin(db, identifier, password);
+    // ── 2) 지점 로그인 시도 (store_code + 매장 직원 password + 모바일 geo 검증) ─
+    const userAgent = request.headers.get('user-agent') ?? '';
+    const storeResult = await tryStoreLogin(db, identifier, password, {
+      isMobile: !!body.is_mobile,
+      geo: body.geo,
+      geoDenied: !!body.geo_denied,
+      userAgent,
+    });
     if (storeResult.kind === 'success') {
       // 지점 사용자는 보통 단일 매장. accessible_stores 는 현재 매장만 반환.
       return await issueSession(storeResult.data, [
@@ -150,10 +163,22 @@ async function tryHqLogin(db: DB, identifier: string, password: string): Promise
 }
 
 // ── 지점 로그인 ──────────────────────────────────────────────────────────────
-async function tryStoreLogin(db: DB, identifier: string, password: string): Promise<LoginAttempt> {
+interface GeoCtx {
+  isMobile: boolean;
+  geo?: { lat: number; lng: number };
+  geoDenied: boolean;
+  userAgent: string;
+}
+
+async function tryStoreLogin(
+  db: DB,
+  identifier: string,
+  password: string,
+  ctx: GeoCtx
+): Promise<LoginAttempt> {
   const { data: store, error: storeErr } = await db
     .from('fo_stores')
-    .select('id, store_code, name, active')
+    .select('id, store_code, name, active, lat, lng, geo_radius_m, geo_required')
     .eq('store_code', identifier)
     .eq('active', true)
     .maybeSingle();
@@ -222,6 +247,49 @@ async function tryStoreLogin(db: DB, identifier: string, password: string): Prom
 
   const staff = matches[0];
   const permissions = effectivePermissions(staff.role_code, staff.permissions);
+
+  // ── 모바일 + 매장 geo 활성 → 위치 검증 + 출근 기록 ─────────────────────
+  const geoActive =
+    ctx.isMobile && store.geo_required && store.lat != null && store.lng != null;
+  let distance_m: number | null = null;
+
+  if (geoActive) {
+    if (ctx.geoDenied) {
+      return {
+        kind: 'error',
+        error: '출근 기록을 위해 위치 권한이 필요합니다. 브라우저에서 위치를 허용해주세요.',
+        status: 403,
+      };
+    }
+    if (!ctx.geo) {
+      return {
+        kind: 'error',
+        error: '위치 정보를 받아오지 못했습니다. 다시 시도해주세요.',
+        status: 403,
+      };
+    }
+    const dist = haversineMeters(store.lat!, store.lng!, ctx.geo.lat, ctx.geo.lng);
+    const radius = store.geo_radius_m ?? 200;
+    distance_m = Math.round(dist);
+    if (dist > radius) {
+      return {
+        kind: 'error',
+        error: `매장에서 ${distance_m}m 떨어져 있어 로그인할 수 없습니다 (허용 반경 ${radius}m).`,
+        status: 403,
+      };
+    }
+    // 출근 기록 (best-effort: 실패해도 로그인은 진행)
+    await db.from('fo_attendance').insert({
+      user_id: staff.user_id,
+      store_id: store.id,
+      event: 'clock_in',
+      lat: ctx.geo.lat,
+      lng: ctx.geo.lng,
+      distance_m,
+      user_agent: ctx.userAgent.slice(0, 300),
+    });
+  }
+
   return {
     kind: 'success',
     data: {

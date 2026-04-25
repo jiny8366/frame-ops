@@ -1212,7 +1212,11 @@ export type Database = {
           address: string
           business_reg_no: string
           created_at: string
+          geo_radius_m: number | null
+          geo_required: boolean | null
           id: string
+          lat: number | null
+          lng: number | null
           name: string
           phone: string
           store_code: string
@@ -1223,7 +1227,11 @@ export type Database = {
           address?: string
           business_reg_no?: string
           created_at?: string
+          geo_radius_m?: number | null
+          geo_required?: boolean | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name: string
           phone?: string
           store_code: string
@@ -1234,11 +1242,51 @@ export type Database = {
           address?: string
           business_reg_no?: string
           created_at?: string
+          geo_radius_m?: number | null
+          geo_required?: boolean | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name?: string
           phone?: string
           store_code?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      fo_attendance: {
+        Row: {
+          distance_m: number | null
+          event: string
+          id: string
+          lat: number | null
+          lng: number | null
+          occurred_at: string
+          store_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          distance_m?: number | null
+          event: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          occurred_at?: string
+          store_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          distance_m?: number | null
+          event?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          occurred_at?: string
+          store_id?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
