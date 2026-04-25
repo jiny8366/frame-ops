@@ -155,19 +155,15 @@ export default function OrdersPage() {
   const handlePrint = useCallback(async () => {
     if (!selected) return;
     setPickerOpen(false);
-    setBusy(true);
-    try {
-      const params = new URLSearchParams({
-        supplier_id: selected.supplier_id,
-        from,
-        to,
-      });
-      window.open(`/admin/orders/print?${params.toString()}`, '_blank');
-      await markPlaced(selected);
-    } finally {
-      setBusy(false);
-    }
-  }, [selected, from, to, markPlaced]);
+    // 마킹은 인쇄 페이지에서 직접 호출 (race 방지) — 부모는 창만 열고 끝.
+    const params = new URLSearchParams({
+      supplier_id: selected.supplier_id,
+      from,
+      to,
+      mark: '1',
+    });
+    window.open(`/admin/orders/print?${params.toString()}`, '_blank');
+  }, [selected, from, to]);
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
