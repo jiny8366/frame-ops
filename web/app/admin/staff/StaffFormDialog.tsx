@@ -1,9 +1,16 @@
 // Frame Ops Web — 직원 추가/편집 모달
+// role 선택 + 메뉴별 접근권한 (체크박스 그리드) 지원.
 
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
+import {
+  ALL_PERMISSIONS,
+  ROLE_DEFAULTS,
+  effectivePermissions,
+  type PermissionDef,
+} from '@/lib/auth/permissions';
 
 interface StaffRow {
   user_id: string;
@@ -13,6 +20,7 @@ interface StaffRow {
   job_title_code: string | null;
   phone: string | null;
   active: boolean;
+  permissions?: string[] | null;
 }
 
 interface RolesResponse {
@@ -47,6 +55,41 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 권한 — 명시 override 사용 여부 + 체크된 권한 키 집합
+  const [useCustomPerms, setUseCustomPerms] = useState<boolean>(
+    Array.isArray(initial?.permissions) && initial!.permissions!.length > 0
+  );
+  const [perms, setPerms] = useState<Set<string>>(
+    () => new Set(initial?.permissions ?? effectivePermissions(initial?.role_code ?? 'store_staff', null))
+  );
+
+  // role 변경 시 — custom override 가 OFF 면 권한도 role 기본값으로 동기화
+  useEffect(() => {
+    if (!useCustomPerms) {
+      setPerms(new Set(ROLE_DEFAULTS[roleCode] ?? []));
+    }
+  }, [roleCode, useCustomPerms]);
+
+  const togglePerm = useCallback((key: string) => {
+    setPerms((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // 권한 그룹별 정렬
+  const groupedPerms = useMemo(() => {
+    const map = new Map<string, PermissionDef[]>();
+    for (const p of ALL_PERMISSIONS) {
+      const arr = map.get(p.group) ?? [];
+      arr.push(p);
+      map.set(p.group, arr);
+    }
+    return Array.from(map.entries());
+  }, []);
+
   // ESC 닫기
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
@@ -63,6 +106,8 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
       setSubmitting(true);
       setError(null);
 
+      const permissionsPayload = useCustomPerms ? Array.from(perms) : null;
+
       try {
         if (mode === 'create') {
           const res = await fetch('/api/admin/staff', {
@@ -75,6 +120,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
               job_title_code: jobTitleCode || null,
               phone: phone || null,
               password,
+              permissions: permissionsPayload,
             }),
           });
           const json = (await res.json()) as { data: unknown; error: string | null };
@@ -90,6 +136,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
             job_title_code: jobTitleCode || null,
             phone: phone || null,
             active,
+            permissions: permissionsPayload,
           };
           if (password) update.password = password;
 
@@ -111,7 +158,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
         setSubmitting(false);
       }
     },
-    [mode, initial, loginId, displayName, roleCode, jobTitleCode, phone, active, password, submitting, onSaved]
+    [mode, initial, loginId, displayName, roleCode, jobTitleCode, phone, active, password, useCustomPerms, perms, submitting, onSaved]
   );
 
   return (
@@ -216,6 +263,50 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
             <span className="text-callout">활성 상태 (체크 해제 시 로그인 차단)</span>
           </label>
         )}
+
+        {/* 메뉴별 접근 권한 ───────────────────────────────────────── */}
+        <div className="rounded-lg border border-[var(--color-separator-opaque)] p-3 flex flex-col gap-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={useCustomPerms}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setUseCustomPerms(next);
+                if (!next) setPerms(new Set(ROLE_DEFAULTS[roleCode] ?? []));
+              }}
+            />
+            <span className="text-callout font-semibold">메뉴별 접근 권한 직접 지정</span>
+          </label>
+          <p className="text-caption2 text-[var(--color-label-tertiary)]">
+            체크 해제 시 역할(role)의 기본 권한을 사용. 직접 지정하면 아래 체크박스가 우선합니다.
+          </p>
+          <div className={`flex flex-col gap-2 ${useCustomPerms ? '' : 'opacity-50 pointer-events-none'}`}>
+            {groupedPerms.map(([group, list]) => (
+              <details key={group} open className="rounded-md bg-[var(--color-fill-quaternary)] p-2">
+                <summary className="cursor-pointer text-caption1 font-semibold text-[var(--color-label-primary)]">
+                  {group} ({list.filter((p) => perms.has(p.key)).length}/{list.length})
+                </summary>
+                <div className="grid grid-cols-2 gap-1 mt-2">
+                  {list.map((p) => (
+                    <label
+                      key={p.key}
+                      className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[var(--color-fill-tertiary)] text-caption1"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={perms.has(p.key)}
+                        onChange={() => togglePerm(p.key)}
+                        disabled={!useCustomPerms}
+                      />
+                      <span>{p.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
 
         {error && (
           <p className="text-caption1 text-[var(--color-system-red)] text-center">{error}</p>

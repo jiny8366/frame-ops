@@ -14,6 +14,8 @@ interface CreateStaffBody {
   job_title_code?: string | null;
   phone?: string | null;
   password: string;
+  /** 명시 권한 — null/빈배열이면 role 기본값 사용 */
+  permissions?: string[] | null;
 }
 
 export async function GET() {
@@ -36,7 +38,7 @@ export async function GET() {
   const { data, error } = await db
     .from('fo_staff_profiles')
     .select(
-      'user_id, login_id, display_name, role_code, job_title_code, phone, active, password_updated_at, created_at'
+      'user_id, login_id, display_name, role_code, job_title_code, phone, active, permissions, password_updated_at, created_at'
     )
     .in('user_id', ids)
     .order('active', { ascending: false })
@@ -86,6 +88,11 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password);
 
+    const explicitPerms =
+      Array.isArray(body.permissions) && body.permissions.length > 0
+        ? body.permissions
+        : null;
+
     const { data: created, error: insErr } = await db
       .from('fo_staff_profiles')
       .insert({
@@ -96,9 +103,10 @@ export async function POST(request: Request) {
         phone: body.phone ?? null,
         password_hash: passwordHash,
         password_updated_at: new Date().toISOString(),
+        permissions: explicitPerms,
         active: true,
       })
-      .select('user_id, login_id, display_name, role_code, job_title_code, phone, active')
+      .select('user_id, login_id, display_name, role_code, job_title_code, phone, active, permissions')
       .single();
 
     if (insErr || !created) {
