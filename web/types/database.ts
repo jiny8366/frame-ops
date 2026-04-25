@@ -913,6 +913,8 @@ export type Database = {
           email: string | null
           job_title_code: string | null
           login_id: string | null
+          password_hash: string | null
+          password_updated_at: string | null
           phone: string | null
           role_code: string
           updated_at: string
@@ -925,10 +927,12 @@ export type Database = {
           email?: string | null
           job_title_code?: string | null
           login_id?: string | null
+          password_hash?: string | null
+          password_updated_at?: string | null
           phone?: string | null
           role_code: string
           updated_at?: string
-          user_id: string
+          user_id?: string
         }
         Update: {
           active?: boolean
@@ -937,6 +941,8 @@ export type Database = {
           email?: string | null
           job_title_code?: string | null
           login_id?: string | null
+          password_hash?: string | null
+          password_updated_at?: string | null
           phone?: string | null
           role_code?: string
           updated_at?: string
@@ -1366,6 +1372,7 @@ export type Database = {
           p_seller_code?: string
           p_seller_label?: string
           p_seller_user_id?: string
+          p_sold_at?: string | null
           p_store_id: string
         }
         Returns: {

@@ -1,15 +1,19 @@
-// Frame Ops Phase 2 — 결제 다이얼로그 (현금 + 카드 분할 입력)
-// 내부에서 두 NumberKeypad 를 순차 호출. 합계가 total 과 일치하지 않으면 확인 비활성.
+// Frame Ops Phase 2 — 결제 다이얼로그 (현금 + 카드 분할 + 담당자 비밀번호 재인증)
+// 결제 확정 → 담당자 비밀번호 키패드 → /api/auth/verify-staff-password → onConfirm.
+// state 격리: 다이얼로그 내부에 cash/card/password/error 보관, 부모는 확정 시 통보 받음.
 
 'use client';
 
 import { memo, useCallback, useMemo, useState } from 'react';
 import { Modal } from './Modal';
 import { NumberKeypad } from './NumberKeypad';
+import { PasswordKeypad } from './PasswordKeypad';
 
 export interface PaymentInput {
   cash: number;
   card: number;
+  seller_user_id: string;
+  seller_label: string;
 }
 
 export interface PaymentDialogProps {
@@ -18,17 +22,23 @@ export interface PaymentDialogProps {
   onCancel: () => void;
 }
 
-type Step = 'choose' | 'cash' | 'card';
+type Step = 'choose' | 'cash' | 'card' | 'password';
+
+interface VerifyResponse {
+  data: { staff_user_id: string; display_name: string | null; role_code: string } | null;
+  error: string | null;
+}
 
 export const PaymentDialog = memo(function PaymentDialog({
   total,
   onConfirm,
   onCancel,
 }: PaymentDialogProps) {
-  // ⭐ state 는 다이얼로그 내부에만
   const [step, setStep] = useState<Step>('choose');
   const [cash, setCash] = useState(0);
   const [card, setCard] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
 
   const remaining = useMemo(() => Math.max(0, total - cash - card), [total, cash, card]);
   const canConfirm = cash + card === total && total > 0;
@@ -49,10 +59,8 @@ export const PaymentDialog = memo(function PaymentDialog({
 
   const handleSetCash = useCallback(
     (v: number) => {
-      // 합계 초과 방지
       const clamped = Math.min(v, total);
       setCash(clamped);
-      // 잔액을 카드로 자동 채움
       setCard(Math.max(0, total - clamped));
       setStep('choose');
     },
@@ -69,9 +77,49 @@ export const PaymentDialog = memo(function PaymentDialog({
     [total]
   );
 
-  const handleConfirm = useCallback(() => {
-    if (canConfirm) onConfirm({ cash, card });
-  }, [canConfirm, cash, card, onConfirm]);
+  // "결제 확정" → 담당자 패스워드 단계로 전환
+  const handleGoToPassword = useCallback(() => {
+    if (!canConfirm) return;
+    setPwError(null);
+    setStep('password');
+  }, [canConfirm]);
+
+  // 패스워드 확인 → API 검증 → 성공 시 onConfirm 호출
+  const handlePasswordConfirm = useCallback(
+    async (password: string) => {
+      setVerifying(true);
+      setPwError(null);
+      try {
+        const res = await fetch('/api/auth/verify-staff-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const json = (await res.json()) as VerifyResponse;
+        if (!res.ok || !json.data) {
+          setPwError(json.error ?? '비밀번호가 일치하지 않습니다.');
+          setVerifying(false);
+          return;
+        }
+        onConfirm({
+          cash,
+          card,
+          seller_user_id: json.data.staff_user_id,
+          seller_label: json.data.display_name ?? '',
+        });
+      } catch (err) {
+        setPwError(err instanceof Error ? err.message : '네트워크 오류');
+        setVerifying(false);
+      }
+    },
+    [cash, card, onConfirm]
+  );
+
+  const handlePasswordCancel = useCallback(() => {
+    if (verifying) return;
+    setPwError(null);
+    setStep('choose');
+  }, [verifying]);
 
   if (step === 'cash') {
     return (
@@ -95,6 +143,19 @@ export const PaymentDialog = memo(function PaymentDialog({
           maxValue={total}
           onConfirm={handleSetCard}
           onCancel={handleBackToChoose}
+        />
+      </Modal>
+    );
+  }
+  if (step === 'password') {
+    return (
+      <Modal onClose={handlePasswordCancel} disableEscape={verifying}>
+        <PasswordKeypad
+          label="담당자 비밀번호"
+          errorMessage={pwError}
+          busy={verifying}
+          onConfirm={handlePasswordConfirm}
+          onCancel={handlePasswordCancel}
         />
       </Modal>
     );
@@ -152,7 +213,7 @@ export const PaymentDialog = memo(function PaymentDialog({
           </button>
         </div>
 
-        {/* 안내 영역 — 항상 같은 높이 유지 (다이얼로그 크기 안정화) */}
+        {/* 안내 영역 — 항상 같은 높이 유지 */}
         <p
           className={`text-caption1 text-center min-h-[1.25rem] ${
             remaining > 0
@@ -169,7 +230,7 @@ export const PaymentDialog = memo(function PaymentDialog({
               : '·'}
         </p>
 
-        {/* 취소 / 확정 */}
+        {/* 취소 / 결제 확정 */}
         <div className="grid grid-cols-2 gap-2 mt-1">
           <button
             type="button"
@@ -180,7 +241,7 @@ export const PaymentDialog = memo(function PaymentDialog({
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
+            onClick={handleGoToPassword}
             disabled={!canConfirm}
             className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
           >

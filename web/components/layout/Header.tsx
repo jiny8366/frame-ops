@@ -7,6 +7,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle, ThemeToggleMobile } from '@/components/ui/ThemeToggle';
+import { UserMenu } from '@/components/layout/UserMenu';
+import { useSession } from '@/hooks/useSession';
 
 // ── 내비게이션 링크 정의 ──────────────────────────────────────────────────────
 // /orders 매출 라우트는 Phase 3 에서 추가 예정 (현재 /api/orders GET 만 존재).
@@ -19,6 +21,10 @@ const NAV_LINKS = [
 // ── 헤더 컴포넌트 ─────────────────────────────────────────────────────────────
 export function Header() {
   const pathname = usePathname();
+  const { session } = useSession();
+
+  // 로그인 페이지에서는 헤더 숨김
+  if (pathname === '/login') return null;
 
   return (
     <header
@@ -48,6 +54,16 @@ export function Header() {
             <span className="text-xl" aria-hidden>👓</span>
             <span className="text-[15px] font-bold tracking-tight">Frame Ops</span>
           </Link>
+
+          {/* 현재 지점명 — 세션 있을 때만 */}
+          {session && (
+            <span
+              className="hidden md:inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--color-fill-quaternary)] text-[12px] font-medium text-[var(--color-label-secondary)] truncate max-w-[10rem]"
+              title={`${session.store_name} (${session.store_code})`}
+            >
+              {session.store_name}
+            </span>
+          )}
 
           {/* 데스크톱 네비게이션 — 모바일에서 숨김 */}
           <nav className="hidden md:flex items-center gap-1" aria-label="주 내비게이션">
@@ -88,22 +104,15 @@ export function Header() {
             <ThemeToggleMobile />
           </div>
 
-          {/* 사용자 메뉴 자리 (추후 구현) */}
-          <button
-            aria-label="사용자 메뉴"
-            className={[
-              'flex h-8 w-8 items-center justify-center',
-              'rounded-full',
-              'bg-[var(--color-fill-tertiary)]',
-              'text-[var(--color-label-secondary)]',
-              'text-[13px] font-semibold',
-              'hover:bg-[var(--color-fill-secondary)]',
-              'active:scale-95 transition-transform duration-100',
-              'focus-visible:outline-2 focus-visible:outline-[var(--color-system-blue)] focus-visible:outline-offset-1',
-            ].join(' ')}
-          >
-            J
-          </button>
+          {/* 사용자 메뉴 — 세션 있으면 드롭다운, 없으면 placeholder */}
+          {session ? (
+            <UserMenu session={session} />
+          ) : (
+            <div
+              aria-hidden
+              className="h-8 w-8 rounded-full bg-[var(--color-fill-tertiary)]"
+            />
+          )}
         </div>
       </div>
     </header>
@@ -114,6 +123,9 @@ export function Header() {
 // 모바일에서 상단 헤더 내비게이션을 대체
 export function BottomTabBar() {
   const pathname = usePathname();
+
+  // 로그인 페이지에서는 탭바 숨김
+  if (pathname === '/login') return null;
 
   return (
     <nav
