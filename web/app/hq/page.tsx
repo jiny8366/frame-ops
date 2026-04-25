@@ -1,7 +1,8 @@
 // Frame Ops Web — 본사 대시보드
 // 30 초마다 자동 갱신. 매장 셀렉터로 전체 또는 단일 매장.
+// 모든 데이터: 현재 시점 직전 12시간 (날짜 지정 없음).
 // KPI: 매출 / 매입 / 영업이익 / 건수·수량
-// 그래프: 09~21시 누적 매출·수량 라인
+// 그래프: 직전 12시간 시간대별 매출·수량 라인
 // 하단: 판매 상품 (데스크톱 20행 / 모바일 10행 + 스크롤)
 
 'use client';
@@ -35,6 +36,7 @@ interface DashboardSummary {
 
 interface HourlyPoint {
   hour: number;
+  label: string;
   revenue: number;
   qty: number;
 }
@@ -49,9 +51,10 @@ interface ProductRow {
 }
 
 interface DashboardResponse {
-  date: string;
   store_id: string | null;
   stores: StoreOpt[];
+  window_start: string | null;
+  window_end: string | null;
   summary: DashboardSummary;
   hourly: HourlyPoint[];
   products: ProductRow[];
@@ -64,15 +67,19 @@ const fetcher = async (url: string): Promise<DashboardResponse> => {
   return json.data;
 };
 
-function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+function fmtRange(start: string | null, end: string | null): string {
+  if (!start || !end) return '';
+  const s = new Date(start);
+  const e = new Date(end);
+  const fmt = (d: Date) =>
+    `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${fmt(s)} ~ ${fmt(e)}`;
 }
 
 export default function HqDashboardPage() {
   const [storeId, setStoreId] = useState<string>('');
-  const [date, setDate] = useState<string>(todayDate());
 
-  const url = `/api/hq/dashboard?date=${date}${storeId ? `&store_id=${storeId}` : ''}`;
+  const url = `/api/hq/dashboard${storeId ? `?store_id=${storeId}` : ''}`;
   const { data, isLoading } = useSWR<DashboardResponse>(url, fetcher, {
     refreshInterval: 30_000,
     revalidateOnFocus: true,
@@ -85,30 +92,21 @@ export default function HqDashboardPage() {
           <div>
             <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">대시보드</h1>
             <p className="text-caption2 text-[var(--color-label-tertiary)]">
-              30 초마다 자동 갱신
+              직전 12시간 ({fmtRange(data?.window_start ?? null, data?.window_end ?? null)}) · 30 초마다 자동 갱신
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={storeId}
-              onChange={(e) => setStoreId(e.target.value)}
-              className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-3 py-2 text-callout"
-            >
-              <option value="">전체 매장</option>
-              {(data?.stores ?? []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.store_code})
-                </option>
-              ))}
-            </select>
-            <input
-              type="date"
-              value={date}
-              max={todayDate()}
-              onChange={(e) => setDate(e.target.value || todayDate())}
-              className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-3 py-2 text-callout tabular-nums"
-            />
-          </div>
+          <select
+            value={storeId}
+            onChange={(e) => setStoreId(e.target.value)}
+            className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-3 py-2 text-callout"
+          >
+            <option value="">전체 매장</option>
+            {(data?.stores ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.store_code})
+              </option>
+            ))}
+          </select>
         </header>
 
         {isLoading && !data ? (
@@ -142,7 +140,7 @@ export default function HqDashboardPage() {
 
             <section className="rounded-xl bg-[var(--color-bg-secondary)] p-4">
               <h2 className="text-headline font-semibold text-[var(--color-label-primary)] mb-3">
-                시간대별 매출·수량 (09:00 ~ 21:00)
+                시간대별 매출·수량 (직전 12시간)
               </h2>
               <HourlyChart data={data.hourly} />
             </section>
@@ -197,6 +195,7 @@ function Kpi({
 }
 
 function HourlyChart({ data }: { data: HourlyPoint[] }) {
+  // 누적 곡선 — 12시간 윈도우 시작부터 시간이 지남에 따라 우상향.
   const cumulative = useMemo(() => {
     let r = 0;
     let q = 0;
@@ -204,7 +203,7 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
       r += p.revenue;
       q += p.qty;
       return {
-        hour: `${String(p.hour).padStart(2, '0')}시`,
+        hour: p.label,
         매출: r,
         수량: q,
       };

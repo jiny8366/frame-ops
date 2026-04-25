@@ -1,5 +1,6 @@
-// Frame Ops Web — /api/hq/dashboard v2
-// 매장 필터 또는 전체 + 시간대별 그래프 + 판매 상품 리스트.
+// Frame Ops Web — /api/hq/dashboard v3
+// 시간대별 매출·수량 = 현재 시점 직전 12시간 (날짜 지정 없음)
+// 매장 셀렉터로 전체 또는 단일 매장.
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
@@ -15,6 +16,7 @@ interface DashboardSummary {
 
 interface HourlyPoint {
   hour: number;
+  label: string;
   revenue: number;
   qty: number;
 }
@@ -28,10 +30,6 @@ interface ProductRow {
   revenue: number;
 }
 
-function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export async function GET(request: Request) {
   const session = await getServerSession();
   if (!session) {
@@ -40,20 +38,17 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const storeId = url.searchParams.get('store_id') || null;
-  const date = url.searchParams.get('date') || todayDate();
 
   const db = getDB();
 
-  // 매장 리스트 (셀렉터용)
   const { data: stores } = await db
     .from('fo_stores')
     .select('id, store_code, name')
     .eq('active', true)
     .order('store_code', { ascending: true });
 
-  const { data: rpcData, error } = await db.rpc('get_hq_dashboard_v2', {
+  const { data: rpcData, error } = await db.rpc('get_hq_dashboard_v3', {
     p_store_id: storeId,
-    p_date: date,
   });
 
   if (error) {
@@ -64,13 +59,16 @@ export async function GET(request: Request) {
     summary: DashboardSummary;
     hourly: HourlyPoint[];
     products: ProductRow[];
+    window_start: string;
+    window_end: string;
   };
 
   return NextResponse.json({
     data: {
-      date,
       store_id: storeId,
       stores: stores ?? [],
+      window_start: result?.window_start ?? null,
+      window_end: result?.window_end ?? null,
       summary: result?.summary ?? {
         revenue: 0,
         cost: 0,
