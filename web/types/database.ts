@@ -639,6 +639,8 @@ export type Database = {
           discount_amount: number
           id: string
           line_note: string | null
+          ordered_at: string | null
+          ordered_by_user_id: string | null
           product_id: string
           quantity: number
           sale_id: string
@@ -649,6 +651,8 @@ export type Database = {
           discount_amount?: number
           id?: string
           line_note?: string | null
+          ordered_at?: string | null
+          ordered_by_user_id?: string | null
           product_id: string
           quantity?: number
           sale_id: string
@@ -659,6 +663,8 @@ export type Database = {
           discount_amount?: number
           id?: string
           line_note?: string | null
+          ordered_at?: string | null
+          ordered_by_user_id?: string | null
           product_id?: string
           quantity?: number
           sale_id?: string
@@ -1401,6 +1407,37 @@ export type Database = {
           note: string | null
           is_closed: boolean
         }[]
+      }
+      get_pending_orders: {
+        Args: {
+          p_store_id: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          supplier_id: string
+          supplier_name: string
+          supplier_code: string | null
+          product_id: string
+          brand_id: string
+          brand_name: string
+          style_code: string | null
+          color_code: string | null
+          display_name: string | null
+          total_quantity: number
+          unit_price: number
+          cost_price: number
+        }[]
+      }
+      mark_orders_placed: {
+        Args: {
+          p_store_id: string
+          p_supplier_id: string
+          p_from: string
+          p_to: string
+          p_user_id?: string | null
+        }
+        Returns: number
       }
       get_sales_stats: {
         Args: {
