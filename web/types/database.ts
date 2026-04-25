@@ -1417,6 +1417,13 @@ export type Database = {
           is_closed: boolean
         }[]
       }
+      get_hq_dashboard_v2: {
+        Args: {
+          p_store_id?: string | null
+          p_date?: string
+        }
+        Returns: Json
+      }
       get_pending_orders: {
         Args: {
           p_store_id: string
