@@ -73,7 +73,7 @@ export function UserMenu({ session }: UserMenuProps) {
     { divider: true, label: '', enabled: false },
     { label: '직원 관리', enabled: true, href: '/admin/staff' },
     { label: '매장 정보', enabled: true, href: '/admin/store' },
-    { label: '매입 등록', enabled: false, onClick: showSoon },
+    { label: '매입 등록', enabled: true, href: '/admin/inbound' },
     { label: '일일 마감', enabled: false, onClick: showSoon },
     { divider: true, label: '', enabled: false },
     { label: '로그아웃', enabled: true, onClick: handleLogout },
