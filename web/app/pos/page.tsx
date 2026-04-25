@@ -146,7 +146,7 @@ export default function PosPage() {
               disabled={cart.items.length === 0}
               className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium disabled:opacity-40"
             >
-              전체 할인
+              할인
             </button>
             <button
               type="button"
