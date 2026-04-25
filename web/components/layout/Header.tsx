@@ -31,11 +31,8 @@ export function Header() {
       className={[
         // 고정 위치 + 레이어
         'sticky top-0 z-50 w-full',
-        // Apple HIG vibrancy: 반투명 배경 + backdrop blur (요소 자체에는 blur 금지)
-        'bg-[var(--header-bg)]',
-        'backdrop-blur-xl backdrop-saturate-150',
-        // backdrop-filter 미지원 브라우저 폴백 (Safari 구버전 대응)
-        'supports-[backdrop-filter:blur(0)]:bg-[var(--header-bg)]',
+        // 불투명 배경 (vibrancy 제거 — 가시성 우선)
+        'bg-[var(--color-bg-primary)]',
         // 하단 구분선
         'border-b border-[var(--header-border)]',
         // 전환 (테마 변경 시)
@@ -132,8 +129,7 @@ export function BottomTabBar() {
       className={[
         'fixed bottom-0 inset-x-0 z-50',
         'md:hidden',  // 데스크톱에서는 숨김
-        'bg-[var(--header-bg)]',
-        'backdrop-blur-xl backdrop-saturate-150',
+        'bg-[var(--color-bg-primary)]',
         'border-t border-[var(--header-border)]',
         'safe-bottom',
         'transition-colors duration-300',
