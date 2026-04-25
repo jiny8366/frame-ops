@@ -65,8 +65,8 @@ export function UserMenu({ session }: UserMenuProps) {
 
   // 메뉴 구성: Phase A=로그아웃, Phase B1=직원/매장 추가됨. 후속 phase 에서 enabled=true 로 전환.
   const items: MenuItem[] = [
-    { label: '판매통계', enabled: false, onClick: showSoon },
-    { label: '판매내역 검색', enabled: false, onClick: showSoon },
+    { label: '판매통계', enabled: true, href: '/admin/stats' },
+    { label: '판매내역 검색', enabled: true, href: '/admin/sales-search' },
     { label: '정산', enabled: false, onClick: showSoon },
     { label: '주문리스트', enabled: false, onClick: showSoon },
     { label: '매입처리', enabled: false, onClick: showSoon },

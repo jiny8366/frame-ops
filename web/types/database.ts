@@ -1402,6 +1402,61 @@ export type Database = {
           is_closed: boolean
         }[]
       }
+      get_sales_stats: {
+        Args: {
+          p_store_id: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          period_cash: number
+          period_card: number
+          period_revenue: number
+          period_count: number
+          month_cash: number
+          month_card: number
+          month_revenue: number
+        }[]
+      }
+      get_top_products: {
+        Args: {
+          p_store_id: string
+          p_from: string
+          p_to: string
+          p_limit?: number
+        }
+        Returns: {
+          product_id: string
+          brand_name: string | null
+          style_code: string | null
+          color_code: string | null
+          display_name: string | null
+          total_quantity: number
+          total_revenue: number
+        }[]
+      }
+      search_sales: {
+        Args: {
+          p_store_id: string
+          p_from: string
+          p_to: string
+          p_query?: string | null
+          p_limit?: number
+        }
+        Returns: {
+          sale_id: string
+          sold_at: string
+          cash_amount: number
+          card_amount: number
+          discount_total: number
+          total_amount: number
+          payment_method: string
+          seller_user_id: string | null
+          seller_name: string | null
+          item_count: number
+          items_summary: string | null
+        }[]
+      }
       get_pending_for_inbound: {
         Args: {
           p_supplier_id?: string | null
