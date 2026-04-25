@@ -1,10 +1,10 @@
 // Frame Ops Web — 주문리스트
-// 기간 선택 → 발주 처리되지 않은 판매 항목을 매입처별·제품 단위로 합산.
-// Excel 또는 PDF 인쇄로 다운로드하면 자동으로 발주 처리되어 다음 검색에서 제외됨.
+// 기간 + 매입처 탭으로 미발주 판매 항목 필터.
+// '발주' 버튼 → Excel / PDF 선택 → 다운로드 시 자동 발주 처리.
 
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -63,112 +63,111 @@ function todayDate(): string {
 export default function OrdersPage() {
   const [from, setFrom] = useState<string>(todayDate());
   const [to, setTo] = useState<string>(todayDate());
-  const [busy, setBusy] = useState<string | null>(null); // supplier_id whose action is in progress
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const url = `/api/admin/orders/pending?from=${from}&to=${to}`;
   const { data, isLoading, mutate } = useSWR<OrdersResponse>(url, fetcher, {
     revalidateOnFocus: false,
   });
 
-  // 다운로드 후 발주 처리 마킹 (다음 검색에서 제외)
+  const groups = data?.groups ?? [];
+
+  // 그룹 변동 시 선택 supplier 보정 (없으면 첫 번째로)
+  useEffect(() => {
+    if (groups.length === 0) {
+      if (selectedSupplierId !== null) setSelectedSupplierId(null);
+      return;
+    }
+    const exists = groups.some((g) => g.supplier_id === selectedSupplierId);
+    if (!exists) {
+      setSelectedSupplierId(groups[0].supplier_id);
+    }
+  }, [groups, selectedSupplierId]);
+
+  const selected = useMemo(
+    () => groups.find((g) => g.supplier_id === selectedSupplierId) ?? null,
+    [groups, selectedSupplierId]
+  );
+
+  // 발주 처리 마킹
   const markPlaced = useCallback(
     async (group: SupplierGroup) => {
-      try {
-        const res = await fetch('/api/admin/orders/place', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ supplier_id: group.supplier_id, from, to }),
-        });
-        const json = (await res.json()) as {
-          data: { marked: number } | null;
-          error: string | null;
-        };
-        if (!res.ok || json.error) {
-          toast.error(json.error ?? '발주 처리 마킹 실패');
-          return;
-        }
-        toast.success(`발주 처리 완료: ${json.data?.marked ?? 0}건 (다음 검색에서 제외)`);
-        await mutate();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : '네트워크 오류');
+      const res = await fetch('/api/admin/orders/place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplier_id: group.supplier_id, from, to }),
+      });
+      const json = (await res.json()) as {
+        data: { marked: number } | null;
+        error: string | null;
+      };
+      if (!res.ok || json.error) {
+        toast.error(json.error ?? '발주 처리 실패');
+        return false;
       }
+      toast.success(`발주 처리 완료: ${json.data?.marked ?? 0}건`);
+      await mutate();
+      return true;
     },
     [from, to, mutate]
   );
 
-  // ── Excel 다운로드 (클라이언트 측 xlsx 생성) → 자동 발주 처리 ───────────
-  const downloadExcel = useCallback(
-    async (group: SupplierGroup) => {
-      if (!data) return;
-      if (
-        !confirm(
-          `${group.supplier_name} 매입처 ${group.items.length}품목을 Excel 다운로드합니다. 다운로드 후 발주 처리되어 다음 검색에서 제외됩니다. 계속하시겠습니까?`
-        )
-      ) {
-        return;
-      }
-      setBusy(group.supplier_id);
-      try {
-        const aoa: (string | number)[][] = [
-          [`매장: ${data.store?.name ?? '-'} (${data.store?.store_code ?? '-'})`],
-          [`매입처: ${group.supplier_name}${group.supplier_code ? ` (${group.supplier_code})` : ''}`],
-          [`기간: ${data.period.from} ~ ${data.period.to}`],
-          [],
-          ['브랜드', '스타일코드', '색상', '제품명', '수량', '원가(₩)', '합계(₩)'],
-          ...group.items.map((it) => [
-            it.brand_name,
-            it.style_code ?? '',
-            it.color_code ?? '',
-            it.display_name ?? '',
-            it.total_quantity,
-            it.cost_price,
-            it.total_quantity * it.cost_price,
-          ]),
-          [],
-          ['합계', '', '', '', group.total_quantity, '', group.total_cost],
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        ws['!cols'] = [
-          { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 24 },
-          { wch: 6 }, { wch: 10 }, { wch: 12 },
-        ];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, group.supplier_name.slice(0, 30) || '발주');
-        const filename = `주문리스트_${group.supplier_name}_${data.period.from}_${data.period.to}.xlsx`;
-        XLSX.writeFile(wb, filename);
-        await markPlaced(group);
-      } finally {
-        setBusy(null);
-      }
-    },
-    [data, markPlaced]
-  );
+  const handleExcel = useCallback(async () => {
+    if (!data || !selected) return;
+    setPickerOpen(false);
+    setBusy(true);
+    try {
+      const aoa: (string | number)[][] = [
+        [`매장: ${data.store?.name ?? '-'} (${data.store?.store_code ?? '-'})`],
+        [`매입처: ${selected.supplier_name}${selected.supplier_code ? ` (${selected.supplier_code})` : ''}`],
+        [`기간: ${data.period.from} ~ ${data.period.to}`],
+        [],
+        ['브랜드', '스타일코드', '색상', '제품명', '수량', '원가(₩)', '합계(₩)'],
+        ...selected.items.map((it) => [
+          it.brand_name,
+          it.style_code ?? '',
+          it.color_code ?? '',
+          it.display_name ?? '',
+          it.total_quantity,
+          it.cost_price,
+          it.total_quantity * it.cost_price,
+        ]),
+        [],
+        ['합계', '', '', '', selected.total_quantity, '', selected.total_cost],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [
+        { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 24 },
+        { wch: 6 }, { wch: 10 }, { wch: 12 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, selected.supplier_name.slice(0, 30) || '발주');
+      const filename = `주문리스트_${selected.supplier_name}_${data.period.from}_${data.period.to}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      await markPlaced(selected);
+    } finally {
+      setBusy(false);
+    }
+  }, [data, selected, markPlaced]);
 
-  // ── PDF (인쇄용 페이지 새 창) → 자동 발주 처리 ────────────────────────
-  const openPrint = useCallback(
-    async (group: SupplierGroup) => {
-      if (
-        !confirm(
-          `${group.supplier_name} 매입처 ${group.items.length}품목을 PDF 인쇄합니다. 인쇄 후 발주 처리되어 다음 검색에서 제외됩니다. 계속하시겠습니까?`
-        )
-      ) {
-        return;
-      }
-      setBusy(group.supplier_id);
-      try {
-        const params = new URLSearchParams({
-          supplier_id: group.supplier_id,
-          from,
-          to,
-        });
-        window.open(`/admin/orders/print?${params.toString()}`, '_blank');
-        await markPlaced(group);
-      } finally {
-        setBusy(null);
-      }
-    },
-    [from, to, markPlaced]
-  );
+  const handlePrint = useCallback(async () => {
+    if (!selected) return;
+    setPickerOpen(false);
+    setBusy(true);
+    try {
+      const params = new URLSearchParams({
+        supplier_id: selected.supplier_id,
+        from,
+        to,
+      });
+      window.open(`/admin/orders/print?${params.toString()}`, '_blank');
+      await markPlaced(selected);
+    } finally {
+      setBusy(false);
+    }
+  }, [selected, from, to, markPlaced]);
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
@@ -200,62 +199,92 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {/* 기간 필터 */}
-        <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-2 sm:grid-cols-[1fr_auto_1fr_auto] gap-2 items-end">
-          <Field label="시작일">
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => setFrom(e.target.value || todayDate())}
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
-            />
-          </Field>
-          <span className="hidden sm:flex items-center justify-center text-callout text-[var(--color-label-tertiary)] pb-2">
-            ~
-          </span>
-          <Field label="종료일">
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={todayDate()}
-              onChange={(e) => setTo(e.target.value || todayDate())}
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
-            />
-          </Field>
-          <button
-            type="button"
-            onClick={() => mutate()}
-            className="pressable touch-target rounded-lg px-3 py-2 bg-[var(--color-fill-tertiary)] text-callout font-medium"
-          >
-            새로고침
-          </button>
+        {/* 기간 필터 + 매입처 탭 */}
+        <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 flex flex-col gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-[1fr_auto_1fr_auto] gap-2 items-end">
+            <Field label="시작일">
+              <input
+                type="date"
+                value={from}
+                max={to}
+                onChange={(e) => setFrom(e.target.value || todayDate())}
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
+              />
+            </Field>
+            <span className="hidden sm:flex items-center justify-center text-callout text-[var(--color-label-tertiary)] pb-2">
+              ~
+            </span>
+            <Field label="종료일">
+              <input
+                type="date"
+                value={to}
+                min={from}
+                max={todayDate()}
+                onChange={(e) => setTo(e.target.value || todayDate())}
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
+              />
+            </Field>
+            <button
+              type="button"
+              onClick={() => mutate()}
+              className="pressable touch-target rounded-lg px-3 py-2 bg-[var(--color-fill-tertiary)] text-callout font-medium"
+            >
+              새로고침
+            </button>
+          </div>
+
+          {/* 매입처 탭 */}
+          {groups.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-[var(--color-separator-opaque)]">
+              {groups.map((g) => {
+                const active = g.supplier_id === selectedSupplierId;
+                return (
+                  <button
+                    key={g.supplier_id}
+                    type="button"
+                    onClick={() => setSelectedSupplierId(g.supplier_id)}
+                    className={[
+                      'pressable touch-target rounded-full px-3 py-1.5 text-caption1 font-medium border transition-colors',
+                      active
+                        ? 'bg-[var(--color-system-blue)] text-white border-transparent'
+                        : 'bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)] hover:bg-[var(--color-fill-tertiary)]',
+                    ].join(' ')}
+                  >
+                    {g.supplier_name}
+                    <span
+                      className={[
+                        'ml-1.5 text-caption2 tabular-nums',
+                        active ? 'text-white/80' : 'text-[var(--color-label-tertiary)]',
+                      ].join(' ')}
+                    >
+                      {g.items.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* 매입처별 그룹 */}
+        {/* 선택 매입처 컨텐츠 */}
         {isLoading ? (
           <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
             불러오는 중…
           </p>
-        ) : !data || data.groups.length === 0 ? (
+        ) : !selected ? (
           <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
             기간 내 미발주 항목이 없습니다.
-            <br />
-            <span className="text-caption1">
-              (매입처 매핑이 안 된 브랜드는 제외됩니다 — 매장 관리자에게 \`fo_supplier_brands\` 등록 요청)
-            </span>
           </p>
         ) : (
-          data.groups.map((g) => (
-            <SupplierGroupCard
-              key={g.supplier_id}
-              group={g}
-              busy={busy === g.supplier_id}
-              onExcel={downloadExcel}
-              onPrint={openPrint}
-            />
-          ))
+          <SupplierContent
+            group={selected}
+            busy={busy}
+            pickerOpen={pickerOpen}
+            onTogglePicker={() => setPickerOpen((v) => !v)}
+            onClosePicker={() => setPickerOpen(false)}
+            onExcel={handleExcel}
+            onPrint={handlePrint}
+          />
         )}
       </div>
     </main>
@@ -271,19 +300,23 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function SupplierGroupCard({
+function SupplierContent({
   group,
   busy,
+  pickerOpen,
+  onTogglePicker,
+  onClosePicker,
   onExcel,
   onPrint,
 }: {
   group: SupplierGroup;
   busy: boolean;
-  onExcel: (g: SupplierGroup) => void;
-  onPrint: (g: SupplierGroup) => void;
+  pickerOpen: boolean;
+  onTogglePicker: () => void;
+  onClosePicker: () => void;
+  onExcel: () => void;
+  onPrint: () => void;
 }) {
-  const handleExcel = useCallback(() => onExcel(group), [onExcel, group]);
-  const handlePrint = useCallback(() => onPrint(group), [onPrint, group]);
   return (
     <section className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
       <div className="p-4 flex items-center justify-between flex-wrap gap-2 border-b border-[var(--color-separator-opaque)]">
@@ -301,25 +334,46 @@ function SupplierGroupCard({
             {group.total_cost.toLocaleString()}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* 발주 버튼 + 선택 모달 */}
+        <div className="relative">
           <button
             type="button"
-            onClick={handleExcel}
+            onClick={onTogglePicker}
             disabled={busy}
-            className="pressable touch-target rounded-lg px-3 py-2 bg-[var(--color-system-green)]/15 text-[var(--color-system-green)] text-caption1 font-semibold disabled:opacity-40"
+            className="pressable touch-target rounded-lg px-4 py-2 bg-[var(--color-system-orange)] text-white text-callout font-semibold disabled:opacity-40"
           >
-            Excel
+            {busy ? '처리 중…' : '발주 ▾'}
           </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            disabled={busy}
-            className="pressable touch-target rounded-lg px-3 py-2 bg-[var(--color-system-blue)]/15 text-[var(--color-system-blue)] text-caption1 font-semibold disabled:opacity-40"
-          >
-            PDF 인쇄
-          </button>
-          {busy && (
-            <span className="text-caption1 text-[var(--color-label-tertiary)]">처리 중…</span>
+          {pickerOpen && !busy && (
+            <>
+              {/* 바깥 클릭 닫기 */}
+              <div className="fixed inset-0 z-40" onClick={onClosePicker} aria-hidden />
+              <div
+                role="menu"
+                className="absolute right-0 mt-2 z-50 min-w-[200px] rounded-xl bg-[var(--color-bg-elevated,var(--color-bg-secondary))] shadow-lg ring-1 ring-[var(--color-separator-opaque)] overflow-hidden"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={onExcel}
+                  className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
+                >
+                  <span className="text-[var(--color-system-green)] font-semibold">Excel</span>
+                  <span className="text-caption2 text-[var(--color-label-tertiary)]">.xlsx 다운로드</span>
+                </button>
+                <div className="border-t border-[var(--color-separator-opaque)]" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={onPrint}
+                  className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
+                >
+                  <span className="text-[var(--color-system-blue)] font-semibold">PDF</span>
+                  <span className="text-caption2 text-[var(--color-label-tertiary)]">인쇄/저장</span>
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
