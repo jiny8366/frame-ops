@@ -1,12 +1,12 @@
-// Frame Ops Phase 2 — 제품 검색 + 결과 그리드
-// useDebounce 로 키 입력마다 RPC 호출 방지 (200ms).
-// SWR 로 결과 캐시.
+// Frame Ops Phase 2 — 제품 검색 키패드 + 결과 리스트 (디폴트 좌측 뷰)
+// 매장 환경(키보드 없는 iPad 등) 의 터치/마우스 전용 워크플로우.
+// 키패드(좌)에서 숫자 입력 → 200ms debounce 후 RPC → 우측 결과 리스트 → 행 클릭 시
+// 카트 추가 + 입력 자동 초기화 → 연속 추가 가능.
 
 'use client';
 
 import { memo, useCallback, useState } from 'react';
 import useSWR from 'swr';
-import { ProductSearchDialog } from './ProductSearchDialog';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { CartProductSnapshot } from '@/hooks/useCart';
@@ -27,106 +27,161 @@ export interface ProductSearchProps {
 }
 
 export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSearchProps) {
-  const [query, setQuery] = useState('');
-  const [keypadOpen, setKeypadOpen] = useState(false);
-  const debouncedQuery = useDebounce(query, 200);
+  const [draft, setDraft] = useState('');
+  const debouncedDraft = useDebounce(draft, 200);
 
-  // 검색어가 비어있으면 SWR 호출 자체를 중단 (빈 q 로 RPC 호출 시 전체 활성 제품
-  // 50개 반환됨 → 첫 화면에 의도하지 않은 상품 노출 방지).
-  const swrKey = debouncedQuery.trim() ? (['pos-search', debouncedQuery] as const) : null;
+  const swrKey = debouncedDraft.trim()
+    ? (['pos-search', debouncedDraft] as const)
+    : null;
 
   const { data: results = [], isValidating } = useSWR<SearchResultRow[]>(
     swrKey,
     async () => {
-      const { data, error } = await productsSearch(debouncedQuery, null, 50, 0);
+      const { data, error } = await productsSearch(debouncedDraft, null, 50, 0);
       if (error) throw new Error(error);
       return (data ?? []) as SearchResultRow[];
     },
     { revalidateOnFocus: false, keepPreviousData: false }
   );
 
-  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
+  const handleAppend = useCallback((d: string) => {
+    setDraft((prev) => (prev + d).slice(0, 30));
   }, []);
 
-  const handleClear = useCallback(() => setQuery(''), []);
+  const handleBackspace = useCallback(() => {
+    setDraft((prev) => prev.slice(0, -1));
+  }, []);
 
-  const handleOpenKeypad = useCallback(() => setKeypadOpen(true), []);
-  const handleCloseKeypad = useCallback(() => setKeypadOpen(false), []);
+  const handleClear = useCallback(() => setDraft(''), []);
+
+  const handleProductClick = useCallback(
+    (row: SearchResultRow) => {
+      onSelect({
+        id: row.id,
+        style_code: row.style_code,
+        display_name: row.display_name,
+        sale_price: row.sale_price,
+      });
+      // 입력 초기화 → 연속 추가 가능
+      setDraft('');
+    },
+    [onSelect]
+  );
 
   return (
     <div className="flex flex-col gap-3 h-full">
-      {/* 검색 입력 + 상품검색 버튼 */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <input
-            type="search"
-            value={query}
-            onChange={handleQueryChange}
-            placeholder="키보드 검색…"
-            className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-4 py-3 placeholder:text-[var(--color-label-tertiary)] focus:border-[var(--color-system-blue)] focus:outline-none"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={handleClear}
-              aria-label="검색어 지움"
-              className="pressable absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-tertiary)]"
-            >
-              ✕
-            </button>
-          )}
-          {isValidating && (
-            <div className="absolute right-10 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
+      {/* 입력 디스플레이 */}
+      <div className="px-4 py-3 rounded-xl bg-[var(--color-fill-tertiary)] min-h-[60px] flex items-center justify-between gap-3">
+        {draft ? (
+          <span className="text-title1 font-semibold tabular-nums text-[var(--color-label-primary)] truncate">
+            {draft}
+          </span>
+        ) : (
+          <span className="text-callout text-[var(--color-label-tertiary)]">
+            숫자를 입력하세요
+          </span>
+        )}
+        <span className="text-caption1 text-[var(--color-label-secondary)] tabular-nums flex-none">
+          {isValidating && results.length === 0
+            ? '검색 중…'
+            : debouncedDraft
+              ? `${results.length}개`
+              : ''}
+        </span>
+      </div>
+
+      {/* 본문: 좌측 키패드 + 우측 결과 리스트 */}
+      <div className="grid grid-cols-[auto_1fr] gap-3 flex-1 min-h-0">
+        {/* 키패드 */}
+        <div className="grid grid-cols-3 gap-2 content-start">
+          <DigitButton digit="1" onPress={handleAppend} />
+          <DigitButton digit="2" onPress={handleAppend} />
+          <DigitButton digit="3" onPress={handleAppend} />
+          <DigitButton digit="4" onPress={handleAppend} />
+          <DigitButton digit="5" onPress={handleAppend} />
+          <DigitButton digit="6" onPress={handleAppend} />
+          <DigitButton digit="7" onPress={handleAppend} />
+          <DigitButton digit="8" onPress={handleAppend} />
+          <DigitButton digit="9" onPress={handleAppend} />
+          <ActionButton label="지움" onPress={handleClear} />
+          <DigitButton digit="0" onPress={handleAppend} />
+          <ActionButton label="⌫" onPress={handleBackspace} />
+        </div>
+
+        {/* 결과 리스트 */}
+        <div className="overflow-auto rounded-xl bg-[var(--color-bg-secondary)]">
+          {!debouncedDraft.trim() ? (
+            <EmptyState message="숫자를 입력하면 결과가 표시됩니다" />
+          ) : results.length === 0 ? (
+            <EmptyState message={isValidating ? '검색 중…' : `"${debouncedDraft}" 결과 없음`} />
+          ) : (
+            <div className="divide-y divide-[var(--color-separator-opaque)]">
+              {results.map((row) => (
+                <ResultRow key={row.id} row={row} onClick={handleProductClick} />
+              ))}
+            </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={handleOpenKeypad}
-          className="pressable touch-target-lg rounded-xl px-5 bg-[var(--color-system-blue)] text-white font-semibold whitespace-nowrap"
-        >
-          상품검색
-        </button>
       </div>
-
-      {/* 결과 그리드 */}
-      <div className="flex-1 overflow-auto">
-        {results.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-[var(--color-label-tertiary)] text-callout">
-            {debouncedQuery ? `"${debouncedQuery}" 결과 없음` : '검색어를 입력하거나 우측 "상품검색" 버튼으로 키패드를 사용하세요'}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {results.map((row) => (
-              <ProductCard key={row.id} row={row} onSelect={onSelect} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 키패드 다이얼로그 */}
-      {keypadOpen && (
-        <ProductSearchDialog onSelect={onSelect} onClose={handleCloseKeypad} />
-      )}
     </div>
   );
 });
 
-// ── 결과 카드 ─────────────────────────────────────────────────────────────────
-interface ProductCardProps {
-  row: SearchResultRow;
-  onSelect: (product: CartProductSnapshot) => void;
+// ── 디지트 버튼 ──────────────────────────────────────────────────────────────
+interface DigitButtonProps {
+  digit: string;
+  onPress: (digit: string) => void;
 }
 
-const ProductCard = memo(function ProductCard({ row, onSelect }: ProductCardProps) {
-  const handleClick = useCallback(() => {
-    onSelect({
-      id: row.id,
-      style_code: row.style_code,
-      display_name: row.display_name,
-      sale_price: row.sale_price,
-    });
-  }, [row.id, row.style_code, row.display_name, row.sale_price, onSelect]);
+const DigitButton = memo(function DigitButton({ digit, onPress }: DigitButtonProps) {
+  const handleClick = useCallback(() => onPress(digit), [digit, onPress]);
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="pressable touch-target-lg rounded-xl bg-[var(--color-bg-secondary)] text-title2 font-medium text-[var(--color-label-primary)] min-w-[72px]"
+    >
+      {digit}
+    </button>
+  );
+});
+
+// ── 액션 버튼 (지움/⌫) ───────────────────────────────────────────────────────
+interface ActionButtonProps {
+  label: string;
+  onPress: () => void;
+}
+
+const ActionButton = memo(function ActionButton({ label, onPress }: ActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      className="pressable touch-target-lg rounded-xl bg-[var(--color-fill-secondary)] text-headline font-medium text-[var(--color-label-secondary)] min-w-[72px]"
+    >
+      {label}
+    </button>
+  );
+});
+
+// ── 빈 상태 안내 ─────────────────────────────────────────────────────────────
+const EmptyState = memo(function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="h-full flex items-center justify-center text-[var(--color-label-tertiary)] text-callout p-4 text-center">
+      {message}
+    </div>
+  );
+});
+
+// ── 결과 행 ──────────────────────────────────────────────────────────────────
+// 레이아웃: [브랜드] [제품번호] [칼라] [재고배지(선택)] [여백] [금액]
+interface ResultRowProps {
+  row: SearchResultRow;
+  onClick: (row: SearchResultRow) => void;
+}
+
+const ResultRow = memo(function ResultRow({ row, onClick }: ResultRowProps) {
+  const handleClick = useCallback(() => onClick(row), [row, onClick]);
 
   const stockBadge =
     row.stock_quantity == null
@@ -141,28 +196,39 @@ const ProductCard = memo(function ProductCard({ row, onSelect }: ProductCardProp
     <button
       type="button"
       onClick={handleClick}
-      className="pressable touch-target-lg flex flex-col items-start gap-1 p-3 rounded-xl bg-[var(--color-bg-secondary)] text-left"
+      className="pressable w-full flex items-baseline gap-3 px-3 py-2 text-left"
     >
-      <span className="text-caption2 text-[var(--color-label-secondary)] truncate w-full">
+      {/* 브랜드 */}
+      <span className="text-caption2 text-[var(--color-label-secondary)] truncate flex-none max-w-[120px]">
         {row.brand_name}
       </span>
-      <span className="text-callout font-semibold text-[var(--color-label-primary)] truncate w-full">
+
+      {/* 제품번호 */}
+      <span className="text-callout font-semibold text-[var(--color-label-primary)] tabular-nums flex-none">
         {row.style_code ?? '—'}
-        {row.color_code ? ` / ${row.color_code}` : ''}
       </span>
-      {row.display_name && row.display_name !== row.style_code && (
-        <span className="text-caption1 text-[var(--color-label-secondary)] truncate w-full">
-          {row.display_name}
+
+      {/* 칼라 */}
+      {row.color_code && (
+        <span className="text-callout text-[var(--color-label-primary)] tabular-nums flex-none">
+          {row.color_code}
         </span>
       )}
-      <div className="flex items-baseline justify-between w-full mt-1">
-        <span className="text-callout font-semibold tabular-nums text-[var(--color-label-primary)]">
-          ₩{(row.sale_price ?? 0).toLocaleString()}
+
+      {/* 재고 배지 (선택적) */}
+      {stockBadge && (
+        <span className="text-caption2 text-[var(--color-label-tertiary)] truncate">
+          {stockBadge}
         </span>
-        {stockBadge && (
-          <span className="text-caption2 text-[var(--color-label-tertiary)]">{stockBadge}</span>
-        )}
-      </div>
+      )}
+
+      {/* 여백 (spacer) */}
+      <span className="flex-1" />
+
+      {/* 금액 */}
+      <span className="text-callout font-semibold tabular-nums text-[var(--color-label-primary)] flex-none">
+        ₩{(row.sale_price ?? 0).toLocaleString()}
+      </span>
     </button>
   );
 });
