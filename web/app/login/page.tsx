@@ -65,11 +65,16 @@ export default function LoginPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-callout text-[var(--color-label-secondary)]">지점 코드</span>
+          {/* 영문 키보드 기본: pattern + lang="en" + autoCapitalize="characters" 조합 (iOS/Android) */}
           <input
             type="text"
             inputMode="text"
             autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
             autoComplete="username"
+            lang="en"
+            pattern="[A-Za-z0-9]*"
             value={storeCode}
             onChange={(e) => setStoreCode(e.target.value)}
             placeholder="예: BKC01"
@@ -81,8 +86,11 @@ export default function LoginPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-callout text-[var(--color-label-secondary)]">비밀번호</span>
+          {/* 숫자 키보드 기본: type=password 마스킹 + inputMode=numeric (iOS/Android) */}
           <input
             type="password"
+            inputMode="numeric"
+            pattern="[0-9]*"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
