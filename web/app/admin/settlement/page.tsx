@@ -71,6 +71,12 @@ function fmtMD(date: string): string {
   return `${date.slice(5, 7)}.${date.slice(8, 10)}`;
 }
 
+function addDays(date: string, days: number): string {
+  const d = new Date(date + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function SettlementPage() {
   const { session } = useSession();
   const canUnlock =
@@ -167,7 +173,16 @@ export default function SettlementPage() {
           return;
         }
         toast.success('정산 저장 완료');
-        await Promise.all([mutate(), mutateMonthly()]);
+        // 마감 후: 다음 영업일로 이동(오늘 초과 시 오늘로 클램프). 같은 날이면 명시 refresh.
+        const nextDate = addDays(date, 1);
+        const today = todayDate();
+        const newDate = nextDate > today ? today : nextDate;
+        if (newDate !== date) {
+          setDate(newDate); // SWR 가 새 키로 재요청
+        } else {
+          await mutate();
+        }
+        await mutateMonthly();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : '네트워크 오류');
       } finally {
