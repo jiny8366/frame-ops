@@ -1,5 +1,6 @@
 // Frame Ops Web — 정산
-// 영업일자 기준: 매출 자동 집계 + 지출 라인 입력 + 시재 계산 + 본사 입금 + 실측 현금 → 마감 저장.
+// 좌측: 영업일자 기준 매출/지출/시재/본사입금 + 마감 저장 폼.
+// 우측: 당월 일자별 매출/현금/카드/건수/지출 리스트 (누계 포함) + 상단 당월 합계.
 
 'use client';
 
@@ -31,22 +32,54 @@ interface SummaryResponse {
   expenses: ExpenseLine[];
 }
 
-const fetcher = async (url: string): Promise<SummaryResponse> => {
-  const res = await fetch(url);
-  const json = (await res.json()) as { data: SummaryResponse | null; error: string | null };
-  if (json.error || !json.data) throw new Error(json.error ?? '응답 없음');
-  return json.data;
-};
+interface MonthlyDay {
+  business_date: string;
+  sales_amount: number;
+  cash_amount: number;
+  card_amount: number;
+  sales_count: number;
+  expense: number;
+}
+
+interface MonthlyResponse {
+  year_month: string;
+  days: MonthlyDay[];
+}
+
+function makeFetcher<T>() {
+  return async (url: string): Promise<T> => {
+    const res = await fetch(url);
+    const json = (await res.json()) as { data: T | null; error: string | null };
+    if (json.error || !json.data) throw new Error(json.error ?? '응답 없음');
+    return json.data;
+  };
+}
+const summaryFetcher = makeFetcher<SummaryResponse>();
+const monthlyFetcher = makeFetcher<MonthlyResponse>();
 
 function todayDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function ymOf(date: string): string {
+  return date.slice(0, 7);
+}
+
+function fmtMD(date: string): string {
+  return `${date.slice(5, 7)}.${date.slice(8, 10)}`;
+}
+
 export default function SettlementPage() {
   const [date, setDate] = useState<string>(todayDate());
+  const ym = ymOf(date);
+
   const { data, isLoading, mutate } = useSWR<SummaryResponse>(
     `/api/admin/settlement?date=${date}`,
-    fetcher
+    summaryFetcher
+  );
+  const { data: monthly, mutate: mutateMonthly } = useSWR<MonthlyResponse>(
+    `/api/admin/settlement/monthly?ym=${ym}`,
+    monthlyFetcher
   );
 
   // 입력 가능 필드
@@ -56,7 +89,6 @@ export default function SettlementPage() {
   const [expenses, setExpenses] = useState<ExpenseLine[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // 서버 상태 → 로컬 입력 폼 동기화
   useEffect(() => {
     if (!data) return;
     setCashCounted(data.cash_counted ?? data.total_cash_sales + data.starting_cash - data.total_expense);
@@ -69,13 +101,11 @@ export default function SettlementPage() {
     );
   }, [data]);
 
-  // 지출 합계 (입력 폼 기준 — 즉시 반응)
   const localExpenseTotal = useMemo(
     () => expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0),
     [expenses]
   );
 
-  // 예상 현금 (실시간 계산)
   const expectedCash = useMemo(() => {
     if (!data) return 0;
     return data.starting_cash + data.total_cash_sales - localExpenseTotal - (deposit || 0);
@@ -128,180 +158,304 @@ export default function SettlementPage() {
           return;
         }
         toast.success('정산 저장 완료');
-        await mutate();
+        await Promise.all([mutate(), mutateMonthly()]);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : '네트워크 오류');
       } finally {
         setSubmitting(false);
       }
     },
-    [date, cashCounted, deposit, note, expenses, submitting, mutate]
+    [date, cashCounted, deposit, note, expenses, submitting, mutate, mutateMonthly]
   );
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
-      <form onSubmit={handleSubmit} className="max-w-[760px] mx-auto flex flex-col gap-4">
-        <header className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">정산</h1>
-          <label className="flex items-center gap-2">
-            <span className="text-caption1 text-[var(--color-label-secondary)]">영업일자</span>
-            <input
-              type="date"
-              value={date}
-              max={todayDate()}
-              onChange={(e) => setDate(e.target.value || todayDate())}
-              className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-2 py-1 text-callout tabular-nums"
-            />
-          </label>
-        </header>
+      <div className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-[minmax(0,720px)_minmax(0,1fr)] gap-4 xl:gap-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-w-0">
+          <header className="flex items-center justify-between flex-wrap gap-2">
+            <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">정산</h1>
+            <label className="flex items-center gap-2">
+              <span className="text-caption1 text-[var(--color-label-secondary)]">영업일자</span>
+              <input
+                type="date"
+                value={date}
+                max={todayDate()}
+                onChange={(e) => setDate(e.target.value || todayDate())}
+                className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-2 py-1 text-callout tabular-nums"
+              />
+            </label>
+          </header>
 
-        {data?.is_closed && (
-          <div className="rounded-xl bg-[var(--color-system-blue)]/10 text-[var(--color-system-blue)] text-caption1 px-3 py-2">
-            ℹ️ 이 영업일은 이미 마감 저장됨. 다시 저장하면 지출·시재·본사입금이 덮어쓰기 됩니다.
-          </div>
-        )}
+          {data?.is_closed && (
+            <div className="rounded-xl bg-[var(--color-system-blue)]/10 text-[var(--color-system-blue)] text-caption1 px-3 py-2">
+              ℹ️ 이 영업일은 이미 마감 저장됨. 다시 저장하면 지출·시재·본사입금이 덮어쓰기 됩니다.
+            </div>
+          )}
 
-        {isLoading ? (
+          {isLoading ? (
+            <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
+              불러오는 중…
+            </p>
+          ) : !data ? (
+            <p className="text-callout text-[var(--color-system-red)] text-center py-12">
+              요약을 불러올 수 없습니다.
+            </p>
+          ) : (
+            <>
+              <Card title="매출 (자동 집계)">
+                <Row label="현금 매출" value={data.total_cash_sales} />
+                <Row label="카드 매출" value={data.total_card_sales} />
+                <Row
+                  label="매출 합계"
+                  value={data.total_cash_sales + data.total_card_sales}
+                  bold
+                />
+              </Card>
+
+              <Card
+                title="지출 내역"
+                right={
+                  <button
+                    type="button"
+                    onClick={handleAddExpense}
+                    className="pressable text-caption1 text-[var(--color-system-blue)] font-medium"
+                  >
+                    + 지출 추가
+                  </button>
+                }
+              >
+                {expenses.length === 0 ? (
+                  <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-3">
+                    지출 항목이 없습니다.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {expenses.map((e, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={e.memo}
+                          onChange={(ev) => handleExpenseChange(idx, 'memo', ev.target.value)}
+                          placeholder="비고 (예: 공과금, 식대)"
+                          className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                        />
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1000}
+                          value={e.amount || ''}
+                          onChange={(ev) => handleExpenseChange(idx, 'amount', Number(ev.target.value) || 0)}
+                          placeholder="0"
+                          className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExpense(idx)}
+                          aria-label="삭제"
+                          className="pressable text-[var(--color-system-red)]"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    <Row label="지출 합계" value={localExpenseTotal} bold />
+                  </div>
+                )}
+              </Card>
+
+              <Card title="현금 마감">
+                <Row label="시작 시재 (전일 잔액)" value={data.starting_cash} sub />
+                <Row label="+ 현금 매출" value={data.total_cash_sales} sub />
+                <Row label="− 지출" value={localExpenseTotal} sub negative />
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-callout text-[var(--color-label-secondary)]">− 본사 입금</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1000}
+                    value={deposit || ''}
+                    onChange={(e) => setDeposit(Number(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums"
+                  />
+                </div>
+                <div className="border-t border-[var(--color-separator-opaque)] my-1" />
+                <Row label="예상 현금" value={expectedCash} bold />
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-callout text-[var(--color-label-primary)] font-semibold">실측 현금</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1000}
+                    value={cashCounted || ''}
+                    onChange={(e) => setCashCounted(Number(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums font-semibold"
+                  />
+                </div>
+                <Row
+                  label="차액"
+                  value={variance}
+                  bold
+                  color={variance === 0 ? 'green' : variance < 0 ? 'red' : 'orange'}
+                />
+              </Card>
+
+              <Card title="비고">
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="선택 입력"
+                  rows={2}
+                  className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                />
+              </Card>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="pressable touch-target-lg rounded-xl bg-[var(--color-system-blue)] py-3 text-headline font-semibold text-white disabled:opacity-40"
+              >
+                {submitting
+                  ? '저장 중…'
+                  : data.is_closed
+                    ? '마감 갱신'
+                    : '정산 저장'}
+              </button>
+            </>
+          )}
+        </form>
+
+        <MonthlyPanel ym={ym} monthly={monthly} />
+      </div>
+    </main>
+  );
+}
+
+function MonthlyPanel({
+  ym,
+  monthly,
+}: {
+  ym: string;
+  monthly: MonthlyResponse | undefined;
+}) {
+  // 누계(running total) + 당월 합계 — 일자 오름차순 기준
+  const { rows, totals } = useMemo(() => {
+    const days = monthly?.days ?? [];
+    let salesAcc = 0;
+    let cashAcc = 0;
+    let cardAcc = 0;
+    let countAcc = 0;
+    let expenseAcc = 0;
+    const rows = days.map((d) => {
+      salesAcc += d.sales_amount;
+      cashAcc += d.cash_amount;
+      cardAcc += d.card_amount;
+      countAcc += d.sales_count;
+      expenseAcc += d.expense;
+      return {
+        ...d,
+        sales_acc: salesAcc,
+        cash_acc: cashAcc,
+        card_acc: cardAcc,
+        count_acc: countAcc,
+        expense_acc: expenseAcc,
+      };
+    });
+    return {
+      rows,
+      totals: {
+        sales: salesAcc,
+        cash: cashAcc,
+        card: cardAcc,
+        count: countAcc,
+        expense: expenseAcc,
+      },
+    };
+  }, [monthly]);
+
+  return (
+    <aside className="flex flex-col gap-3 min-w-0">
+      <header>
+        <h2 className="text-title3 font-bold text-[var(--color-label-primary)]">
+          {ym.replace('-', '. ')} 정산내역
+        </h2>
+        <p className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+          영업일자 변경 시 해당 월로 자동 갱신됩니다.
+        </p>
+      </header>
+
+      {/* 당월 합계 */}
+      <section className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <Stat label="매출누계" value={totals.sales} />
+        <Stat label="현금누계" value={totals.cash} />
+        <Stat label="카드누계" value={totals.card} />
+        <Stat label="건수누계" value={totals.count} suffix="건" />
+        <Stat label="지출누계" value={totals.expense} />
+      </section>
+
+      {/* 일자별 리스트 */}
+      <section className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
+        {rows.length === 0 ? (
           <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
-            불러오는 중…
-          </p>
-        ) : !data ? (
-          <p className="text-callout text-[var(--color-system-red)] text-center py-12">
-            요약을 불러올 수 없습니다.
+            당월 정산 내역이 없습니다.
           </p>
         ) : (
-          <>
-            {/* 매출 자동 집계 */}
-            <Card title="매출 (자동 집계)">
-              <Row label="현금 매출" value={data.total_cash_sales} />
-              <Row label="카드 매출" value={data.total_card_sales} />
-              <Row
-                label="매출 합계"
-                value={data.total_cash_sales + data.total_card_sales}
-                bold
-              />
-            </Card>
-
-            {/* 지출 라인 */}
-            <Card
-              title="지출 내역"
-              right={
-                <button
-                  type="button"
-                  onClick={handleAddExpense}
-                  className="pressable text-caption1 text-[var(--color-system-blue)] font-medium"
-                >
-                  + 지출 추가
-                </button>
-              }
-            >
-              {expenses.length === 0 ? (
-                <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-3">
-                  지출 항목이 없습니다.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {expenses.map((e, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={e.memo}
-                        onChange={(ev) => handleExpenseChange(idx, 'memo', ev.target.value)}
-                        placeholder="비고 (예: 공과금, 식대)"
-                        className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-                      />
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1000}
-                        value={e.amount || ''}
-                        onChange={(ev) => handleExpenseChange(idx, 'amount', Number(ev.target.value) || 0)}
-                        placeholder="0"
-                        className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExpense(idx)}
-                        aria-label="삭제"
-                        className="pressable text-[var(--color-system-red)]"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <Row label="지출 합계" value={localExpenseTotal} bold />
-                </div>
-              )}
-            </Card>
-
-            {/* 시재 계산 + 본사 입금 + 실측 */}
-            <Card title="현금 마감">
-              <Row label="시작 시재 (전일 잔액)" value={data.starting_cash} sub />
-              <Row label="+ 현금 매출" value={data.total_cash_sales} sub />
-              <Row label="− 지출" value={localExpenseTotal} sub negative />
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-callout text-[var(--color-label-secondary)]">− 본사 입금</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1000}
-                  value={deposit || ''}
-                  onChange={(e) => setDeposit(Number(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums"
-                />
-              </div>
-              <div className="border-t border-[var(--color-separator-opaque)] my-1" />
-              <Row label="예상 현금" value={expectedCash} bold />
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-callout text-[var(--color-label-primary)] font-semibold">실측 현금</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1000}
-                  value={cashCounted || ''}
-                  onChange={(e) => setCashCounted(Number(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums font-semibold"
-                />
-              </div>
-              <Row
-                label="차액"
-                value={variance}
-                bold
-                color={variance === 0 ? 'green' : variance < 0 ? 'red' : 'orange'}
-              />
-            </Card>
-
-            {/* 비고 */}
-            <Card title="비고">
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="선택 입력"
-                rows={2}
-                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-              />
-            </Card>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="pressable touch-target-lg rounded-xl bg-[var(--color-system-blue)] py-3 text-headline font-semibold text-white disabled:opacity-40"
-            >
-              {submitting
-                ? '저장 중…'
-                : data.is_closed
-                  ? '마감 갱신'
-                  : '정산 저장'}
-            </button>
-          </>
+          <div className="overflow-auto max-h-[720px]">
+            <table className="w-full text-caption1">
+              <thead className="bg-[var(--color-fill-quaternary)] text-caption2 text-[var(--color-label-secondary)] sticky top-0">
+                <tr>
+                  <th className="text-left p-2 whitespace-nowrap">날짜</th>
+                  <th className="text-right p-2 whitespace-nowrap">매출누계</th>
+                  <th className="text-right p-2 whitespace-nowrap">매출</th>
+                  <th className="text-right p-2 whitespace-nowrap">현금누계</th>
+                  <th className="text-right p-2 whitespace-nowrap">현금</th>
+                  <th className="text-right p-2 whitespace-nowrap">카드누계</th>
+                  <th className="text-right p-2 whitespace-nowrap">카드</th>
+                  <th className="text-right p-2 whitespace-nowrap">건수</th>
+                  <th className="text-right p-2 whitespace-nowrap">지출누계</th>
+                  <th className="text-right p-2 whitespace-nowrap">지출</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.business_date}
+                    className="border-t border-[var(--color-separator-opaque)] tabular-nums"
+                  >
+                    <td className="p-2 whitespace-nowrap font-mono">{fmtMD(r.business_date)}</td>
+                    <td className="p-2 text-right font-semibold">{r.sales_acc.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.sales_amount.toLocaleString()}</td>
+                    <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.cash_acc.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.cash_amount.toLocaleString()}</td>
+                    <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.card_acc.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.card_amount.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.sales_count.toLocaleString()}</td>
+                    <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.expense_acc.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.expense.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </form>
-    </main>
+      </section>
+    </aside>
+  );
+}
+
+function Stat({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-caption2 text-[var(--color-label-tertiary)]">{label}</span>
+      <span className="text-headline font-semibold tabular-nums text-[var(--color-label-primary)]">
+        {value.toLocaleString()}
+        {suffix ? <span className="ml-0.5 text-caption1 text-[var(--color-label-secondary)] font-normal">{suffix}</span> : null}
+      </span>
+    </div>
   );
 }
 
