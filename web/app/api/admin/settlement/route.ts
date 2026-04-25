@@ -88,16 +88,20 @@ export async function POST(request: Request) {
 
     const db = getDB();
 
-    // 이미 마감된 영업일은 수정 불가
+    // 이미 마감된 영업일은 본사 전용 권한 보유자만 수정 가능
+    const canUnlock =
+      session.role_code.startsWith('hq_') &&
+      Array.isArray(session.permissions) &&
+      session.permissions.includes('settlement_edit_locked');
     const { data: existing } = await db
       .from('fo_settlements')
       .select('id')
       .eq('store_id', session.store_id)
       .eq('business_date', body.business_date)
       .maybeSingle();
-    if (existing) {
+    if (existing && !canUnlock) {
       return NextResponse.json(
-        { data: null, error: '이미 마감된 영업일입니다. 수정할 수 없습니다.' },
+        { data: null, error: '이미 마감된 영업일입니다. 수정 권한이 없습니다.' },
         { status: 409 }
       );
     }
