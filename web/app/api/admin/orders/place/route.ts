@@ -6,10 +6,13 @@ import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 
 interface PlaceBody {
+  /** 'unassigned' 키워드 또는 빈 값 → 매입처 미지정 그룹(NULL) */
   supplier_id: string;
   from: string;
   to: string;
 }
+
+const UNASSIGNED_KEY = '__unassigned__';
 
 export async function POST(request: Request) {
   const session = await getServerSession();
@@ -19,17 +22,22 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as PlaceBody;
-    if (!body.supplier_id || !body.from || !body.to) {
+    if (body.supplier_id === undefined || !body.from || !body.to) {
       return NextResponse.json(
         { data: null, error: 'supplier_id, from, to 가 필요합니다.' },
         { status: 400 }
       );
     }
 
+    const supplierIdParam =
+      body.supplier_id === UNASSIGNED_KEY || body.supplier_id === ''
+        ? null
+        : body.supplier_id;
+
     const db = getDB();
     const { data, error } = await db.rpc('mark_orders_placed', {
       p_store_id: session.store_id,
-      p_supplier_id: body.supplier_id,
+      p_supplier_id: supplierIdParam as unknown as string,
       p_from: body.from,
       p_to: body.to,
       p_user_id: session.staff_user_id,
