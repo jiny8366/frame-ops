@@ -1360,6 +1360,20 @@ export type Database = {
       }
     }
     Functions: {
+      create_inbound_receipt: {
+        Args: {
+          p_store_id: string
+          p_supplier_id?: string | null
+          p_document_at?: string | null
+          p_note?: string | null
+          p_lines?: Json
+        }
+        Returns: {
+          receipt_id: string
+          lines_created: number
+          total_cost: number
+        }[]
+      }
       create_sale_with_items: {
         Args: {
           p_card_amount: number
