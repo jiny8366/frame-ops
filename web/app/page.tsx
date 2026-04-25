@@ -1,6 +1,11 @@
 // Frame Ops — 홈 (대시보드)
+// hq_* role 이면 /hq 로 리다이렉트, 그 외엔 지점 대시보드 표시.
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getServerSession } from '@/lib/auth/server-session';
+import { isHqRole } from '@/lib/auth/permissions';
 
 export const metadata: Metadata = { title: '대시보드' };
 
@@ -10,7 +15,12 @@ const NAV_ITEMS = [
   { href: '/orders', label: '매출',      icon: '📊', color: 'bg-violet-600' },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await getServerSession();
+  if (session && isHqRole(session.role_code)) {
+    redirect('/hq');
+  }
+
   return (
     <main className="min-h-screen bg-surface-secondary p-4 safe-padding">
       <header className="mb-6">

@@ -6,6 +6,7 @@ export interface SessionMe {
   staff_user_id: string;
   display_name: string;
   role_code: string;
+  permissions: string[];
   store_id: string;
   store_code: string;
   store_name: string;

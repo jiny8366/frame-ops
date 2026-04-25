@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { mutate } from 'swr';
 import type { SessionMe } from '@/hooks/useSession';
+import { hasPermission, isHqRole } from '@/lib/auth/permissions';
 
 interface UserMenuProps {
   session: SessionMe;
@@ -15,6 +16,8 @@ interface UserMenuProps {
 interface MenuItem {
   label: string;
   enabled: boolean;
+  /** 이 권한 키가 있어야 표시. undefined 면 항상 표시. */
+  perm?: string;
   href?: string;
   onClick?: () => void;
   divider?: boolean;
@@ -63,22 +66,56 @@ export function UserMenu({ session }: UserMenuProps) {
     };
   }, [open]);
 
-  // 메뉴 구성. 그룹: 운영(통계/내역/정산/주문/매입) → 마스터(상품/매입처) → 매장 관리(직원/매장)
-  const items: MenuItem[] = [
-    { label: '판매통계', enabled: true, href: '/admin/stats' },
-    { label: '판매내역 검색', enabled: true, href: '/admin/sales-search' },
-    { label: '정산', enabled: true, href: '/admin/settlement' },
-    { label: '주문리스트', enabled: true, href: '/admin/orders' },
-    { label: '매입 등록', enabled: true, href: '/admin/inbound' },
+  // 메뉴 정의 — 각 항목은 perm 키로 사용자별 표시 결정.
+  const isHq = isHqRole(session.role_code);
+  const allItems: MenuItem[] = [
+    // ── 본사 전용 (hq_* 만) ────────────────────────────────────────
+    ...(isHq
+      ? ([
+          { label: '본사 대시보드', enabled: true, href: '/hq', perm: 'hq_dashboard' },
+          { label: '매장 관리', enabled: true, href: '/hq/stores', perm: 'hq_stores_manage' },
+          { label: '본사 통합 통계', enabled: false, onClick: showSoon, perm: 'hq_stats' },
+          { label: '본사 판매내역', enabled: false, onClick: showSoon, perm: 'hq_sales_search' },
+          { label: '매장 비교', enabled: false, onClick: showSoon, perm: 'hq_comparison' },
+          { divider: true, label: '', enabled: false },
+        ] as MenuItem[])
+      : []),
+
+    // ── 분석 / 운영 ─────────────────────────────────────────────────
+    { label: '판매통계', enabled: true, href: '/admin/stats', perm: 'sales_stats' },
+    { label: '판매내역 검색', enabled: true, href: '/admin/sales-search', perm: 'sales_search' },
+    { label: '정산', enabled: true, href: '/admin/settlement', perm: 'settlement' },
+    { label: '주문리스트', enabled: true, href: '/admin/orders', perm: 'orders_list' },
+    { label: '매입 등록', enabled: true, href: '/admin/inbound', perm: 'inbound_register' },
     { divider: true, label: '', enabled: false },
-    { label: '상품 등록', enabled: true, href: '/admin/products' },
-    { label: '매입처 관리', enabled: true, href: '/admin/suppliers' },
+
+    // ── 마스터 ──────────────────────────────────────────────────────
+    { label: '상품 등록', enabled: true, href: '/admin/products', perm: 'master_products' },
+    { label: '매입처 관리', enabled: true, href: '/admin/suppliers', perm: 'master_suppliers' },
     { divider: true, label: '', enabled: false },
-    { label: '직원 관리', enabled: true, href: '/admin/staff' },
-    { label: '매장 정보', enabled: true, href: '/admin/store' },
+
+    // ── 지점 관리 ───────────────────────────────────────────────────
+    { label: '직원 관리', enabled: true, href: '/admin/staff', perm: 'store_staff_manage' },
+    { label: '매장 정보', enabled: true, href: '/admin/store', perm: 'store_info_edit' },
     { divider: true, label: '', enabled: false },
     { label: '로그아웃', enabled: true, onClick: handleLogout },
   ];
+
+  // 권한 필터 적용 + 연속된 divider 정리
+  const filtered: MenuItem[] = [];
+  for (const item of allItems) {
+    if (item.divider) {
+      // 직전이 divider 거나 비어있으면 skip
+      if (filtered.length === 0 || filtered[filtered.length - 1].divider) continue;
+      filtered.push(item);
+      continue;
+    }
+    if (item.perm && !hasPermission(session.permissions, item.perm)) continue;
+    filtered.push(item);
+  }
+  // 마지막 divider 제거
+  while (filtered.length > 0 && filtered[filtered.length - 1].divider) filtered.pop();
+  const items = filtered;
 
   const initials = (session.display_name || session.store_code).slice(0, 1);
 

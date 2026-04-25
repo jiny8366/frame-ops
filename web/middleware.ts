@@ -3,9 +3,11 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, verifySession } from '@/lib/auth/session';
+import { isHqRole } from '@/lib/auth/permissions';
 
 const PUBLIC_PATHS = ['/login'];
 const PUBLIC_API_PREFIXES = ['/api/auth/'];
+const HQ_PREFIXES = ['/hq', '/api/hq/'];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
@@ -33,6 +35,22 @@ export async function middleware(request: NextRequest) {
     loginUrl.pathname = '/login';
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // 본사 전용 영역(/hq, /api/hq) 은 hq_* role 만 통과
+  const isHqPath = HQ_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
+  if (isHqPath && !isHqRole(session.role_code)) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { data: null, error: '본사 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+    // 비본사 사용자가 본사 URL 접근 시 홈으로
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = '/';
+    homeUrl.search = '';
+    return NextResponse.redirect(homeUrl);
   }
 
   return NextResponse.next();

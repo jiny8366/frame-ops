@@ -23,6 +23,7 @@ export async function GET() {
       staff_user_id: session.staff_user_id,
       display_name: session.display_name,
       role_code: session.role_code,
+      permissions: session.permissions,
       store_id: session.store_id,
       store_code: session.store_code,
       store_name: store?.name ?? session.store_code,

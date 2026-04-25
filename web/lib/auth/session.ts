@@ -9,6 +9,8 @@ export interface SessionPayload {
   store_code: string;
   display_name: string;
   role_code: string;
+  /** Effective permissions (explicit override OR role defaults) */
+  permissions: string[];
 }
 
 const ALG = 'HS256';
@@ -50,12 +52,16 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
     ) {
       return null;
     }
+    const perms = Array.isArray(payload.permissions)
+      ? (payload.permissions as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
     return {
       staff_user_id: payload.staff_user_id,
       store_id: payload.store_id,
       store_code: payload.store_code,
       display_name: payload.display_name,
       role_code: payload.role_code,
+      permissions: perms,
     };
   } catch {
     return null;

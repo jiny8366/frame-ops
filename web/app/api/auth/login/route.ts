@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import { getDB } from '@/lib/supabase/server';
 import { verifyPassword } from '@/lib/auth/password';
 import { signSession, SESSION_COOKIE } from '@/lib/auth/session';
+import { effectivePermissions } from '@/lib/auth/permissions';
 
 interface LoginBody {
   store_code: string;
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
 
     const { data: staffRows, error: staffErr } = await db
       .from('fo_staff_profiles')
-      .select('user_id, display_name, role_code, password_hash, active')
+      .select('user_id, display_name, role_code, password_hash, permissions, active')
       .in('user_id', scopedIds)
       .eq('active', true);
 
@@ -74,7 +75,12 @@ export async function POST(request: Request) {
     }
 
     // 3. password 일치 직원 찾기
-    const matches: Array<{ user_id: string; display_name: string | null; role_code: string }> = [];
+    const matches: Array<{
+      user_id: string;
+      display_name: string | null;
+      role_code: string;
+      permissions: string[] | null;
+    }> = [];
     for (const s of staffRows ?? []) {
       if (!s.password_hash) continue;
       const ok = await verifyPassword(password, s.password_hash);
@@ -83,6 +89,7 @@ export async function POST(request: Request) {
           user_id: s.user_id,
           display_name: s.display_name,
           role_code: s.role_code,
+          permissions: s.permissions,
         });
       }
     }
@@ -107,6 +114,7 @@ export async function POST(request: Request) {
     }
 
     const staff = matches[0];
+    const permissions = effectivePermissions(staff.role_code, staff.permissions);
 
     // 4. 세션 발급 + 쿠키 설정
     const token = await signSession({
@@ -115,6 +123,7 @@ export async function POST(request: Request) {
       store_code: store.store_code,
       display_name: staff.display_name ?? '',
       role_code: staff.role_code,
+      permissions,
     });
 
     const cookieStore = await cookies();
@@ -137,6 +146,7 @@ export async function POST(request: Request) {
         staff_user_id: staff.user_id,
         display_name: staff.display_name,
         role_code: staff.role_code,
+        permissions,
       },
       error: null,
     });

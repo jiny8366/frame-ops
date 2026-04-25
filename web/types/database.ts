@@ -924,6 +924,7 @@ export type Database = {
           login_id: string | null
           password_hash: string | null
           password_updated_at: string | null
+          permissions: string[] | null
           phone: string | null
           role_code: string
           updated_at: string
@@ -938,6 +939,7 @@ export type Database = {
           login_id?: string | null
           password_hash?: string | null
           password_updated_at?: string | null
+          permissions?: string[] | null
           phone?: string | null
           role_code: string
           updated_at?: string
@@ -952,6 +954,7 @@ export type Database = {
           login_id?: string | null
           password_hash?: string | null
           password_updated_at?: string | null
+          permissions?: string[] | null
           phone?: string | null
           role_code?: string
           updated_at?: string

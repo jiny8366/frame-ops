@@ -17,6 +17,8 @@ interface PatchBody {
   phone?: string | null;
   active?: boolean;
   password?: string;
+  /** 명시 권한. null/빈배열 → role 기본값 사용. 미전송 → 변경 안 함 */
+  permissions?: string[] | null;
 }
 
 async function ensureScoped(userId: string, storeId: string): Promise<boolean> {
@@ -58,6 +60,13 @@ export async function PATCH(
     if (body.password) {
       update.password_hash = await hashPassword(body.password);
       update.password_updated_at = new Date().toISOString();
+    }
+    if (body.permissions !== undefined) {
+      // 빈배열·null → role 기본값 사용 (NULL 저장)
+      update.permissions =
+        Array.isArray(body.permissions) && body.permissions.length > 0
+          ? body.permissions
+          : null;
     }
 
     if (Object.keys(update).length === 0) {
