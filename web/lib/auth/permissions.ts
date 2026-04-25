@@ -31,6 +31,7 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   // 지점 관리
   { key: 'store_staff_manage',label: '직원 관리 (지점)',   group: '지점관리', scope: 'store' },
   { key: 'store_info_edit',   label: '매장 정보',          group: '지점관리', scope: 'store' },
+  { key: 'attendance_view',   label: '근태관리 (출퇴근)',  group: '지점관리', scope: 'both'  },
 
   // 본사 (HQ portal)
   { key: 'hq_dashboard',      label: '본사 대시보드',      group: '본사',     scope: 'hq' },
@@ -78,6 +79,7 @@ export const ROLE_DEFAULTS: Record<string, string[]> = {
     'sales_search',
     'store_staff_manage',
     'store_info_edit',
+    'attendance_view',
   ],
   store_staff: ['pos_sales', 'inventory_view', 'sales_search'],
 };

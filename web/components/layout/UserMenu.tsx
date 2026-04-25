@@ -74,6 +74,7 @@ export function UserMenu({ session }: UserMenuProps) {
       ? ([
           { label: '대시보드', enabled: true, href: '/hq', perm: 'hq_dashboard' },
           { label: '매장 관리', enabled: true, href: '/hq/stores', perm: 'hq_stores_manage' },
+          { label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' },
           { label: '본사 통합 통계', enabled: false, onClick: showSoon, perm: 'hq_stats' },
           { label: '본사 판매내역', enabled: false, onClick: showSoon, perm: 'hq_sales_search' },
           { label: '매장 비교', enabled: false, onClick: showSoon, perm: 'hq_comparison' },
@@ -97,6 +98,10 @@ export function UserMenu({ session }: UserMenuProps) {
     // ── 지점 관리 ───────────────────────────────────────────────────
     { label: '직원 관리', enabled: true, href: '/admin/staff', perm: 'store_staff_manage' },
     { label: '매장 정보', enabled: true, href: '/admin/store', perm: 'store_info_edit' },
+    // HQ 유저는 위 본사 그룹에서 이미 근태관리 노출하므로 중복 회피
+    ...(!isHq
+      ? ([{ label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' }] as MenuItem[])
+      : []),
     { divider: true, label: '', enabled: false },
     { label: '로그아웃', enabled: true, onClick: handleLogout },
   ];
