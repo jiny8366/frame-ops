@@ -387,6 +387,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          inbound_hold: boolean
           product_code: string
           product_line: string | null
           sale_price: number
@@ -406,6 +407,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          inbound_hold?: boolean
           product_code: string
           product_line?: string | null
           sale_price?: number
@@ -425,6 +427,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          inbound_hold?: boolean
           product_code?: string
           product_line?: string | null
           sale_price?: number
@@ -1397,6 +1400,23 @@ export type Database = {
           cash_on_hand: number
           note: string | null
           is_closed: boolean
+        }[]
+      }
+      get_pending_for_inbound: {
+        Args: {
+          p_supplier_id?: string | null
+        }
+        Returns: {
+          product_id: string
+          brand_id: string
+          brand_name: string
+          style_code: string | null
+          color_code: string | null
+          display_name: string | null
+          stock_quantity: number
+          pending_count: number
+          cost_price: number
+          inbound_hold: boolean
         }[]
       }
       create_inbound_receipt: {
