@@ -22,12 +22,12 @@ export const CartView = memo(function CartView({
   onDecrease,
   onEditDiscount,
 }: CartViewProps) {
-  // 고정 높이로 카트 영역을 안정화 (약 15행). 항목이 더 많으면 내부 스크롤.
-  // 빈 상태도 같은 높이를 유지하여 결제·할인 버튼 위치가 흔들리지 않음.
+  // 항목 수에 따라 세로 영역이 유동적으로 확장. 약 15행(40rem)을 상한으로 두고
+  // 그 이상이면 내부 스크롤. 빈 상태는 안내 문구만큼만 차지.
   return (
-    <div className="h-[40rem] overflow-auto rounded-xl bg-[var(--color-bg-secondary)]">
+    <div className="max-h-[40rem] overflow-auto rounded-xl bg-[var(--color-bg-secondary)]">
       {items.length === 0 ? (
-        <div className="h-full flex items-center justify-center text-[var(--color-label-tertiary)] text-callout">
+        <div className="flex items-center justify-center py-12 text-[var(--color-label-tertiary)] text-callout">
           좌측에서 제품을 선택해 담아주세요
         </div>
       ) : (
