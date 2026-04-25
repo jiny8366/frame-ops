@@ -1,6 +1,6 @@
 // Frame Ops Web — 주문리스트
-// 기간 선택 → 미발주 sale_items 를 매입처별·제품 단위 합산.
-// 매입처 그룹별 [Excel 다운로드] [PDF 인쇄] [발주 확정] 액션.
+// 기간 선택 → 발주 처리되지 않은 판매 항목을 매입처별·제품 단위로 합산.
+// Excel 또는 PDF 인쇄로 다운로드하면 자동으로 발주 처리되어 다음 검색에서 제외됨.
 
 'use client';
 
@@ -70,67 +70,9 @@ export default function OrdersPage() {
     revalidateOnFocus: false,
   });
 
-  // ── Excel 다운로드 (클라이언트 측 xlsx 생성) ─────────────────────────────
-  const downloadExcel = useCallback(
-    (group: SupplierGroup) => {
-      if (!data) return;
-
-      // 헤더 + 빈 줄 + 컬럼명 + 데이터 + 합계 — AOA 로 한 번에 구성
-      const aoa: (string | number)[][] = [
-        [`매장: ${data.store?.name ?? '-'} (${data.store?.store_code ?? '-'})`],
-        [`매입처: ${group.supplier_name}${group.supplier_code ? ` (${group.supplier_code})` : ''}`],
-        [`기간: ${data.period.from} ~ ${data.period.to}`],
-        [],
-        ['브랜드', '스타일코드', '색상', '제품명', '수량', '원가(₩)', '합계(₩)'],
-        ...group.items.map((it) => [
-          it.brand_name,
-          it.style_code ?? '',
-          it.color_code ?? '',
-          it.display_name ?? '',
-          it.total_quantity,
-          it.cost_price,
-          it.total_quantity * it.cost_price,
-        ]),
-        [],
-        ['합계', '', '', '', group.total_quantity, '', group.total_cost],
-      ];
-
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = [
-        { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 24 },
-        { wch: 6 }, { wch: 10 }, { wch: 12 },
-      ];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, group.supplier_name.slice(0, 30) || '발주');
-
-      const filename = `주문리스트_${group.supplier_name}_${data.period.from}_${data.period.to}.xlsx`;
-      XLSX.writeFile(wb, filename);
-      toast.success(`Excel 다운로드: ${filename}`);
-    },
-    [data]
-  );
-
-  // ── PDF (인쇄용 페이지 새 창) ─────────────────────────────────────────────
-  const openPrint = useCallback(
-    (group: SupplierGroup) => {
-      const params = new URLSearchParams({
-        supplier_id: group.supplier_id,
-        from,
-        to,
-      });
-      window.open(`/admin/orders/print?${params.toString()}`, '_blank');
-    },
-    [from, to]
-  );
-
-  // ── 발주 확정 ──────────────────────────────────────────────────────────
-  const placeOrder = useCallback(
+  // 다운로드 후 발주 처리 마킹 (다음 검색에서 제외)
+  const markPlaced = useCallback(
     async (group: SupplierGroup) => {
-      if (!confirm(`${group.supplier_name} 매입처에 대한 ${group.items.length}품목 발주를 확정합니다. 이후 다음 검색에서 제외됩니다. 계속하시겠습니까?`)) {
-        return;
-      }
-      setBusy(group.supplier_id);
       try {
         const res = await fetch('/api/admin/orders/place', {
           method: 'POST',
@@ -142,18 +84,90 @@ export default function OrdersPage() {
           error: string | null;
         };
         if (!res.ok || json.error) {
-          toast.error(json.error ?? '발주 확정 실패');
+          toast.error(json.error ?? '발주 처리 마킹 실패');
           return;
         }
-        toast.success(`발주 확정: ${json.data?.marked ?? 0}건`);
+        toast.success(`발주 처리 완료: ${json.data?.marked ?? 0}건 (다음 검색에서 제외)`);
         await mutate();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : '네트워크 오류');
+      }
+    },
+    [from, to, mutate]
+  );
+
+  // ── Excel 다운로드 (클라이언트 측 xlsx 생성) → 자동 발주 처리 ───────────
+  const downloadExcel = useCallback(
+    async (group: SupplierGroup) => {
+      if (!data) return;
+      if (
+        !confirm(
+          `${group.supplier_name} 매입처 ${group.items.length}품목을 Excel 다운로드합니다. 다운로드 후 발주 처리되어 다음 검색에서 제외됩니다. 계속하시겠습니까?`
+        )
+      ) {
+        return;
+      }
+      setBusy(group.supplier_id);
+      try {
+        const aoa: (string | number)[][] = [
+          [`매장: ${data.store?.name ?? '-'} (${data.store?.store_code ?? '-'})`],
+          [`매입처: ${group.supplier_name}${group.supplier_code ? ` (${group.supplier_code})` : ''}`],
+          [`기간: ${data.period.from} ~ ${data.period.to}`],
+          [],
+          ['브랜드', '스타일코드', '색상', '제품명', '수량', '원가(₩)', '합계(₩)'],
+          ...group.items.map((it) => [
+            it.brand_name,
+            it.style_code ?? '',
+            it.color_code ?? '',
+            it.display_name ?? '',
+            it.total_quantity,
+            it.cost_price,
+            it.total_quantity * it.cost_price,
+          ]),
+          [],
+          ['합계', '', '', '', group.total_quantity, '', group.total_cost],
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [
+          { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 24 },
+          { wch: 6 }, { wch: 10 }, { wch: 12 },
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, group.supplier_name.slice(0, 30) || '발주');
+        const filename = `주문리스트_${group.supplier_name}_${data.period.from}_${data.period.to}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        await markPlaced(group);
       } finally {
         setBusy(null);
       }
     },
-    [from, to, mutate]
+    [data, markPlaced]
+  );
+
+  // ── PDF (인쇄용 페이지 새 창) → 자동 발주 처리 ────────────────────────
+  const openPrint = useCallback(
+    async (group: SupplierGroup) => {
+      if (
+        !confirm(
+          `${group.supplier_name} 매입처 ${group.items.length}품목을 PDF 인쇄합니다. 인쇄 후 발주 처리되어 다음 검색에서 제외됩니다. 계속하시겠습니까?`
+        )
+      ) {
+        return;
+      }
+      setBusy(group.supplier_id);
+      try {
+        const params = new URLSearchParams({
+          supplier_id: group.supplier_id,
+          from,
+          to,
+        });
+        window.open(`/admin/orders/print?${params.toString()}`, '_blank');
+        await markPlaced(group);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [from, to, markPlaced]
   );
 
   return (
@@ -162,7 +176,7 @@ export default function OrdersPage() {
         <header className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">주문리스트</h1>
           <p className="text-caption1 text-[var(--color-label-tertiary)]">
-            발주 확정 항목은 다음 검색에서 제외됩니다 (중복 주문 방지)
+            Excel 또는 PDF 다운로드 시 자동으로 발주 처리되어 다음 검색에서 제외됩니다.
           </p>
         </header>
 
@@ -240,7 +254,6 @@ export default function OrdersPage() {
               busy={busy === g.supplier_id}
               onExcel={downloadExcel}
               onPrint={openPrint}
-              onPlace={placeOrder}
             />
           ))
         )}
@@ -263,17 +276,14 @@ function SupplierGroupCard({
   busy,
   onExcel,
   onPrint,
-  onPlace,
 }: {
   group: SupplierGroup;
   busy: boolean;
   onExcel: (g: SupplierGroup) => void;
   onPrint: (g: SupplierGroup) => void;
-  onPlace: (g: SupplierGroup) => void;
 }) {
   const handleExcel = useCallback(() => onExcel(group), [onExcel, group]);
   const handlePrint = useCallback(() => onPrint(group), [onPrint, group]);
-  const handlePlace = useCallback(() => onPlace(group), [onPlace, group]);
   return (
     <section className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
       <div className="p-4 flex items-center justify-between flex-wrap gap-2 border-b border-[var(--color-separator-opaque)]">
@@ -308,14 +318,9 @@ function SupplierGroupCard({
           >
             PDF 인쇄
           </button>
-          <button
-            type="button"
-            onClick={handlePlace}
-            disabled={busy}
-            className="pressable touch-target rounded-lg px-3 py-2 bg-[var(--color-system-orange)] text-white text-caption1 font-semibold disabled:opacity-40"
-          >
-            {busy ? '처리 중…' : '발주 확정'}
-          </button>
+          {busy && (
+            <span className="text-caption1 text-[var(--color-label-tertiary)]">처리 중…</span>
+          )}
         </div>
       </div>
 
