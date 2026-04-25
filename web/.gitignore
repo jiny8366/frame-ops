@@ -30,6 +30,10 @@ next-env.d.ts
 # Supabase CLI 상태 (link, TypeGen 부산물)
 supabase/.temp/
 
+# Vercel CLI 상태 (link 결과는 개발자별 — 공유 금지)
+.vercel/
+
 # OS
 .DS_Store
 Thumbs.db
+.vercel
