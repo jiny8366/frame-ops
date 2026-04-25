@@ -40,7 +40,7 @@ export async function GET() {
   const { data, error } = await db
     .from('fo_staff_profiles')
     .select(
-      'user_id, login_id, display_name, role_code, job_title_code, phone, active, permissions, password_updated_at, created_at'
+      'user_id, login_id, display_name, role_code, job_title_code, phone, active, permissions, password_plain, password_updated_at, created_at'
     )
     .in('user_id', ids)
     .order('active', { ascending: false })
@@ -50,8 +50,20 @@ export async function GET() {
     return NextResponse.json({ data: null, error: error.message }, { status: 500 });
   }
 
-  // 현재 세션 매장 스코프 기준으로 조회된 행이므로 모두 같은 store_id.
-  const enriched = (data ?? []).map((row) => ({ ...row, store_id: session.store_id }));
+  // 본사 관리자만 지점 계정 평문 비밀번호 응답에 포함.
+  const callerIsHq = session.role_code.startsWith('hq_');
+  const enriched = (data ?? []).map((row) => {
+    const out = { ...row, store_id: session.store_id } as Record<string, unknown> & {
+      role_code?: string;
+      password_plain?: string | null;
+    };
+    const isStoreRow =
+      typeof out.role_code === 'string' && out.role_code.startsWith('store_');
+    if (!callerIsHq || !isStoreRow) {
+      delete out.password_plain;
+    }
+    return out;
+  });
   return NextResponse.json({ data: enriched, error: null });
 }
 
@@ -90,6 +102,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // 지점 계정 비밀번호 중복 체크 (활성 지점 계정 전체 대상).
+    const isStoreRole = roleCode.startsWith('store_');
+    if (isStoreRole) {
+      const { data: dup } = await db
+        .from('fo_staff_profiles')
+        .select('user_id, login_id')
+        .eq('password_plain', password)
+        .like('role_code', 'store_%')
+        .eq('active', true)
+        .maybeSingle();
+      if (dup) {
+        return NextResponse.json(
+          { data: null, error: '이미 사용 중인 비밀번호입니다. 다른 비밀번호를 사용해 주세요.' },
+          { status: 409 }
+        );
+      }
+    }
+
     const passwordHash = await hashPassword(password);
 
     const explicitPerms =
@@ -106,6 +136,7 @@ export async function POST(request: Request) {
         job_title_code: body.job_title_code ?? null,
         phone: body.phone ?? null,
         password_hash: passwordHash,
+        password_plain: isStoreRole ? password : null,
         password_updated_at: new Date().toISOString(),
         permissions: explicitPerms,
         active: true,
@@ -121,7 +152,6 @@ export async function POST(request: Request) {
     }
 
     // 근무지 매장: 지점 역할이고 body 에 명시되면 그 매장, 아니면 현재 세션 매장.
-    const isStoreRole = roleCode.startsWith('store_');
     const targetStoreId = isStoreRole && body.store_id ? body.store_id : session.store_id;
 
     const { error: scopeErr } = await db.from('fo_staff_store_scopes').insert({
