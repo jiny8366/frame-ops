@@ -60,6 +60,8 @@ export interface Sale {
 }
 
 // ── POS 장바구니 ──────────────────────────────────────────────────────────────
+// ⚠️ 이 두 타입은 Phase 2 TASK 8 에서 재설계 예정 (useCart 훅이 새 shape 정의).
+// PHASE2_DESIGN_PATTERNS.md §5 참조. 신규 코드는 이 타입 사용 금지.
 export interface CartItem {
   product: Product;
   quantity: number;
@@ -72,6 +74,30 @@ export interface PosState {
   cart: CartItem[];
   payment_method?: string;
   paid_amount: number;
+}
+
+// ── POS 결제 입력 (Phase 2 신규) ──────────────────────────────────────────────
+// /api/sales/create RPC 와 매핑되는 shape. hooks/useCheckout.ts 에서 사용.
+export interface SaleLineInput {
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  discount_amount?: number;
+}
+
+export interface SaleInput {
+  store_id: string;
+  items: SaleLineInput[];
+  cash_amount: number;
+  card_amount: number;
+  discount_total: number;
+  discount_type_code?: string;
+  seller_user_id?: string;
+  seller_code?: string;
+  seller_label?: string;
+  clerk_note?: string;
+  /** 중복 결제 방지 — RPC 측에서 기존 sale 재사용. 필수. */
+  idempotency_key: string;
 }
 
 // ── 공통 유틸 타입 ────────────────────────────────────────────────────────────

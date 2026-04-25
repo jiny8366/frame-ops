@@ -22,7 +22,6 @@ export async function startTransition(callback: () => void | Promise<void>): Pro
     return;
   }
 
-  // @ts-expect-error — TypeScript DOM lib이 아직 startViewTransition을 모를 수 있음
   const transition = document.startViewTransition(callback);
 
   try {

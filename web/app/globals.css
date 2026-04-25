@@ -74,6 +74,14 @@
     touch-action: auto;
   }
 
+  /* iOS Safari 자동 줌 방지 — input/textarea/select 폰트 16px 이상 필수.
+     (16px 미만이면 포커스 시 브라우저가 화면을 확대하여 pinch-out 없이 돌아오지 않음) */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   /* 스크롤 가능한 컨테이너 */
   .scroll-container {
     overflow-y: auto;
@@ -145,6 +153,37 @@
   .touch-target-lg {
     min-height: 52px;
     min-width: 52px;
+  }
+}
+
+/* ── 터치 피드백 .pressable — GPU 합성 전용 (transform + opacity) ─────────
+   Phase 2 POS 컴포넌트의 기본 버튼 피드백. box-shadow/배경색 애니메이션은
+   페인트를 유발하므로 사용하지 않음. disabled 상태는 시각 변화 없음. */
+@layer utilities {
+  .pressable {
+    transition: transform 0.05s ease-out, opacity 0.05s ease-out;
+    will-change: transform;
+  }
+
+  .pressable:active:not(:disabled) {
+    transform: scale(0.95);
+    opacity: 0.85;
+  }
+}
+
+/* ── 모달 배경 — 모바일은 단순 반투명, 데스크톱만 vibrancy blur ──────────
+   backdrop-filter 는 모바일 GPU 에서 비용이 커 전역 적용 시 스크롤 프레임
+   드랍을 유발한다. 1024px 이상에서만 적용 + 별도 클래스 opt-in. */
+@layer utilities {
+  .modal-backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  @media (min-width: 1024px) {
+    .modal-backdrop--blur {
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
   }
 }
 

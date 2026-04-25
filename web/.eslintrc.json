@@ -1,0 +1,15 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "react-hooks/exhaustive-deps": "error",
+    "react/jsx-no-bind": [
+      "warn",
+      {
+        "allowArrowFunctions": false,
+        "allowFunctions": false,
+        "allowBind": false,
+        "ignoreDOMComponents": true
+      }
+    ]
+  }
+}

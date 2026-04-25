@@ -1,13 +1,13 @@
 // Frame Ops Web — 제품 데이터 훅
 // /api/products → 서버사이드 Supabase → 브라우저로 반환
 // Supabase를 직접 호출하지 않음
+// IDB 프리로드는 Providers에서 SWRConfig.fallback으로 주입됨 (TASK 7에서 이전)
 
 'use client';
 
 import useSWR from 'swr';
-import { useEffect, useState } from 'react';
 import { productsApi } from '@/lib/api-client';
-import { dbGetAll, dbPutMany } from '@/lib/db/indexeddb';
+import { dbPutMany } from '@/lib/db/indexeddb';
 import type { Product, TableFilters } from '@/types';
 
 // ── Fetcher ───────────────────────────────────────────────────────────────────
@@ -23,38 +23,34 @@ async function fetchProducts(filters: TableFilters): Promise<Product[]> {
 }
 
 // ── 제품 목록 훅 ──────────────────────────────────────────────────────────────
+// cacheKey는 Providers의 FRAMES_INITIAL_KEY 상수와 구조를 맞춰야 함.
 export function useFramesData(filters: TableFilters = {}) {
-  // IndexedDB 즉시 fallback
-  const [idbFallback, setIdbFallback] = useState<Product[] | undefined>(undefined);
-
-  useEffect(() => {
-    dbGetAll<Product>('frames').then((cached) => {
-      if (cached.length > 0) setIdbFallback(cached);
-    });
-  }, []);
-
   const cacheKey = ['frames', JSON.stringify(filters)];
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<Product[]>(
     cacheKey,
     () => fetchProducts(filters),
     {
-      fallbackData: idbFallback,
       refreshInterval: 5 * 60 * 1000,
       revalidateOnFocus: true,
       revalidateOnMount: true,
       errorRetryCount: 3,
       onSuccess(freshData) {
-        if (freshData?.length) {
-          dbPutMany('frames', freshData).catch(console.error);
+        if (!freshData?.length) return;
+        // IDB 쓰기는 우선순위 낮은 idle 타임에 수행 (스크롤 프레임 방해 금지)
+        const update = () => dbPutMany('frames', freshData).catch(console.error);
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+          window.requestIdleCallback(update);
+        } else {
+          setTimeout(update, 0);
         }
       },
     }
   );
 
   return {
-    frames: data ?? idbFallback ?? [],
-    isLoading: isLoading && !idbFallback,
+    frames: data ?? [],
+    isLoading,
     isValidating,
     error,
     mutate,

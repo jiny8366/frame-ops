@@ -2,9 +2,20 @@
 // API Routes / Server Actions 전용. 클라이언트 컴포넌트에서 절대 import 금지.
 // 서비스롤 키 사용 → 브라우저에 절대 노출되지 않음
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
-function createServerClient() {
+// HMR-safe 싱글턴 (dev 서버에서 모듈 재평가 시 중복 클라이언트 방지)
+const globalForSupabase = globalThis as unknown as {
+  __frameops_supabase?: SupabaseClient<Database>;
+};
+
+let _client: SupabaseClient<Database> | null = null;
+
+export function getDB(): SupabaseClient<Database> {
+  if (globalForSupabase.__frameops_supabase) return globalForSupabase.__frameops_supabase;
+  if (_client) return _client;
+
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -14,17 +25,16 @@ function createServerClient() {
     );
   }
 
-  return createClient(url, key, {
+  const client = createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    db: { schema: 'public' },
   });
-}
 
-// API Route마다 새 인스턴스 생성 (서버리스 환경 안전)
-export const getDB = createServerClient;
+  if (process.env.NODE_ENV !== 'production') {
+    globalForSupabase.__frameops_supabase = client;
+  } else {
+    _client = client;
+  }
 
-// 싱글턴이 필요한 경우 (장시간 실행 서버)
-let _client: ReturnType<typeof createServerClient> | null = null;
-export function getDBSingleton() {
-  if (!_client) _client = createServerClient();
-  return _client;
+  return client;
 }

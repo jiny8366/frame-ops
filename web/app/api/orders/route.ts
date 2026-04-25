@@ -1,6 +1,12 @@
 // Frame Ops Web — /api/orders (→ fo_sales 테이블)
 // GET: 매출 목록
-// POST: 신규 매출 등록 (POS 결제 완료 시)
+// POST: 신규 매출 등록 (단순 fo_sales insert)
+//
+// ⚠️ DEPRECATED (Phase 2 TASK 7): 신규 결제는 POST /api/sales/create 를 사용할 것.
+//   이 엔드포인트는 sync_queue 의 레거시 호환을 위해 유지되며,
+//   품목(fo_sale_items) 저장 및 재고 차감(stock_quantity)을 수행하지 않는다.
+//   Phase 3 에서 sync_queue drain 확인 후 삭제 예정.
+//   GET 은 매출 목록 조회용으로 계속 유효.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';

@@ -7,6 +7,8 @@ from typing import Any
 import streamlit as st
 from supabase import Client
 
+from lib.perf_log import perf_timed
+
 
 def brand_page_size(n: int) -> int:
     if n <= 4:
@@ -92,10 +94,13 @@ def load_all_brands(sb: Client) -> list[dict[str, Any]]:
 
 @st.cache_data(ttl=300, show_spinner=False)
 def _cached_style_codes(supabase_url: str, brand_id: str) -> list[str]:
+    # DB 뷰 fo_product_styles_by_brand에서 DISTINCT 된 style_code만 가져온다.
+    # 브랜드의 전체 상품 행을 풀로드하지 않으므로 네트워크 전송량·파싱이 급감.
+    # 선행 조건: supabase/migrations/20260423_frame_ops_product_picker_views.sql 적용.
     from lib.supabase_client import get_supabase
     sb = get_supabase()
     rows = (
-        sb.table("fo_products")
+        sb.table("fo_product_styles_by_brand")
         .select("style_code")
         .eq("brand_id", brand_id)
         .execute()
@@ -111,20 +116,25 @@ def _cached_style_codes(supabase_url: str, brand_id: str) -> list[str]:
     )
 
 
+@perf_timed("load_distinct_style_codes", include_args=False)
 def load_distinct_style_codes(sb: Client, brand_id: str) -> list[str]:
+    # 캐시 hit 시 ~0.5ms 미만, miss 시 DB 왕복 포함 시간 로깅됨.
     from lib.supabase_client import get_configured_supabase_url
     return _cached_style_codes(get_configured_supabase_url(), brand_id)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def _cached_color_codes(supabase_url: str, brand_id: str, style_code_val: str) -> list[str]:
+    # DB 뷰 fo_product_colors_by_style에서 DISTINCT 된 color_code만 가져온다.
+    # 같은 (brand_id, style_code)로 묶인 전체 상품 행을 풀로드하지 않는다.
+    # 선행 조건: supabase/migrations/20260423_frame_ops_product_picker_views.sql 적용.
     from lib.supabase_client import get_supabase
     sb = get_supabase()
     stc = (style_code_val or "").strip()
     if not stc:
         return []
     rows = (
-        sb.table("fo_products")
+        sb.table("fo_product_colors_by_style")
         .select("color_code")
         .eq("brand_id", brand_id)
         .eq("style_code", stc)
@@ -141,6 +151,7 @@ def _cached_color_codes(supabase_url: str, brand_id: str, style_code_val: str) -
     )
 
 
+@perf_timed("load_distinct_color_codes", include_args=False)
 def load_distinct_color_codes(sb: Client, brand_id: str, style_code_val: str) -> list[str]:
     from lib.supabase_client import get_configured_supabase_url
     return _cached_color_codes(get_configured_supabase_url(), brand_id, style_code_val)
