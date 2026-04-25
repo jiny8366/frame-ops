@@ -1,5 +1,8 @@
 // Frame Ops Web — 매입 등록
-// 매입처 + 입고일자 + 비고 + 제품 라인 → 입고 등록 (재고 자동 증가).
+// 두 가지 입력 방식:
+//   1) 제품 검색 모드 — 직접 검색 후 라인 추가
+//   2) 주문 대기 리스트 모드 — 재고 부족(stock_quantity < 0) 제품 일괄 체크
+// 매입처 선택 시 주문 대기는 supplier_brands 매핑 기준으로 필터됨.
 
 'use client';
 
@@ -8,6 +11,7 @@ import useSWR from 'swr';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { PendingList } from './PendingList';
 
 interface Supplier {
   id: string;
@@ -61,6 +65,9 @@ export default function InboundPage() {
   // 라인
   const [lines, setLines] = useState<InboundLine[]>([]);
 
+  // 입력 모드: 'search' = 제품 검색, 'pending' = 주문 대기 리스트
+  const [mode, setMode] = useState<'search' | 'pending'>('search');
+
   // 제품 검색
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 200);
@@ -77,7 +84,7 @@ export default function InboundPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // 라인 추가 (이미 있는 product 면 수량 +1)
+  // 라인 추가 (이미 있는 product 면 수량 +1) — 검색 모드용
   const handleAddProduct = useCallback((p: ProductRow) => {
     setLines((prev) => {
       const idx = prev.findIndex((l) => l.product_id === p.id);
@@ -100,6 +107,27 @@ export default function InboundPage() {
       ];
     });
     setQuery('');
+  }, []);
+
+  // 다건 라인 추가 (대기 리스트 일괄 체크 → 추가) — 동일 product_id 면 수량 합산
+  const handleAddManyLines = useCallback((batch: InboundLine[]) => {
+    setLines((prev) => {
+      const next = [...prev];
+      for (const inc of batch) {
+        const idx = next.findIndex((l) => l.product_id === inc.product_id);
+        if (idx >= 0) {
+          next[idx] = {
+            ...next[idx],
+            quantity: next[idx].quantity + inc.quantity,
+            // 기존 단가가 0 이고 새 항목 단가가 있으면 채워줌
+            unit_cost: next[idx].unit_cost > 0 ? next[idx].unit_cost : inc.unit_cost,
+          };
+        } else {
+          next.push(inc);
+        }
+      }
+      return next;
+    });
   }, []);
 
   const handleQty = useCallback((idx: number, value: number) => {
@@ -224,50 +252,85 @@ export default function InboundPage() {
           </Field>
         </div>
 
-        {/* 제품 검색 + 결과 */}
+        {/* 입력 모드 탭 */}
         <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 flex flex-col gap-3">
-          <Field label="제품 검색 (스타일코드 / 제품명 / 색상)">
-            <div className="relative">
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="검색 후 결과 카드를 클릭해 추가"
-                className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-              />
-              {searching && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
-              )}
-            </div>
-          </Field>
+          <div role="tablist" className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-[var(--color-fill-quaternary)]">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'search'}
+              onClick={() => setMode('search')}
+              className={`pressable touch-target rounded-md px-3 py-2 text-callout font-medium transition-colors ${
+                mode === 'search'
+                  ? 'bg-[var(--color-bg-primary)] text-[var(--color-label-primary)] shadow-sm'
+                  : 'text-[var(--color-label-secondary)]'
+              }`}
+            >
+              제품 검색
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'pending'}
+              onClick={() => setMode('pending')}
+              className={`pressable touch-target rounded-md px-3 py-2 text-callout font-medium transition-colors ${
+                mode === 'pending'
+                  ? 'bg-[var(--color-bg-primary)] text-[var(--color-label-primary)] shadow-sm'
+                  : 'text-[var(--color-label-secondary)]'
+              }`}
+            >
+              주문 대기 리스트
+            </button>
+          </div>
 
-          {debouncedQuery && results.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[260px] overflow-auto">
-              {results.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => handleAddProduct(r)}
-                  className="pressable touch-target flex flex-col items-start gap-0.5 p-2 rounded-lg bg-[var(--color-bg-primary)] text-left border border-[var(--color-separator-opaque)] hover:border-[var(--color-system-blue)]"
-                >
-                  <span className="text-caption2 text-[var(--color-label-secondary)] truncate w-full">
-                    {r.brand_name}
-                  </span>
-                  <span className="text-callout font-semibold truncate w-full">
-                    {r.style_code ?? '—'}
-                    {r.color_code ? ` / ${r.color_code}` : ''}
-                  </span>
-                  <span className="text-caption2 text-[var(--color-label-tertiary)] tabular-nums">
-                    재고 {r.stock_quantity ?? 0}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-          {debouncedQuery && !searching && results.length === 0 && (
-            <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-4">
-              “{debouncedQuery}” 검색 결과 없음
-            </p>
+          {mode === 'search' ? (
+            <>
+              <Field label="제품 검색 (스타일코드 / 제품명 / 색상)">
+                <div className="relative">
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="검색 후 결과 카드를 클릭해 추가"
+                    className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                  />
+                  {searching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
+                  )}
+                </div>
+              </Field>
+
+              {debouncedQuery && results.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[260px] overflow-auto">
+                  {results.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => handleAddProduct(r)}
+                      className="pressable touch-target flex flex-col items-start gap-0.5 p-2 rounded-lg bg-[var(--color-bg-primary)] text-left border border-[var(--color-separator-opaque)] hover:border-[var(--color-system-blue)]"
+                    >
+                      <span className="text-caption2 text-[var(--color-label-secondary)] truncate w-full">
+                        {r.brand_name}
+                      </span>
+                      <span className="text-callout font-semibold truncate w-full">
+                        {r.style_code ?? '—'}
+                        {r.color_code ? ` / ${r.color_code}` : ''}
+                      </span>
+                      <span className="text-caption2 text-[var(--color-label-tertiary)] tabular-nums">
+                        재고 {r.stock_quantity ?? 0}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {debouncedQuery && !searching && results.length === 0 && (
+                <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-4">
+                  “{debouncedQuery}” 검색 결과 없음
+                </p>
+              )}
+            </>
+          ) : (
+            <PendingList supplierId={supplierId} onAddLines={handleAddManyLines} />
           )}
         </div>
 
@@ -275,7 +338,7 @@ export default function InboundPage() {
         <div className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
           {lines.length === 0 ? (
             <p className="text-callout text-[var(--color-label-tertiary)] text-center py-8">
-              위에서 제품을 검색하여 추가하세요
+              위 탭에서 제품을 검색하거나 주문 대기 리스트에서 체크하여 추가하세요
             </p>
           ) : (
             <table className="w-full text-callout">
