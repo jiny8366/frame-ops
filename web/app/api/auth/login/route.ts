@@ -11,6 +11,7 @@ import { getDB } from '@/lib/supabase/server';
 import { verifyPassword } from '@/lib/auth/password';
 import { signSession, SESSION_COOKIE } from '@/lib/auth/session';
 import { effectivePermissions, isHqRole } from '@/lib/auth/permissions';
+import { listAccessibleStores } from '@/lib/auth/accessible-stores';
 
 interface LoginBody {
   /** 지점 코드 또는 본사 사용자 login_id */
@@ -46,7 +47,12 @@ export async function POST(request: Request) {
     // ── 1) 본사 로그인 시도 (login_id 일치 + role hq_*) ────────────────────────
     const hqResult = await tryHqLogin(db, identifier, password);
     if (hqResult.kind === 'success') {
-      return await issueSession(hqResult.data);
+      const stores = await listAccessibleStores(
+        db,
+        hqResult.data.staff_user_id,
+        hqResult.data.role_code
+      );
+      return await issueSession(hqResult.data, stores);
     } else if (hqResult.kind === 'error') {
       return NextResponse.json(
         { data: null, error: hqResult.error },
@@ -58,7 +64,14 @@ export async function POST(request: Request) {
     // ── 2) 지점 로그인 시도 (store_code + 매장 직원 password) ─────────────────
     const storeResult = await tryStoreLogin(db, identifier, password);
     if (storeResult.kind === 'success') {
-      return await issueSession(storeResult.data);
+      // 지점 사용자는 보통 단일 매장. accessible_stores 는 현재 매장만 반환.
+      return await issueSession(storeResult.data, [
+        {
+          id: storeResult.data.store_id,
+          store_code: storeResult.data.store_code,
+          name: storeResult.data.store_name ?? '',
+        },
+      ]);
     }
     if (storeResult.kind === 'error') {
       return NextResponse.json(
@@ -224,7 +237,10 @@ async function tryStoreLogin(db: DB, identifier: string, password: string): Prom
 }
 
 // ── 세션 발급 ────────────────────────────────────────────────────────────────
-async function issueSession(data: SessionData): Promise<NextResponse> {
+async function issueSession(
+  data: SessionData,
+  accessibleStores: { id: string; store_code: string; name: string }[]
+): Promise<NextResponse> {
   const token = await signSession({
     staff_user_id: data.staff_user_id,
     store_id: data.store_id,
@@ -245,5 +261,8 @@ async function issueSession(data: SessionData): Promise<NextResponse> {
     maxAge: 60 * 60 * 12,
   });
 
-  return NextResponse.json({ data, error: null });
+  return NextResponse.json({
+    data: { ...data, accessible_stores: accessibleStores },
+    error: null,
+  });
 }
