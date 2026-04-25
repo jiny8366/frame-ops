@@ -11,6 +11,7 @@ import {
   effectivePermissions,
   type PermissionDef,
 } from '@/lib/auth/permissions';
+import { useSession } from '@/hooks/useSession';
 
 interface StaffRow {
   user_id: string;
@@ -22,6 +23,8 @@ interface StaffRow {
   active: boolean;
   permissions?: string[] | null;
   store_id?: string | null;
+  /** 본사 관리자만 응답에 포함됨. 지점 계정에서만 사용 */
+  password_plain?: string | null;
 }
 
 interface RolesResponse {
@@ -58,6 +61,9 @@ const storesFetcher = async (url: string): Promise<StoreOpt[]> => {
 };
 
 export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDialogProps) {
+  const { session } = useSession();
+  const callerIsHq = !!session && session.role_code.startsWith('hq_');
+
   const { data: opts } = useSWR<RolesResponse>('/api/admin/staff/roles', fetcher);
   const { data: stores } = useSWR<StoreOpt[]>('/api/hq/stores', storesFetcher);
 
@@ -69,6 +75,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
   const [active, setActive] = useState(initial?.active ?? true);
   const [password, setPassword] = useState('');
   const [storeId, setStoreId] = useState<string>(initial?.store_id ?? '');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -289,6 +296,26 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
                 className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
               />
             </Field>
+
+            {mode === 'edit' && callerIsHq && isStoreRole && initial?.password_plain && (
+              <Field label="현재 비밀번호 (본사 관리자 전용)">
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={initial.password_plain}
+                    readOnly
+                    className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-fill-quaternary)] px-3 py-2 text-callout font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="pressable rounded-lg px-3 py-2 bg-[var(--color-fill-secondary)] text-caption1 font-medium"
+                  >
+                    {showPassword ? '숨기기' : '보기'}
+                  </button>
+                </div>
+              </Field>
+            )}
 
             <Field label={mode === 'create' ? '비밀번호' : '비밀번호 (변경 시에만 입력)'}>
               <input

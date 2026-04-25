@@ -929,6 +929,7 @@ export type Database = {
           job_title_code: string | null
           login_id: string | null
           password_hash: string | null
+          password_plain: string | null
           password_updated_at: string | null
           permissions: string[] | null
           phone: string | null
@@ -944,6 +945,7 @@ export type Database = {
           job_title_code?: string | null
           login_id?: string | null
           password_hash?: string | null
+          password_plain?: string | null
           password_updated_at?: string | null
           permissions?: string[] | null
           phone?: string | null
@@ -959,6 +961,7 @@ export type Database = {
           job_title_code?: string | null
           login_id?: string | null
           password_hash?: string | null
+          password_plain?: string | null
           password_updated_at?: string | null
           permissions?: string[] | null
           phone?: string | null

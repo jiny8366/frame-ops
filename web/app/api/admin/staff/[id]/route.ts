@@ -59,10 +59,6 @@ export async function PATCH(
     if (body.job_title_code !== undefined) update.job_title_code = body.job_title_code;
     if (body.phone !== undefined) update.phone = body.phone;
     if (body.active !== undefined) update.active = body.active;
-    if (body.password) {
-      update.password_hash = await hashPassword(body.password);
-      update.password_updated_at = new Date().toISOString();
-    }
     if (body.permissions !== undefined) {
       // 빈배열·null → role 기본값 사용 (NULL 저장)
       update.permissions =
@@ -72,6 +68,33 @@ export async function PATCH(
     }
 
     const db = getDB();
+    const isStoreRole = body.role_code?.startsWith('store_') ?? false;
+
+    // 비밀번호 변경: 지점 계정이면 평문 중복 검사 후 password_plain 도 갱신.
+    if (body.password) {
+      if (isStoreRole) {
+        const { data: dup } = await db
+          .from('fo_staff_profiles')
+          .select('user_id')
+          .eq('password_plain', body.password)
+          .like('role_code', 'store_%')
+          .eq('active', true)
+          .neq('user_id', id)
+          .maybeSingle();
+        if (dup) {
+          return NextResponse.json(
+            { data: null, error: '이미 사용 중인 비밀번호입니다. 다른 비밀번호를 사용해 주세요.' },
+            { status: 409 }
+          );
+        }
+      }
+      update.password_hash = await hashPassword(body.password);
+      update.password_updated_at = new Date().toISOString();
+      update.password_plain = isStoreRole ? body.password : null;
+    } else if (body.role_code !== undefined && !isStoreRole) {
+      // 본사 역할로 전환 — 평문 비밀번호 보관하지 않음.
+      update.password_plain = null;
+    }
 
     if (Object.keys(update).length > 0) {
       const { error: updErr } = await db
@@ -84,7 +107,6 @@ export async function PATCH(
     }
 
     // 근무지 매장: 지점 역할이고 store_id 가 명시된 경우 스코프 교체.
-    const isStoreRole = body.role_code?.startsWith('store_') ?? false;
     if (body.store_id !== undefined && body.store_id !== null && isStoreRole) {
       await db.from('fo_staff_store_scopes').delete().eq('user_id', id);
       const { error: scopeErr } = await db
