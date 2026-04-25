@@ -33,14 +33,20 @@ interface FrameOpsDB extends DBSchema {
 
 export type SyncStatus = 'pending' | 'syncing' | 'failed' | 'dead';
 
+/**
+ * sync_queue 의 table 식별자.
+ *  - 'frames' → /api/products (제품 단순 CRUD, 레거시)
+ *  - 'orders' → /api/orders (DEPRECATED, fo_sales 단순 insert. Phase 2 이전 호환)
+ *  - 'sales'  → /api/sales/create (Phase 2 TASK 7 표준, 품목+재고 RPC 경로)
+ */
 export interface SyncQueueItem {
   id?: number;
-  table: 'frames' | 'orders';
+  table: 'frames' | 'orders' | 'sales';
   operation: 'insert' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;
   retry_count: number;
-  // 아래 3개는 TASK 8에서 추가된 선택 필드 — 기존 레코드와 호환
+  // 아래 3개는 Phase 1 TASK 8에서 추가된 선택 필드 — 기존 레코드와 호환
   status?: SyncStatus;
   last_error?: string;
   updated_at?: string;
