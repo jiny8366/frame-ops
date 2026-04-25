@@ -63,15 +63,16 @@ export function UserMenu({ session }: UserMenuProps) {
     };
   }, [open]);
 
-  // 메뉴 구성. '정산' = 일일 마감 페이지 alias.
-  // '매입 등록' 페이지가 검색 + 주문 대기 리스트 두 모드를 모두 포함하므로
-  // 별도의 '매입처리' 메뉴는 두지 않음.
+  // 메뉴 구성. 그룹: 운영(통계/내역/정산/주문/매입) → 마스터(상품/매입처) → 매장 관리(직원/매장)
   const items: MenuItem[] = [
     { label: '판매통계', enabled: true, href: '/admin/stats' },
     { label: '판매내역 검색', enabled: true, href: '/admin/sales-search' },
     { label: '정산', enabled: true, href: '/admin/settlement' },
     { label: '주문리스트', enabled: true, href: '/admin/orders' },
     { label: '매입 등록', enabled: true, href: '/admin/inbound' },
+    { divider: true, label: '', enabled: false },
+    { label: '상품 등록', enabled: true, href: '/admin/products' },
+    { label: '매입처 관리', enabled: true, href: '/admin/suppliers' },
     { divider: true, label: '', enabled: false },
     { label: '직원 관리', enabled: true, href: '/admin/staff' },
     { label: '매장 정보', enabled: true, href: '/admin/store' },
