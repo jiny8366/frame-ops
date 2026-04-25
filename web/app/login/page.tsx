@@ -26,10 +26,37 @@ export default function LoginPage() {
       setSubmitting(true);
       setError(null);
       try {
+        // 모바일이면 위치 권한 요청 (지점 직원 출퇴근 검증용)
+        const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(
+          typeof navigator !== 'undefined' ? navigator.userAgent : ''
+        );
+        let geo: { lat: number; lng: number } | undefined;
+        let geoDenied = false;
+        if (isMobile && typeof navigator !== 'undefined' && navigator.geolocation) {
+          try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10_000,
+                maximumAge: 30_000,
+              });
+            });
+            geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          } catch {
+            geoDenied = true;
+          }
+        }
+
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ store_code: storeCode.trim(), password }),
+          body: JSON.stringify({
+            store_code: storeCode.trim(),
+            password,
+            is_mobile: isMobile,
+            geo,
+            geo_denied: geoDenied,
+          }),
         });
         const json = (await res.json()) as {
           data: {

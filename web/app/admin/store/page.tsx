@@ -14,6 +14,10 @@ interface StoreData {
   phone: string | null;
   business_reg_no: string | null;
   active: boolean;
+  lat: number | null;
+  lng: number | null;
+  geo_radius_m: number | null;
+  geo_required: boolean | null;
 }
 
 const fetcher = async (url: string) => {
@@ -30,6 +34,10 @@ export default function StoreAdminPage() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [bizNo, setBizNo] = useState('');
+  const [lat, setLat] = useState<string>('');
+  const [lng, setLng] = useState<string>('');
+  const [radius, setRadius] = useState<string>('200');
+  const [geoRequired, setGeoRequired] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
@@ -39,6 +47,10 @@ export default function StoreAdminPage() {
       setAddress(data.address ?? '');
       setPhone(data.phone ?? '');
       setBizNo(data.business_reg_no ?? '');
+      setLat(data.lat != null ? String(data.lat) : '');
+      setLng(data.lng != null ? String(data.lng) : '');
+      setRadius(String(data.geo_radius_m ?? 200));
+      setGeoRequired(!!data.geo_required);
     }
   }, [data]);
 
@@ -50,6 +62,25 @@ export default function StoreAdminPage() {
       setMessage(null);
 
       try {
+        const latNum = lat.trim() === '' ? null : Number(lat);
+        const lngNum = lng.trim() === '' ? null : Number(lng);
+        const radiusNum = radius.trim() === '' ? null : Number(radius);
+        if (latNum != null && (Number.isNaN(latNum) || latNum < -90 || latNum > 90)) {
+          setMessage({ type: 'err', text: '위도(lat) 는 -90 ~ 90 사이 숫자여야 합니다.' });
+          setSubmitting(false);
+          return;
+        }
+        if (lngNum != null && (Number.isNaN(lngNum) || lngNum < -180 || lngNum > 180)) {
+          setMessage({ type: 'err', text: '경도(lng) 는 -180 ~ 180 사이 숫자여야 합니다.' });
+          setSubmitting(false);
+          return;
+        }
+        if (radiusNum != null && (Number.isNaN(radiusNum) || radiusNum < 50 || radiusNum > 1000)) {
+          setMessage({ type: 'err', text: '반경은 50 ~ 1000m 사이여야 합니다.' });
+          setSubmitting(false);
+          return;
+        }
+
         const res = await fetch('/api/admin/store', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -58,6 +89,10 @@ export default function StoreAdminPage() {
             address: address || null,
             phone: phone || null,
             business_reg_no: bizNo || null,
+            lat: latNum,
+            lng: lngNum,
+            geo_radius_m: radiusNum,
+            geo_required: geoRequired,
           }),
         });
         const json = (await res.json()) as { data: unknown; error: string | null };
@@ -73,7 +108,7 @@ export default function StoreAdminPage() {
         setSubmitting(false);
       }
     },
-    [name, address, phone, bizNo, submitting, mutate]
+    [name, address, phone, bizNo, lat, lng, radius, geoRequired, submitting, mutate]
   );
 
   return (
@@ -143,6 +178,60 @@ export default function StoreAdminPage() {
                   className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
                 />
               </Field>
+            </div>
+
+            {/* ── 출퇴근 위치 정책 ─────────────────────────────────────── */}
+            <div className="rounded-lg border border-[var(--color-separator-opaque)] p-3 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-callout font-semibold">출퇴근 위치 검증 (모바일)</span>
+                <label className="flex items-center gap-2 text-caption1">
+                  <input
+                    type="checkbox"
+                    checked={geoRequired}
+                    onChange={(e) => setGeoRequired(e.target.checked)}
+                  />
+                  활성
+                </label>
+              </div>
+              <p className="text-caption2 text-[var(--color-label-tertiary)]">
+                활성 시: 모바일 사용자가 매장 좌표 반경 안에서만 로그인 가능. 데스크톱 / 본사 사용자는 영향 없음.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="위도 (lat)">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={lat}
+                    onChange={(e) => setLat(e.target.value)}
+                    placeholder="37.581234"
+                    className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
+                  />
+                </Field>
+                <Field label="경도 (lng)">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={lng}
+                    onChange={(e) => setLng(e.target.value)}
+                    placeholder="126.985678"
+                    className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
+                  />
+                </Field>
+                <Field label="반경 (m, 50~1000)">
+                  <input
+                    type="number"
+                    min={50}
+                    max={1000}
+                    step={10}
+                    value={radius}
+                    onChange={(e) => setRadius(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
+                  />
+                </Field>
+              </div>
+              <p className="text-caption2 text-[var(--color-label-tertiary)]">
+                좌표는 Google Maps / Naver 지도에서 매장을 우클릭(또는 길게 누름)하여 복사. GPS 정확도 ±10~50m 고려해 200m 정도 반경 권장.
+              </p>
             </div>
 
             {message && (
