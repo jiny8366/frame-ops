@@ -113,6 +113,8 @@ export default function SettlementPage() {
 
   const variance = useMemo(() => cashCounted - expectedCash, [cashCounted, expectedCash]);
 
+  const isClosed = !!data?.is_closed;
+
   const handleAddExpense = useCallback(() => {
     setExpenses((prev) => [
       ...prev,
@@ -186,12 +188,6 @@ export default function SettlementPage() {
             </label>
           </header>
 
-          {data?.is_closed && (
-            <div className="rounded-xl bg-[var(--color-system-blue)]/10 text-[var(--color-system-blue)] text-caption1 px-3 py-2">
-              ℹ️ 이 영업일은 이미 마감 저장됨. 다시 저장하면 지출·시재·본사입금이 덮어쓰기 됩니다.
-            </div>
-          )}
-
           {isLoading ? (
             <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
               불러오는 중…
@@ -215,13 +211,15 @@ export default function SettlementPage() {
               <Card
                 title="지출 내역"
                 right={
-                  <button
-                    type="button"
-                    onClick={handleAddExpense}
-                    className="pressable text-caption1 text-[var(--color-system-blue)] font-medium"
-                  >
-                    + 지출 추가
-                  </button>
+                  !isClosed && (
+                    <button
+                      type="button"
+                      onClick={handleAddExpense}
+                      className="pressable text-caption1 text-[var(--color-system-blue)] font-medium"
+                    >
+                      + 지출 추가
+                    </button>
+                  )
                 }
               >
                 {expenses.length === 0 ? (
@@ -237,7 +235,9 @@ export default function SettlementPage() {
                           value={e.memo}
                           onChange={(ev) => handleExpenseChange(idx, 'memo', ev.target.value)}
                           placeholder="비고 (예: 공과금, 식대)"
-                          className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                          disabled={isClosed}
+                          readOnly={isClosed}
+                          className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
                         />
                         <input
                           type="number"
@@ -247,16 +247,20 @@ export default function SettlementPage() {
                           value={e.amount || ''}
                           onChange={(ev) => handleExpenseChange(idx, 'amount', Number(ev.target.value) || 0)}
                           placeholder="0"
-                          className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums"
+                          disabled={isClosed}
+                          readOnly={isClosed}
+                          className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums disabled:opacity-60"
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExpense(idx)}
-                          aria-label="삭제"
-                          className="pressable text-[var(--color-system-red)]"
-                        >
-                          ✕
-                        </button>
+                        {!isClosed && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExpense(idx)}
+                            aria-label="삭제"
+                            className="pressable text-[var(--color-system-red)]"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     ))}
                     <Row label="지출 합계" value={localExpenseTotal} bold />
@@ -278,7 +282,9 @@ export default function SettlementPage() {
                     value={deposit || ''}
                     onChange={(e) => setDeposit(Number(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums"
+                    disabled={isClosed}
+                    readOnly={isClosed}
+                    className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums disabled:opacity-60"
                   />
                 </div>
                 <div className="border-t border-[var(--color-separator-opaque)] my-1" />
@@ -293,7 +299,9 @@ export default function SettlementPage() {
                     value={cashCounted || ''}
                     onChange={(e) => setCashCounted(Number(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums font-semibold"
+                    disabled={isClosed}
+                    readOnly={isClosed}
+                    className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums font-semibold disabled:opacity-60"
                   />
                 </div>
                 <Row
@@ -310,21 +318,21 @@ export default function SettlementPage() {
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="선택 입력"
                   rows={2}
-                  className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                  disabled={isClosed}
+                  readOnly={isClosed}
+                  className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
                 />
               </Card>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="pressable touch-target-lg rounded-xl bg-[var(--color-system-blue)] py-3 text-headline font-semibold text-white disabled:opacity-40"
-              >
-                {submitting
-                  ? '저장 중…'
-                  : data.is_closed
-                    ? '마감 갱신'
-                    : '정산 저장'}
-              </button>
+              {!isClosed && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="pressable touch-target-lg rounded-xl bg-[var(--color-system-blue)] py-3 text-headline font-semibold text-white disabled:opacity-40"
+                >
+                  {submitting ? '저장 중…' : '정산 저장'}
+                </button>
+              )}
             </>
           )}
         </form>
