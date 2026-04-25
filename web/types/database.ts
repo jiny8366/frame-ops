@@ -1472,6 +1472,12 @@ export type Database = {
         }
         Returns: Json
       }
+      get_hq_dashboard_v3: {
+        Args: {
+          p_store_id?: string | null
+        }
+        Returns: Json
+      }
       get_pending_orders: {
         Args: {
           p_store_id: string
