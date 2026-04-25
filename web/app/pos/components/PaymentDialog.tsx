@@ -152,16 +152,22 @@ export const PaymentDialog = memo(function PaymentDialog({
           </button>
         </div>
 
-        {remaining > 0 && (
-          <p className="text-caption1 text-[var(--color-system-orange)] text-center">
-            남은 금액 ₩{remaining.toLocaleString()} 만큼 더 분할해주세요
-          </p>
-        )}
-        {cash + card > total && (
-          <p className="text-caption1 text-[var(--color-system-red)] text-center">
-            합계가 ₩{(cash + card - total).toLocaleString()} 만큼 초과됐습니다
-          </p>
-        )}
+        {/* 안내 영역 — 항상 같은 높이 유지 (다이얼로그 크기 안정화) */}
+        <p
+          className={`text-caption1 text-center min-h-[1.25rem] ${
+            remaining > 0
+              ? 'text-[var(--color-system-orange)]'
+              : cash + card > total
+                ? 'text-[var(--color-system-red)]'
+                : 'invisible'
+          }`}
+        >
+          {remaining > 0
+            ? `남은 금액 ₩${remaining.toLocaleString()} 만큼 더 분할해주세요`
+            : cash + card > total
+              ? `합계가 ₩${(cash + card - total).toLocaleString()} 만큼 초과됐습니다`
+              : '·'}
+        </p>
 
         {/* 취소 / 확정 */}
         <div className="grid grid-cols-2 gap-2 mt-1">
