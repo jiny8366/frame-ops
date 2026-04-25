@@ -41,18 +41,21 @@ export type Database = {
     Tables: {
       fo_brands: {
         Row: {
+          code: string | null
           created_at: string
           id: string
           name: string
           updated_at: string
         }
         Insert: {
+          code?: string | null
           created_at?: string
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
+          code?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -358,18 +361,21 @@ export type Database = {
       }
       fo_product_categories: {
         Row: {
+          code: string | null
           created_at: string
           id: string
           label: string
           sort_order: number
         }
         Insert: {
+          code?: string | null
           created_at?: string
           id?: string
           label: string
           sort_order?: number
         }
         Update: {
+          code?: string | null
           created_at?: string
           id?: string
           label?: string

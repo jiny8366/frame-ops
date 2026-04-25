@@ -6,7 +6,9 @@ import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 import {
   displayNameThreePart,
+  normalizeColorCode,
   normalizeProductLine,
+  normalizeStyleCode,
 } from '@/lib/product-codes';
 import type { Database } from '@/types/database';
 
@@ -51,10 +53,12 @@ export async function PATCH(
       );
     }
 
-    // 변경될 4-tuple
+    // 변경될 4-tuple — 신정책: style 4자리 / color 2자리 자동 정규화
     const nextBrand = body.brand_id ?? current.brand_id;
-    const nextStyle = (body.style_code ?? current.style_code ?? '').trim();
-    const nextColor = (body.color_code ?? current.color_code ?? '').trim();
+    const rawStyle = (body.style_code ?? current.style_code ?? '').trim();
+    const rawColor = (body.color_code ?? current.color_code ?? '').trim();
+    const nextStyle = body.style_code !== undefined ? normalizeStyleCode(rawStyle) : rawStyle;
+    const nextColor = body.color_code !== undefined ? normalizeColorCode(rawColor) : rawColor;
     const nextLine = normalizeProductLine(body.product_line ?? current.product_line ?? '');
 
     // 4-tuple 이 바뀌면 중복 체크

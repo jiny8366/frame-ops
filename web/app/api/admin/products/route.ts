@@ -9,7 +9,10 @@ import {
   allocateUniqueProductCode,
   buildProductCodeBase,
   displayNameThreePart,
+  normalizeColorCode,
   normalizeProductLine,
+  normalizeStyleCode,
+  yymmFromDate,
 } from '@/lib/product-codes';
 
 interface CreateBody {
@@ -101,10 +104,10 @@ export async function POST(request: Request) {
 
     const db = getDB();
 
-    // 브랜드명 조회 (코드 생성용)
+    // 브랜드명 + 코드 조회
     const { data: brand, error: brandErr } = await db
       .from('fo_brands')
-      .select('id, name')
+      .select('id, name, code')
       .eq('id', body.brand_id)
       .maybeSingle();
     if (brandErr || !brand) {
@@ -113,14 +116,37 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (!brand.code) {
+      return NextResponse.json(
+        { data: null, error: `브랜드 "${brand.name}" 의 영문 약자 코드가 없습니다. 브랜드 편집에서 추가하세요.` },
+        { status: 400 }
+      );
+    }
+
+    // 카테고리 코드 조회
+    const { data: catRow } = await db
+      .from('fo_product_categories')
+      .select('label, code')
+      .eq('label', category)
+      .maybeSingle();
+    if (!catRow?.code) {
+      return NextResponse.json(
+        { data: null, error: `카테고리 "${category}" 의 영문 약자 코드가 없습니다. 카테고리 편집에서 추가하세요.` },
+        { status: 400 }
+      );
+    }
+
+    // 입력 정규화 (4자리/2자리)
+    const normalizedStyle = normalizeStyleCode(styleCode);
+    const normalizedColor = normalizeColorCode(colorCode);
 
     // 동일 (브랜드+스타일+컬러+라인) 중복 체크
     const { data: dup } = await db
       .from('fo_products')
       .select('id, product_code')
       .eq('brand_id', body.brand_id)
-      .eq('style_code', styleCode)
-      .eq('color_code', colorCode)
+      .eq('style_code', normalizedStyle)
+      .eq('color_code', normalizedColor)
       .eq('product_line', productLine)
       .maybeSingle();
     if (dup) {
@@ -133,10 +159,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // 코드 + 표시명 자동 생성
-    const base = buildProductCodeBase(productLine, brand.name, styleCode, colorCode);
+    // v2 코드 생성: {LINE}_{CAT}/{BRAND}/{YYMM}/{STYLE}/{COLOR}
+    const base = buildProductCodeBase({
+      productLine,
+      categoryCode: catRow.code,
+      brandCode: brand.code,
+      yymm: yymmFromDate(),
+      styleCode: normalizedStyle,
+      colorCode: normalizedColor,
+    });
     const code = await allocateUniqueProductCode(db, base);
-    const displayName = displayNameThreePart(brand.name, styleCode, colorCode);
+    const displayName = displayNameThreePart(brand.name, normalizedStyle, normalizedColor);
 
     const { data: created, error: insErr } = await db
       .from('fo_products')
@@ -147,8 +180,8 @@ export async function POST(request: Request) {
         category,
         brand_id: body.brand_id,
         product_line: productLine,
-        style_code: styleCode,
-        color_code: colorCode,
+        style_code: normalizedStyle,
+        color_code: normalizedColor,
         cost_price: body.cost_price ?? 0,
         suggested_retail: body.suggested_retail ?? 0,
         sale_price: body.sale_price ?? 0,
