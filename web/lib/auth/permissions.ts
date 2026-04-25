@@ -34,12 +34,13 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   { key: 'attendance_view',   label: '근태관리 (출퇴근)',  group: '지점관리', scope: 'both'  },
 
   // 본사 (HQ portal)
-  { key: 'hq_dashboard',      label: '본사 대시보드',      group: '본사',     scope: 'hq' },
-  { key: 'hq_stores_manage',  label: '매장 관리 (본사)',   group: '본사',     scope: 'hq' },
-  { key: 'hq_staff_manage',   label: '직원 통합 관리',     group: '본사',     scope: 'hq' },
-  { key: 'hq_stats',          label: '본사 통합 통계',     group: '본사',     scope: 'hq' },
-  { key: 'hq_sales_search',   label: '본사 판매내역',      group: '본사',     scope: 'hq' },
-  { key: 'hq_comparison',     label: '매장 비교',          group: '본사',     scope: 'hq' },
+  { key: 'hq_dashboard',         label: '본사 대시보드',          group: '본사',     scope: 'hq' },
+  { key: 'hq_stores_manage',     label: '매장 관리 (본사)',       group: '본사',     scope: 'hq' },
+  { key: 'hq_staff_manage',      label: '직원 통합 관리',         group: '본사',     scope: 'hq' },
+  { key: 'hq_stats',             label: '본사 통합 통계',         group: '본사',     scope: 'hq' },
+  { key: 'hq_sales_search',      label: '본사 판매내역',          group: '본사',     scope: 'hq' },
+  { key: 'hq_comparison',        label: '매장 비교',              group: '본사',     scope: 'hq' },
+  { key: 'settlement_edit_locked', label: '마감된 정산 수정',     group: '본사',     scope: 'hq' },
 ];
 
 export const PERMISSION_KEYS = ALL_PERMISSIONS.map((p) => p.key);

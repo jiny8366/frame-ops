@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import { useSession } from '@/hooks/useSession';
+import { hasPermission, isHqRole } from '@/lib/auth/permissions';
 
 interface ExpenseLine {
   id?: string;
@@ -70,6 +72,10 @@ function fmtMD(date: string): string {
 }
 
 export default function SettlementPage() {
+  const { session } = useSession();
+  const canUnlock =
+    !!session && isHqRole(session.role_code) && hasPermission(session.permissions, 'settlement_edit_locked');
+
   const [date, setDate] = useState<string>(todayDate());
   const ym = ymOf(date);
 
@@ -114,6 +120,7 @@ export default function SettlementPage() {
   const variance = useMemo(() => cashCounted - expectedCash, [cashCounted, expectedCash]);
 
   const isClosed = !!data?.is_closed;
+  const isLocked = isClosed && !canUnlock;
 
   const handleAddExpense = useCallback(() => {
     setExpenses((prev) => [
@@ -211,7 +218,7 @@ export default function SettlementPage() {
               <Card
                 title="지출 내역"
                 right={
-                  !isClosed && (
+                  !isLocked && (
                     <button
                       type="button"
                       onClick={handleAddExpense}
@@ -235,8 +242,8 @@ export default function SettlementPage() {
                           value={e.memo}
                           onChange={(ev) => handleExpenseChange(idx, 'memo', ev.target.value)}
                           placeholder="비고 (예: 공과금, 식대)"
-                          disabled={isClosed}
-                          readOnly={isClosed}
+                          disabled={isLocked}
+                          readOnly={isLocked}
                           className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
                         />
                         <input
@@ -247,11 +254,11 @@ export default function SettlementPage() {
                           value={e.amount || ''}
                           onChange={(ev) => handleExpenseChange(idx, 'amount', Number(ev.target.value) || 0)}
                           placeholder="0"
-                          disabled={isClosed}
-                          readOnly={isClosed}
+                          disabled={isLocked}
+                          readOnly={isLocked}
                           className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums disabled:opacity-60"
                         />
-                        {!isClosed && (
+                        {!isLocked && (
                           <button
                             type="button"
                             onClick={() => handleRemoveExpense(idx)}
@@ -282,8 +289,8 @@ export default function SettlementPage() {
                     value={deposit || ''}
                     onChange={(e) => setDeposit(Number(e.target.value) || 0)}
                     placeholder="0"
-                    disabled={isClosed}
-                    readOnly={isClosed}
+                    disabled={isLocked}
+                    readOnly={isLocked}
                     className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums disabled:opacity-60"
                   />
                 </div>
@@ -299,8 +306,8 @@ export default function SettlementPage() {
                     value={cashCounted || ''}
                     onChange={(e) => setCashCounted(Number(e.target.value) || 0)}
                     placeholder="0"
-                    disabled={isClosed}
-                    readOnly={isClosed}
+                    disabled={isLocked}
+                    readOnly={isLocked}
                     className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums font-semibold disabled:opacity-60"
                   />
                 </div>
@@ -318,26 +325,26 @@ export default function SettlementPage() {
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="선택 입력"
                   rows={2}
-                  disabled={isClosed}
-                  readOnly={isClosed}
+                  disabled={isLocked}
+                  readOnly={isLocked}
                   className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
                 />
               </Card>
 
-              {!isClosed && (
+              {!isLocked && (
                 <button
                   type="submit"
                   disabled={submitting}
                   className="pressable touch-target-lg rounded-xl bg-[var(--color-system-blue)] py-3 text-headline font-semibold text-white disabled:opacity-40"
                 >
-                  {submitting ? '저장 중…' : '정산 저장'}
+                  {submitting ? '저장 중…' : isClosed ? '마감 갱신 (본사 권한)' : '정산 저장'}
                 </button>
               )}
             </>
           )}
         </form>
 
-        <MonthlyPanel ym={ym} monthly={monthly} />
+        <MonthlyPanel ym={ym} monthly={monthly} selectedDate={date} onPick={setDate} />
       </div>
     </main>
   );
@@ -346,9 +353,13 @@ export default function SettlementPage() {
 function MonthlyPanel({
   ym,
   monthly,
+  selectedDate,
+  onPick,
 }: {
   ym: string;
   monthly: MonthlyResponse | undefined;
+  selectedDate: string;
+  onPick: (date: string) => void;
 }) {
   // 누계(running total) + 당월 합계 — 일자 오름차순 기준
   const { rows, totals } = useMemo(() => {
@@ -392,7 +403,7 @@ function MonthlyPanel({
           {ym.replace('-', '. ')} 정산내역
         </h2>
         <p className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
-          영업일자 변경 시 해당 월로 자동 갱신됩니다.
+          행을 더블클릭하면 좌측에 해당 영업일 상세가 로드됩니다.
         </p>
       </header>
 
@@ -432,7 +443,15 @@ function MonthlyPanel({
                 {rows.map((r) => (
                   <tr
                     key={r.business_date}
-                    className="border-t border-[var(--color-separator-opaque)] tabular-nums"
+                    onDoubleClick={() => onPick(r.business_date)}
+                    title="더블클릭으로 좌측 상세에 로드"
+                    aria-selected={r.business_date === selectedDate}
+                    className={
+                      'cursor-pointer border-t border-[var(--color-separator-opaque)] tabular-nums select-none ' +
+                      (r.business_date === selectedDate
+                        ? 'bg-[var(--color-system-blue)]/10'
+                        : 'hover:bg-[var(--color-fill-quaternary)]')
+                    }
                   >
                     <td className="p-2 whitespace-nowrap font-mono">{fmtMD(r.business_date)}</td>
                     <td className="p-2 text-right font-semibold">{r.sales_acc.toLocaleString()}</td>
