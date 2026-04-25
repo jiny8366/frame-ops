@@ -70,7 +70,7 @@ export function UserMenu({ session }: UserMenuProps) {
     { label: '판매통계', enabled: true, href: '/admin/stats' },
     { label: '판매내역 검색', enabled: true, href: '/admin/sales-search' },
     { label: '정산', enabled: true, href: '/admin/settlement' },
-    { label: '주문리스트', enabled: false, onClick: showSoon },
+    { label: '주문리스트', enabled: true, href: '/admin/orders' },
     { label: '매입 등록', enabled: true, href: '/admin/inbound' },
     { divider: true, label: '', enabled: false },
     { label: '직원 관리', enabled: true, href: '/admin/staff' },
