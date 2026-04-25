@@ -63,18 +63,18 @@ export function UserMenu({ session }: UserMenuProps) {
     };
   }, [open]);
 
-  // 메뉴 구성: Phase A=로그아웃, Phase B1=직원/매장 추가됨. 후속 phase 에서 enabled=true 로 전환.
+  // 메뉴 구성. '정산' = 일일 마감 페이지 alias.
+  // '매입 등록' 페이지가 검색 + 주문 대기 리스트 두 모드를 모두 포함하므로
+  // 별도의 '매입처리' 메뉴는 두지 않음.
   const items: MenuItem[] = [
     { label: '판매통계', enabled: true, href: '/admin/stats' },
     { label: '판매내역 검색', enabled: true, href: '/admin/sales-search' },
-    { label: '정산', enabled: false, onClick: showSoon },
+    { label: '정산', enabled: true, href: '/admin/settlement' },
     { label: '주문리스트', enabled: false, onClick: showSoon },
-    { label: '매입처리', enabled: false, onClick: showSoon },
+    { label: '매입 등록', enabled: true, href: '/admin/inbound' },
     { divider: true, label: '', enabled: false },
     { label: '직원 관리', enabled: true, href: '/admin/staff' },
     { label: '매장 정보', enabled: true, href: '/admin/store' },
-    { label: '매입 등록', enabled: true, href: '/admin/inbound' },
-    { label: '일일 마감', enabled: true, href: '/admin/settlement' },
     { divider: true, label: '', enabled: false },
     { label: '로그아웃', enabled: true, onClick: handleLogout },
   ];

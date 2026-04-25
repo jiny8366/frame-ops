@@ -1,4 +1,4 @@
-// Frame Ops Web — 일일 마감
+// Frame Ops Web — 정산
 // 영업일자 기준: 매출 자동 집계 + 지출 라인 입력 + 시재 계산 + 본사 입금 + 실측 현금 → 마감 저장.
 
 'use client';
@@ -127,7 +127,7 @@ export default function SettlementPage() {
           setSubmitting(false);
           return;
         }
-        toast.success('일일 마감 저장 완료');
+        toast.success('정산 저장 완료');
         await mutate();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : '네트워크 오류');
@@ -142,7 +142,7 @@ export default function SettlementPage() {
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <form onSubmit={handleSubmit} className="max-w-[760px] mx-auto flex flex-col gap-4">
         <header className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">일일 마감</h1>
+          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">정산</h1>
           <label className="flex items-center gap-2">
             <span className="text-caption1 text-[var(--color-label-secondary)]">영업일자</span>
             <input
@@ -296,7 +296,7 @@ export default function SettlementPage() {
                 ? '저장 중…'
                 : data.is_closed
                   ? '마감 갱신'
-                  : '일일 마감 저장'}
+                  : '정산 저장'}
             </button>
           </>
         )}
