@@ -170,165 +170,182 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-[440px] flex flex-col gap-3 rounded-2xl bg-[var(--color-bg-secondary)] p-5"
+        className="w-full max-w-[800px] h-[600px] max-h-[calc(100vh-2rem)] flex flex-col rounded-2xl bg-[var(--color-bg-secondary)] overflow-hidden"
       >
-        <h2 className="text-headline font-semibold text-[var(--color-label-primary)]">
-          {mode === 'create' ? '직원 추가' : '직원 편집'}
-        </h2>
+        {/* 헤더 */}
+        <header className="px-5 py-3 border-b border-[var(--color-separator-opaque)]">
+          <h2 className="text-headline font-semibold text-[var(--color-label-primary)]">
+            {mode === 'create' ? '직원 추가' : '직원 편집'}
+          </h2>
+        </header>
 
-        <Field label="로그인 ID">
-          <input
-            type="text"
-            value={loginId}
-            onChange={(e) => setLoginId(e.target.value)}
-            disabled={mode === 'edit'}
-            required
-            autoCapitalize="none"
-            className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-50"
-          />
-        </Field>
+        {/* 본문: 2-column (기본 정보 좌측 / 권한 우측) */}
+        <div className="flex-1 overflow-auto px-5 py-4 grid grid-cols-1 md:grid-cols-[300px_1fr] gap-5">
+          {/* ── 좌측: 기본 정보 ─────────────────────────────────────── */}
+          <div className="flex flex-col gap-3">
+            <Field label="로그인 ID">
+              <input
+                type="text"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                disabled={mode === 'edit'}
+                required
+                autoCapitalize="none"
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-50"
+              />
+            </Field>
 
-        <Field label="이름">
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            required
-            className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-          />
-        </Field>
+            <Field label="이름">
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              />
+            </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="역할">
-            <select
-              value={roleCode}
-              onChange={(e) => setRoleCode(e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+            <Field label="역할">
+              <select
+                value={roleCode}
+                onChange={(e) => setRoleCode(e.target.value)}
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              >
+                {(opts?.roles ?? []).map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="직급">
+              <select
+                value={jobTitleCode}
+                onChange={(e) => setJobTitleCode(e.target.value)}
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              >
+                <option value="">선택 없음</option>
+                {(opts?.job_titles ?? []).map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="전화">
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              />
+            </Field>
+
+            <Field label={mode === 'create' ? '비밀번호' : '비밀번호 (변경 시에만 입력)'}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required={mode === 'create'}
+                autoComplete="new-password"
+                placeholder={mode === 'edit' ? '비워두면 변경 안 함' : ''}
+                className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              />
+            </Field>
+
+            {mode === 'edit' && (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={(e) => setActive(e.target.checked)}
+                />
+                <span className="text-callout">활성 상태 (체크 해제 시 로그인 차단)</span>
+              </label>
+            )}
+          </div>
+
+          {/* ── 우측: 메뉴별 접근 권한 ───────────────────────────────── */}
+          <div className="flex flex-col gap-2 min-h-0">
+            <div className="flex items-baseline justify-between gap-2 flex-wrap">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={useCustomPerms}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setUseCustomPerms(next);
+                    if (!next) setPerms(new Set(ROLE_DEFAULTS[roleCode] ?? []));
+                  }}
+                />
+                <span className="text-callout font-semibold">메뉴별 접근 권한 직접 지정</span>
+              </label>
+              <span className="text-caption2 text-[var(--color-label-tertiary)]">
+                {useCustomPerms ? `${perms.size} / ${ALL_PERMISSIONS.length} 활성` : 'role 기본값 사용'}
+              </span>
+            </div>
+            <p className="text-caption2 text-[var(--color-label-tertiary)]">
+              체크 해제 시 역할(role)의 기본 권한을 사용. 직접 지정하면 아래 체크박스가 우선합니다.
+            </p>
+            <div
+              className={`flex-1 overflow-auto rounded-lg border border-[var(--color-separator-opaque)] p-2 flex flex-col gap-2 ${
+                useCustomPerms ? '' : 'opacity-50 pointer-events-none'
+              }`}
             >
-              {(opts?.roles ?? []).map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.label}
-                </option>
+              {groupedPerms.map(([group, list]) => (
+                <details key={group} open className="rounded-md bg-[var(--color-fill-quaternary)] p-2">
+                  <summary className="cursor-pointer text-caption1 font-semibold text-[var(--color-label-primary)]">
+                    {group} ({list.filter((p) => perms.has(p.key)).length}/{list.length})
+                  </summary>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5 mt-2">
+                    {list.map((p) => (
+                      <label
+                        key={p.key}
+                        className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[var(--color-fill-tertiary)] text-caption1"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={perms.has(p.key)}
+                          onChange={() => togglePerm(p.key)}
+                          disabled={!useCustomPerms}
+                        />
+                        <span>{p.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </details>
               ))}
-            </select>
-          </Field>
-          <Field label="직급">
-            <select
-              value={jobTitleCode}
-              onChange={(e) => setJobTitleCode(e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-            >
-              <option value="">선택 없음</option>
-              {(opts?.job_titles ?? []).map((t) => (
-                <option key={t.code} value={t.code}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <Field label="전화">
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-          />
-        </Field>
-
-        <Field
-          label={
-            mode === 'create' ? '비밀번호' : '비밀번호 (변경 시에만 입력)'
-          }
-        >
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required={mode === 'create'}
-            autoComplete="new-password"
-            placeholder={mode === 'edit' ? '비워두면 변경 안 함' : ''}
-            className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-          />
-        </Field>
-
-        {mode === 'edit' && (
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-            />
-            <span className="text-callout">활성 상태 (체크 해제 시 로그인 차단)</span>
-          </label>
-        )}
-
-        {/* 메뉴별 접근 권한 ───────────────────────────────────────── */}
-        <div className="rounded-lg border border-[var(--color-separator-opaque)] p-3 flex flex-col gap-2">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={useCustomPerms}
-              onChange={(e) => {
-                const next = e.target.checked;
-                setUseCustomPerms(next);
-                if (!next) setPerms(new Set(ROLE_DEFAULTS[roleCode] ?? []));
-              }}
-            />
-            <span className="text-callout font-semibold">메뉴별 접근 권한 직접 지정</span>
-          </label>
-          <p className="text-caption2 text-[var(--color-label-tertiary)]">
-            체크 해제 시 역할(role)의 기본 권한을 사용. 직접 지정하면 아래 체크박스가 우선합니다.
-          </p>
-          <div className={`flex flex-col gap-2 ${useCustomPerms ? '' : 'opacity-50 pointer-events-none'}`}>
-            {groupedPerms.map(([group, list]) => (
-              <details key={group} open className="rounded-md bg-[var(--color-fill-quaternary)] p-2">
-                <summary className="cursor-pointer text-caption1 font-semibold text-[var(--color-label-primary)]">
-                  {group} ({list.filter((p) => perms.has(p.key)).length}/{list.length})
-                </summary>
-                <div className="grid grid-cols-2 gap-1 mt-2">
-                  {list.map((p) => (
-                    <label
-                      key={p.key}
-                      className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[var(--color-fill-tertiary)] text-caption1"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={perms.has(p.key)}
-                        onChange={() => togglePerm(p.key)}
-                        disabled={!useCustomPerms}
-                      />
-                      <span>{p.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </details>
-            ))}
+            </div>
           </div>
         </div>
 
-        {error && (
-          <p className="text-caption1 text-[var(--color-system-red)] text-center">{error}</p>
-        )}
-
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium disabled:opacity-50"
+        {/* 푸터: 에러 + 액션 */}
+        <footer className="px-5 py-3 border-t border-[var(--color-separator-opaque)] flex items-center justify-between gap-3">
+          <p
+            className={`text-caption1 ${error ? 'text-[var(--color-system-red)]' : 'invisible'}`}
           >
-            취소
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
-          >
-            {submitting ? '저장 중…' : '저장'}
-          </button>
-        </div>
+            {error || '\u00a0'}
+          </p>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="pressable touch-target rounded-xl px-4 py-2 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="pressable touch-target rounded-xl px-5 py-2 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
+            >
+              {submitting ? '저장 중…' : '저장'}
+            </button>
+          </div>
+        </footer>
       </form>
     </div>
   );
