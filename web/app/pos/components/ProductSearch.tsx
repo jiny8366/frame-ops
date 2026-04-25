@@ -64,7 +64,9 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
     (row: SearchResultRow) => {
       onSelect({
         id: row.id,
+        brand_name: row.brand_name,
         style_code: row.style_code,
+        color_code: row.color_code,
         display_name: row.display_name,
         sale_price: row.sale_price,
       });

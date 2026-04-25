@@ -40,15 +40,11 @@ export const CartItem = memo(function CartItem({
   return (
     <div className="flex items-center gap-3 px-3 py-1.5 border-b border-[var(--color-separator-opaque)] last:border-b-0">
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="text-callout font-medium text-[var(--color-label-primary)] truncate">
-            {item.style_code}
-          </span>
-          {item.display_name && item.display_name !== item.style_code && (
-            <span className="text-caption1 text-[var(--color-label-secondary)] truncate">
-              {item.display_name}
-            </span>
-          )}
+        {/* {브랜드}/{제품번호}/{컬러} 한 줄 표시 */}
+        <div className="text-callout font-medium text-[var(--color-label-primary)] truncate">
+          {[item.brand_name, item.style_code, item.color_code].filter(Boolean).join('/') ||
+            item.display_name ||
+            '-'}
         </div>
         <div className="flex items-baseline gap-2 mt-0.5 text-caption1 text-[var(--color-label-secondary)]">
           <span>₩{item.unit_price.toLocaleString()}</span>
