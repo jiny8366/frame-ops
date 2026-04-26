@@ -74,6 +74,7 @@ export function UserMenu({ session }: UserMenuProps) {
       ? ([
           { label: '대시보드', enabled: true, href: '/hq', perm: 'hq_dashboard' },
           { label: '매장 관리', enabled: true, href: '/hq/stores', perm: 'hq_stores_manage' },
+          { label: '직원 통합 관리', enabled: true, href: '/hq/staff', perm: 'hq_staff_manage' },
           { label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' },
           { label: '본사 통합 통계', enabled: true, href: '/hq/stats', perm: 'hq_stats' },
           { label: '본사 판매내역', enabled: true, href: '/hq/sales-search', perm: 'hq_sales_search' },
