@@ -89,6 +89,8 @@ export function UserMenu({ session }: UserMenuProps) {
     { label: '정산', enabled: true, href: '/admin/settlement', perm: 'settlement' },
     { label: '주문리스트', enabled: true, href: '/admin/orders', perm: 'orders_list' },
     { label: '매입 등록', enabled: true, href: '/admin/inbound', perm: 'inbound_register' },
+    { label: '재고 조회', enabled: true, href: '/inventory', perm: 'inventory_view' },
+    { label: '발주 대기', enabled: true, href: '/inventory/pending', perm: 'inventory_pending' },
     { divider: true, label: '', enabled: false },
 
     // ── 마스터 ──────────────────────────────────────────────────────
