@@ -10,9 +10,12 @@ import { isHqRole } from '@/lib/auth/permissions';
 export const metadata: Metadata = { title: '대시보드' };
 
 const NAV_ITEMS = [
-  { href: '/pos',    label: 'POS 판매',  icon: '💳', color: 'bg-brand-600' },
-  { href: '/frames', label: '재고 조회', icon: '👓', color: 'bg-emerald-600' },
-  { href: '/orders', label: '매출',      icon: '📊', color: 'bg-violet-600' },
+  { href: '/pos',                label: 'POS 판매',     icon: '💳', color: 'bg-brand-600' },
+  { href: '/inventory',          label: '재고 조회',    icon: '👓', color: 'bg-emerald-600' },
+  { href: '/admin/stats',        label: '판매통계',     icon: '📊', color: 'bg-violet-600' },
+  { href: '/admin/settlement',   label: '정산',         icon: '🧾', color: 'bg-amber-600' },
+  { href: '/admin/orders',       label: '주문리스트',   icon: '📦', color: 'bg-sky-600' },
+  { href: '/admin/sales-search', label: '판매내역',     icon: '🔍', color: 'bg-pink-600' },
 ];
 
 export default async function DashboardPage() {
