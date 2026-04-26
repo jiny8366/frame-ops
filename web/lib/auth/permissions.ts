@@ -82,7 +82,13 @@ export const ROLE_DEFAULTS: Record<string, string[]> = {
     'store_info_edit',
     'attendance_view',
   ],
-  store_staff: ['pos_sales', 'inventory_view', 'sales_search'],
+  store_salesperson: [
+    'pos_sales',
+    'inventory_view',
+    'sales_search',
+    'attendance_view',
+  ],
+  store_staff: ['pos_sales', 'inventory_view', 'sales_search', 'attendance_view'],
 };
 
 /**
