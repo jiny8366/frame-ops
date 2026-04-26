@@ -51,7 +51,7 @@ const supplierFetcher = async (url: string): Promise<Supplier[]> => {
 };
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
 export default function InboundPage() {

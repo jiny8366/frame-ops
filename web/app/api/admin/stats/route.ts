@@ -6,7 +6,7 @@ import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 
 function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
 export async function GET(request: Request) {
