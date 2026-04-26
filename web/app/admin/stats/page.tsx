@@ -42,7 +42,7 @@ const fetcher = async (url: string): Promise<StatsResponse> => {
 };
 
 function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
 export default function StatsPage() {

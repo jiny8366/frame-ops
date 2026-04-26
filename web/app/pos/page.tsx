@@ -16,7 +16,7 @@ import { useCheckout } from '@/hooks/useCheckout';
 import { useSession } from '@/hooks/useSession';
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
 export default function PosPage() {
