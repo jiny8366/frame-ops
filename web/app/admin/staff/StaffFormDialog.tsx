@@ -44,6 +44,8 @@ interface StaffFormDialogProps {
   initial: StaffRow | null;
   onClose: () => void;
   onSaved: () => void;
+  /** 호출할 API 베이스. 기본 /api/admin/staff. HQ 페이지에서는 /api/hq/staff 사용. */
+  apiBase?: string;
 }
 
 const fetcher = async (url: string) => {
@@ -60,7 +62,7 @@ const storesFetcher = async (url: string): Promise<StoreOpt[]> => {
   return json.data ?? [];
 };
 
-export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDialogProps) {
+export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/api/admin/staff' }: StaffFormDialogProps) {
   const { session } = useSession();
   const callerIsHq = !!session && session.role_code.startsWith('hq_');
 
@@ -162,7 +164,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
 
       try {
         if (mode === 'create') {
-          const res = await fetch('/api/admin/staff', {
+          const res = await fetch(apiBase, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -194,7 +196,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
           };
           if (password) update.password = password;
 
-          const res = await fetch(`/api/admin/staff/${initial.user_id}`, {
+          const res = await fetch(`${apiBase}/${initial.user_id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(update),
@@ -212,7 +214,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved }: StaffFormDi
         setSubmitting(false);
       }
     },
-    [mode, initial, loginId, displayName, roleCode, jobTitleCode, phone, active, password, useCustomPerms, perms, isStoreRole, storeId, submitting, onSaved]
+    [mode, initial, loginId, displayName, roleCode, jobTitleCode, phone, active, password, useCustomPerms, perms, isStoreRole, storeId, submitting, onSaved, apiBase]
   );
 
   return (
