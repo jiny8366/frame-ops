@@ -335,10 +335,9 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="제품번호 (숫자·영문 4자리)">
+          <Field label="제품번호 (숫자·영문 — 자릿수 자유)">
             <input
               type="text"
-              maxLength={4}
               value={styleCode}
               onChange={(e) => setStyleCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               onBlur={(e) => setStyleCode(normalizeStyleCode(e.target.value))}
@@ -349,14 +348,13 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               autoCapitalize="characters"
               inputMode="text"
               lang="en"
-              placeholder="0101 / SP01"
+              placeholder="0101 / SP01 / RB2140"
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide text-[var(--color-label-primary)] uppercase"
             />
           </Field>
-          <Field label="컬러 (숫자·영문 2자리)">
+          <Field label="컬러 (숫자·영문 — 자릿수 자유)">
             <input
               type="text"
-              maxLength={2}
               value={colorCode}
               onChange={(e) => setColorCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               onBlur={(e) => setColorCode(normalizeColorCode(e.target.value))}
@@ -367,7 +365,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               autoCapitalize="characters"
               inputMode="text"
               lang="en"
-              placeholder="01 / BK"
+              placeholder="01 / BK / BLK"
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide text-[var(--color-label-primary)] uppercase"
             />
           </Field>

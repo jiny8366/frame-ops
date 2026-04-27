@@ -40,20 +40,16 @@ function alphaNumUpper(s: string): string {
   return (s ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
 }
 
-/** 4자리 영숫자 보장. 모두 숫자면 좌측 0 패딩, 영문 포함 시 우측 X 패딩. */
+/** 제품번호 — 영숫자 대문자만, 길이 자유. 비어있으면 XXXX. */
 export function normalizeStyleCode(s: string): string {
   const t = alphaNumUpper(s);
-  if (!t) return 'XXXX';
-  if (/^[0-9]+$/.test(t)) return t.padStart(4, '0').slice(-4);
-  return t.slice(0, 4).padEnd(4, 'X');
+  return t || 'XXXX';
 }
 
-/** 2자리 영숫자 보장. 모두 숫자면 좌측 0 패딩, 영문 포함 시 우측 X 패딩. */
+/** 컬러 — 영숫자 대문자만, 길이 자유. 비어있으면 00. */
 export function normalizeColorCode(s: string): string {
   const t = alphaNumUpper(s);
-  if (!t) return '00';
-  if (/^[0-9]+$/.test(t)) return t.padStart(2, '0').slice(-2);
-  return t.slice(0, 2).padEnd(2, 'X');
+  return t || '00';
 }
 
 /** YYYY-MM-DD 또는 Date → YYMM (4 chars) */
