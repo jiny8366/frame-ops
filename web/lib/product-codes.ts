@@ -35,22 +35,25 @@ export function normalizeShortCode(s: string, length = 3): string {
   return t.padEnd(length, 'X');
 }
 
-/** 4자리 숫자 보장. 비숫자면 'XXXX'. */
-export function normalizeStyleCode(s: string): string {
-  const t = (s ?? '').trim();
-  if (!t) return 'XXXX';
-  if (!/^[0-9]+$/.test(t)) return t.slice(0, 4);
-  return t.padStart(4, '0').slice(-4);
+/** 영숫자(대문자) 만 남김 — 한글·기호·공백 제거. */
+function alphaNumUpper(s: string): string {
+  return (s ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
 }
 
-/** 2자리 숫자 보장. 비숫자면 첫 숫자만 사용. */
+/** 4자리 영숫자 보장. 모두 숫자면 좌측 0 패딩, 영문 포함 시 우측 X 패딩. */
+export function normalizeStyleCode(s: string): string {
+  const t = alphaNumUpper(s);
+  if (!t) return 'XXXX';
+  if (/^[0-9]+$/.test(t)) return t.padStart(4, '0').slice(-4);
+  return t.slice(0, 4).padEnd(4, 'X');
+}
+
+/** 2자리 영숫자 보장. 모두 숫자면 좌측 0 패딩, 영문 포함 시 우측 X 패딩. */
 export function normalizeColorCode(s: string): string {
-  const t = (s ?? '').trim();
+  const t = alphaNumUpper(s);
   if (!t) return '00';
-  // 'C04' 같은 prefix 제거
-  const digits = t.replace(/^[^0-9]+/, '');
-  if (!digits) return '00';
-  return digits.padStart(2, '0').slice(-2);
+  if (/^[0-9]+$/.test(t)) return t.padStart(2, '0').slice(-2);
+  return t.slice(0, 2).padEnd(2, 'X');
 }
 
 /** YYYY-MM-DD 또는 Date → YYMM (4 chars) */

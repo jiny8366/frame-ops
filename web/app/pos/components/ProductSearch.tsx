@@ -55,10 +55,11 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 
   const handleClear = useCallback(() => setDraft(''), []);
 
-  // 키보드 타이핑 입력 — 키패드 state 와 동일한 draft 갱신.
-  // inputMode="numeric" 으로 모바일에선 숫자 키보드 힌트, 데스크톱에선 일반 문자 가능.
+  // 키보드 타이핑 입력 — 한글/기호 차단, 영숫자만 허용 (대문자 자동 변환).
+  // T9 키패드와 일관성 유지 + 검색 매칭 단순화.
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setDraft(e.target.value.slice(0, 30));
+    const cleaned = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+    setDraft(cleaned.slice(0, 30));
   }, []);
 
   // 재고 1 (전시상품) 인 경우 사용자 확인을 받기 위한 보류 상태
