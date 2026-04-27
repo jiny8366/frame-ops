@@ -74,7 +74,6 @@ export function UserMenu({ session }: UserMenuProps) {
       ? ([
           { label: '대시보드', enabled: true, href: '/hq', perm: 'hq_dashboard' },
           { label: '매장 관리', enabled: true, href: '/hq/stores', perm: 'hq_stores_manage' },
-          { label: '직원 통합 관리', enabled: true, href: '/hq/staff', perm: 'hq_staff_manage' },
           { label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' },
           { label: '본사 통합 통계', enabled: true, href: '/hq/stats', perm: 'hq_stats' },
           { label: '본사 판매내역', enabled: true, href: '/hq/sales-search', perm: 'hq_sales_search' },
@@ -99,7 +98,13 @@ export function UserMenu({ session }: UserMenuProps) {
     { divider: true, label: '', enabled: false },
 
     // ── 지점 관리 ───────────────────────────────────────────────────
-    { label: '계정설정', enabled: true, href: '/admin/staff', perm: 'store_staff_manage' },
+    // 계정설정: 본사 사용자는 /hq/staff (전 매장), 지점 사용자는 /admin/staff (현재 매장)
+    {
+      label: '계정설정',
+      enabled: true,
+      href: isHq ? '/hq/staff' : '/admin/staff',
+      perm: isHq ? 'hq_staff_manage' : 'store_staff_manage',
+    },
     // HQ 사용자는 '매장 관리' 에 매장 정보가 통합되어 있으므로 '매장 정보' 메뉴 회피
     // HQ 사용자는 본사 그룹의 '근태관리' 사용
     ...(!isHq
