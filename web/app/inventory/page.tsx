@@ -38,12 +38,15 @@ export default function InventoryPage() {
 
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState<'low' | 'style' | 'recent'>('style');
+  const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<ProductRow | null>(null);
 
+  // 페이지 진입 시 자동 fetch 안 함. 검색어 입력 또는 '전체 보기' 클릭 시에만.
+  const shouldFetch = query.trim().length > 0 || showAll;
   const { data: items = [], isLoading, mutate } = useSWR<ProductRow[]>(
-    '/api/inventory?limit=500',
+    shouldFetch ? '/api/inventory?limit=500' : null,
     fetcher,
-    { refreshInterval: 60_000 }
+    { refreshInterval: shouldFetch ? 60_000 : 0 }
   );
 
   const filtered = useMemo(() => {
@@ -74,15 +77,17 @@ export default function InventoryPage() {
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
         <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">재고 조회</h1>
 
-        {/* 요약 */}
-        <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-3 gap-3">
-          <SummaryStat label="총 상품" value={items.length} />
-          <SummaryStat label="총 재고" value={totalQty} />
-          <SummaryStat label="잔량 ≤ 1" value={lowCount} highlight />
-        </div>
+        {/* 요약 — 데이터 로드된 경우만 노출 */}
+        {shouldFetch && (
+          <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-3 gap-3">
+            <SummaryStat label="총 상품" value={items.length} />
+            <SummaryStat label="총 재고" value={totalQty} />
+            <SummaryStat label="잔량 ≤ 1" value={lowCount} highlight />
+          </div>
+        )}
 
         {/* 필터 */}
-        <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+        <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 flex flex-col gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-caption1 text-[var(--color-label-secondary)]">검색</span>
             <input
@@ -93,15 +98,36 @@ export default function InventoryPage() {
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
             />
           </label>
-          <div className="flex gap-1">
-            <SortBtn label="스타일순" active={sortMode === 'style'} onClick={() => setSortMode('style')} />
-            <SortBtn label="재고 적은순" active={sortMode === 'low'} onClick={() => setSortMode('low')} />
+          <div className="flex flex-wrap gap-1 items-center justify-between">
+            <div className="flex gap-1">
+              <SortBtn label="스타일순" active={sortMode === 'style'} onClick={() => setSortMode('style')} />
+              <SortBtn label="재고 적은순" active={sortMode === 'low'} onClick={() => setSortMode('low')} />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAll((v) => !v);
+                if (!showAll) setQuery('');
+              }}
+              className={[
+                'pressable touch-target rounded-lg px-3 py-2 text-caption1 font-medium border',
+                showAll
+                  ? 'bg-[var(--color-system-blue)] text-white border-transparent'
+                  : 'bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]',
+              ].join(' ')}
+            >
+              {showAll ? '전체 보기 (해제)' : '전체 보기'}
+            </button>
           </div>
         </div>
 
         {/* 리스트 */}
         <section className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
-          {isLoading ? (
+          {!shouldFetch ? (
+            <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
+              검색어를 입력하거나 &lsquo;전체 보기&rsquo; 를 클릭하세요.
+            </p>
+          ) : isLoading ? (
             <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
               불러오는 중…
             </p>
@@ -124,9 +150,12 @@ export default function InventoryPage() {
                 </thead>
                 <tbody>
                   {filtered.map((p) => {
-                    const stock = p.stock_quantity ?? 0;
-                    const isLow = stock <= 1;
-                    const isOut = stock <= 0;
+                    const rawStock = p.stock_quantity;
+                    const stock = rawStock ?? 0;
+                    const isUnknown = rawStock === null;
+                    const isNegative = stock < 0;
+                    const isOut = stock === 0;
+                    const isLow = stock === 1;
                     return (
                       <tr
                         key={p.id}
@@ -158,14 +187,16 @@ export default function InventoryPage() {
                           <span
                             className={[
                               'inline-flex items-center px-2 py-0.5 rounded-full text-caption1',
-                              isOut
+                              isNegative || isOut
                                 ? 'bg-[var(--color-system-red)]/15 text-[var(--color-system-red)]'
                                 : isLow
                                   ? 'bg-[var(--color-system-orange)]/15 text-[var(--color-system-orange)]'
-                                  : '',
+                                  : isUnknown
+                                    ? 'text-[var(--color-label-tertiary)]'
+                                    : '',
                             ].join(' ')}
                           >
-                            {stock}
+                            {isUnknown ? '—' : stock}
                           </span>
                         </td>
                         <td className="p-3 text-right tabular-nums hidden md:table-cell">
