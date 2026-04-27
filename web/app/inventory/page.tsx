@@ -150,9 +150,8 @@ export default function InventoryPage() {
                 </thead>
                 <tbody>
                   {filtered.map((p) => {
-                    const rawStock = p.stock_quantity;
-                    const stock = rawStock ?? 0;
-                    const isUnknown = rawStock === null;
+                    // NULL(미관리) 도 0 으로 노출 — 판매 시 자동 차감으로 음수 진입 가능
+                    const stock = p.stock_quantity ?? 0;
                     const isNegative = stock < 0;
                     const isOut = stock === 0;
                     const isLow = stock === 1;
@@ -191,12 +190,10 @@ export default function InventoryPage() {
                                 ? 'bg-[var(--color-system-red)]/15 text-[var(--color-system-red)]'
                                 : isLow
                                   ? 'bg-[var(--color-system-orange)]/15 text-[var(--color-system-orange)]'
-                                  : isUnknown
-                                    ? 'text-[var(--color-label-tertiary)]'
-                                    : '',
+                                  : '',
                             ].join(' ')}
                           >
-                            {isUnknown ? '—' : stock}
+                            {stock}
                           </span>
                         </td>
                         <td className="p-3 text-right tabular-nums hidden md:table-cell">
