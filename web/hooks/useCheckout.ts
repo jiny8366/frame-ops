@@ -1,6 +1,13 @@
 // Frame Ops — POS 결제 훅
-// 결제 시 실제 서버 응답을 기다린 뒤 성공/실패 토스트. 실패 시 sync_queue 폴백.
-// (이전: optimistic 즉시 성공 토스트 → 실패해도 사용자 인지 어려움. 신뢰성 우선으로 변경)
+// 정책 (수정):
+//   - 결제 시 네트워크 상태(navigator.onLine) 확인 후 분기:
+//     · ONLINE 인데 API 가 에러를 돌려주면 → 서버/검증 에러 → 사용자에게 실제 메시지 노출
+//        (sync_queue 큐잉 안 함: 재시도해도 같은 에러 반복하므로 misleading)
+//     · OFFLINE 또는 fetch 자체가 실패 → sync_queue 보관 + '네트워크 복구 시 자동 재전송' 안내
+//   - 성공 시 success 토스트 + true 반환 (호출자가 카트 비움)
+//
+// 이전 동작은 모든 실패에 동일 큐잉/재전송 안내가 떴고, 사용자는 sale 이 실제로
+// 등록 안 됐는지 알기 어려웠음 + 통계에 안 보임 (큐 dead letter 도달 시 영영 누락 가능).
 
 'use client';
 
@@ -15,6 +22,27 @@ export interface UseCheckoutReturn {
   submit: (saleData: SaleInput) => Promise<boolean>;
 }
 
+function isOnline(): boolean {
+  return typeof navigator !== 'undefined' ? navigator.onLine : true;
+}
+
+async function queueOffline(saleData: SaleInput): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    await enqueueSync({
+      table: 'sales',
+      operation: 'insert',
+      payload: saleData as unknown as Record<string, unknown>,
+      created_at: now,
+      retry_count: 0,
+      status: 'pending',
+      updated_at: now,
+    });
+  } catch {
+    /* IDB 실패는 무시 — 사용자에겐 이미 에러 표시 */
+  }
+}
+
 export function useCheckout(): UseCheckoutReturn {
   const submit = useCallback(async (saleData: SaleInput): Promise<boolean> => {
     if (!saleData.store_id) {
@@ -22,53 +50,46 @@ export function useCheckout(): UseCheckoutReturn {
       return false;
     }
 
+    // 1) 오프라인이면 즉시 큐잉
+    if (!isOnline()) {
+      await queueOffline(saleData);
+      toast.info('오프라인 상태 — 네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+      return false;
+    }
+
+    // 2) 온라인 — 서버 호출
     try {
       const { data, error } = await salesApi.createWithItems(saleData);
-      if (error) {
-        console.error('[useCheckout] API error:', error);
-        toast.error(`판매 등록 실패: ${error}`);
 
-        // 네트워크 단절 가능성 — sync_queue 에 보관 (재전송)
-        const now = new Date().toISOString();
-        await enqueueSync({
-          table: 'sales',
-          operation: 'insert',
-          payload: saleData as unknown as Record<string, unknown>,
-          created_at: now,
-          retry_count: 0,
-          status: 'pending',
-          updated_at: now,
-        });
-        toast.info('네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+      if (error) {
+        // fetch 도중 오프라인 전환됐을 가능성 — 다시 확인
+        if (!isOnline()) {
+          await queueOffline(saleData);
+          toast.info('오프라인 — 네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+          return false;
+        }
+        // 온라인 + 서버에러: 재시도해도 같은 결과 → 큐잉하지 않음
+        console.error('[useCheckout] API error (online):', error);
+        toast.error(`판매 등록 실패 — ${error}`, { duration: 6000 });
         return false;
       }
       if (!data) {
         console.error('[useCheckout] empty response');
-        toast.error('판매 등록 응답이 비어있습니다.');
+        toast.error('판매 등록 응답이 비어있습니다. 다시 시도해 주세요.');
         return false;
       }
+
       toast.success('판매 완료', { duration: 2000 });
       return true;
     } catch (err) {
-      console.error('[useCheckout] exception:', err);
-      const msg = err instanceof Error ? err.message : '네트워크 오류';
-      toast.error(`판매 등록 실패: ${msg}`);
-
-      // 네트워크 예외 — sync_queue 폴백
-      try {
-        const now = new Date().toISOString();
-        await enqueueSync({
-          table: 'sales',
-          operation: 'insert',
-          payload: saleData as unknown as Record<string, unknown>,
-          created_at: now,
-          retry_count: 0,
-          status: 'pending',
-          updated_at: now,
-        });
-        toast.info('네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
-      } catch {
-        // ignore IDB failure
+      // 안전망 — apiFetch 가 거의 모든 에러를 catch 하지만 만약을 위해
+      console.error('[useCheckout] unexpected exception:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isOnline()) {
+        await queueOffline(saleData);
+        toast.info('오프라인 — 네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+      } else {
+        toast.error(`판매 등록 실패 — ${msg}`, { duration: 6000 });
       }
       return false;
     }
