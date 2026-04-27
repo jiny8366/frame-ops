@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { useSession } from '@/hooks/useSession';
@@ -242,6 +242,8 @@ function StockEditDialog({
   const initial = item.stock_quantity ?? 0;
   const [draft, setDraft] = useState<string>(String(initial));
   const [submitting, setSubmitting] = useState(false);
+  // 첫 키 입력은 기존 값 대체. 이후엔 append.
+  const freshRef = useRef(true);
 
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
@@ -253,14 +255,22 @@ function StockEditDialog({
 
   const append = useCallback((d: string) => {
     setDraft((prev) => {
+      if (freshRef.current) {
+        freshRef.current = false;
+        return d;
+      }
       const next = (prev === '0' ? '' : prev) + d;
       return next.slice(0, 5);
     });
   }, []);
   const backspace = useCallback(() => {
+    freshRef.current = false;
     setDraft((prev) => (prev.length <= 1 ? '0' : prev.slice(0, -1)));
   }, []);
-  const clear = useCallback(() => setDraft('0'), []);
+  const clear = useCallback(() => {
+    freshRef.current = false;
+    setDraft('0');
+  }, []);
 
   const qtyNum = Number(draft) || 0;
   const dirty = qtyNum !== initial;

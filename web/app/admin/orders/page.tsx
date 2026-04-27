@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -554,6 +554,8 @@ function QuantityEditDialog({
   onApply: (qty: number) => void;
 }) {
   const [draft, setDraft] = useState<string>(String(initialQty));
+  // 첫 키 입력은 기존 값 대체. 이후엔 append.
+  const freshRef = useRef(true);
 
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
@@ -565,15 +567,23 @@ function QuantityEditDialog({
 
   const append = useCallback((d: string) => {
     setDraft((prev) => {
+      if (freshRef.current) {
+        freshRef.current = false;
+        return d;
+      }
       // 0 으로 시작하는 다중 자리 방지
       const next = (prev === '0' ? '' : prev) + d;
       return next.slice(0, 4);
     });
   }, []);
   const backspace = useCallback(() => {
+    freshRef.current = false;
     setDraft((prev) => (prev.length <= 1 ? '0' : prev.slice(0, -1)));
   }, []);
-  const clear = useCallback(() => setDraft('0'), []);
+  const clear = useCallback(() => {
+    freshRef.current = false;
+    setDraft('0');
+  }, []);
 
   const qtyNum = Number(draft) || 0;
 
