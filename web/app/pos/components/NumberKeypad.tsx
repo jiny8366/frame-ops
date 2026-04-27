@@ -63,7 +63,7 @@ export const NumberKeypad = memo(function NumberKeypad({
   const numericValue = parseInt(value, 10) || 0;
 
   return (
-    <div className="keypad-root flex flex-col gap-3 p-4 w-full max-w-[420px]">
+    <div className="keypad-root flex flex-col gap-3 p-5 w-full max-w-[420px] flex-1">
       {/* LCD 디스플레이 */}
       <div className="keypad-display flex flex-col items-end gap-1 px-3 py-3 rounded-xl bg-[var(--color-fill-tertiary)]">
         <span className="text-caption2 text-[var(--color-label-secondary)]">
@@ -97,19 +97,22 @@ export const NumberKeypad = memo(function NumberKeypad({
         ))}
       </div>
 
-      {/* 취소 / 확인 */}
+      {/* 여백 — 액션 버튼 하단 고정 */}
+      <div className="flex-1" />
+
+      {/* 취소 / 확인 — touch-target-lg 통일 */}
       <div className="keypad-actions grid grid-cols-2 gap-2 mt-1">
         <button
           type="button"
           onClick={onCancel}
-          className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium"
+          className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium"
         >
           취소
         </button>
         <button
           type="button"
           onClick={handleConfirm}
-          className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold"
+          className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold"
         >
           확인
         </button>
