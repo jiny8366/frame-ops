@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Toaster, toast } from 'sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
+import { PendingSyncBadge } from '@/components/PendingSyncBadge';
 import { getDeadLetterItems, initSyncListeners, retryDeadLetter } from '@/lib/db/sync';
 import { dbGetAll } from '@/lib/db/indexeddb';
 import type { Product } from '@/types';
@@ -47,26 +48,28 @@ export function Providers({ children }: ProvidersProps) {
         deadItem.table === 'sales'  ? '판매 등록' :
         deadItem.table === 'frames' ? '제품 업데이트' :
         '데이터';
-      toast.error(`${label} 동기화 실패 (3회 재시도)`, {
-        description: '네트워크 확인 후 수동 재전송 필요',
+      // 정책 변경: dead-letter 가 아닌 임계치 도달 알림.
+      // 자동 재시도는 30초 주기로 계속 진행 중. 사용자에겐 이상 신호로만 노출.
+      toast.warning(`${label} 동기화 ${deadItem.retry_count}회 실패 — 자동 재시도 계속`, {
+        description: '네트워크 상태/서버 점검을 확인하세요. 우하단 배지로 큐 확인 가능.',
         duration: 8000,
       });
-      console.warn('[FrameOps Sync] Dead letter:', deadItem);
+      console.warn('[FrameOps Sync] 누적 실패:', deadItem);
     });
 
-    // 앱 부팅 시 누적된 dead letter 자동 재시도 1회
-    // 이전 버전 useCheckout 의 잘못된 큐잉으로 쌓인 판매가 통계에 누락된 케이스 복구.
+    // 앱 부팅 시 누적된 dead 항목(과거 정책 산물) 도 강제 재시도 큐에 복귀
+    // 신규 정책에서는 dead 가 발생하지 않지만 구버전 데이터 호환.
     void (async () => {
       try {
         const dead = await getDeadLetterItems();
         if (dead.length > 0) {
-          console.info(`[FrameOps Sync] Dead letter ${dead.length}건 — 자동 재시도`);
+          console.info(`[FrameOps Sync] dead 잔존 ${dead.length}건 — 재시도 큐로 복귀`);
           for (const it of dead) {
             if (it.id !== undefined) await retryDeadLetter(it.id);
           }
         }
       } catch (e) {
-        console.warn('[FrameOps Sync] Dead letter 복구 실패:', e);
+        console.warn('[FrameOps Sync] dead 복구 실패:', e);
       }
     })();
 
@@ -102,7 +105,9 @@ export function Providers({ children }: ProvidersProps) {
         }}
       >
         {children}
-        {/* Phase 2: sonner Toast — 결제 완료/실패, Dead Letter 등 UI 알림 */}
+        {/* 미동기화 판매 배지 — 우하단 고정, 큐 비어있으면 미렌더 */}
+        <PendingSyncBadge />
+        {/* sonner Toast — 결제 완료/실패, 동기화 알림 등 */}
         <Toaster
           position="top-center"
           richColors

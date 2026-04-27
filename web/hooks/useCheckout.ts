@@ -1,13 +1,9 @@
 // Frame Ops — POS 결제 훅
-// 정책 (수정):
-//   - 결제 시 네트워크 상태(navigator.onLine) 확인 후 분기:
-//     · ONLINE 인데 API 가 에러를 돌려주면 → 서버/검증 에러 → 사용자에게 실제 메시지 노출
-//        (sync_queue 큐잉 안 함: 재시도해도 같은 에러 반복하므로 misleading)
-//     · OFFLINE 또는 fetch 자체가 실패 → sync_queue 보관 + '네트워크 복구 시 자동 재전송' 안내
-//   - 성공 시 success 토스트 + true 반환 (호출자가 카트 비움)
-//
-// 이전 동작은 모든 실패에 동일 큐잉/재전송 안내가 떴고, 사용자는 sale 이 실제로
-// 등록 안 됐는지 알기 어려웠음 + 통계에 안 보임 (큐 dead letter 도달 시 영영 누락 가능).
+// 정책 (강화):
+//   - 어떤 실패(네트워크/서버/검증) 든 sync_queue 에 보관 후 자동 재시도에 위임.
+//   - 사용자에겐 결과를 명확히 안내 (성공/큐 보관/온라인서버에러).
+//   - 큐는 30초 주기 자동 flush + 우하단 배지로 항상 가시화 (PendingSyncBadge).
+//   - 영구 dead-letter 폐기 — 어떤 판매도 잃어버리지 않도록 무한 재시도.
 
 'use client';
 
@@ -50,10 +46,10 @@ export function useCheckout(): UseCheckoutReturn {
       return false;
     }
 
-    // 1) 오프라인이면 즉시 큐잉
+    // 1) 오프라인이면 즉시 큐잉 (재시도 위임)
     if (!isOnline()) {
       await queueOffline(saleData);
-      toast.info('오프라인 상태 — 네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
+      toast.info('오프라인 — 네트워크 복구 시 자동 재시도됩니다.', { duration: 4000 });
       return false;
     }
 
@@ -62,35 +58,35 @@ export function useCheckout(): UseCheckoutReturn {
       const { data, error } = await salesApi.createWithItems(saleData);
 
       if (error) {
-        // fetch 도중 오프라인 전환됐을 가능성 — 다시 확인
-        if (!isOnline()) {
-          await queueOffline(saleData);
-          toast.info('오프라인 — 네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
-          return false;
-        }
-        // 온라인 + 서버에러: 재시도해도 같은 결과 → 큐잉하지 않음
-        console.error('[useCheckout] API error (online):', error);
-        toast.error(`판매 등록 실패 — ${error}`, { duration: 6000 });
+        // 어떤 종류의 에러든 큐에 보관 → 자동 재시도에 위임 → 손실 방지.
+        console.error('[useCheckout] API error:', error);
+        await queueOffline(saleData);
+        toast.warning(
+          `판매 등록 보류 — ${error}. 자동 재시도 중 (우하단 배지).`,
+          { duration: 6000 }
+        );
         return false;
       }
       if (!data) {
-        console.error('[useCheckout] empty response');
-        toast.error('판매 등록 응답이 비어있습니다. 다시 시도해 주세요.');
+        console.error('[useCheckout] empty response — 큐로 보관');
+        await queueOffline(saleData);
+        toast.warning('응답이 비어있어 큐로 보관 — 자동 재시도 중 (우하단 배지).', {
+          duration: 6000,
+        });
         return false;
       }
 
       toast.success('판매 완료', { duration: 2000 });
       return true;
     } catch (err) {
-      // 안전망 — apiFetch 가 거의 모든 에러를 catch 하지만 만약을 위해
+      // 예외 — 큐로 보관
       console.error('[useCheckout] unexpected exception:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      if (!isOnline()) {
-        await queueOffline(saleData);
-        toast.info('오프라인 — 네트워크 복구 시 자동 재전송됩니다.', { duration: 4000 });
-      } else {
-        toast.error(`판매 등록 실패 — ${msg}`, { duration: 6000 });
-      }
+      await queueOffline(saleData);
+      toast.warning(
+        `판매 등록 보류 — ${msg}. 자동 재시도 중 (우하단 배지).`,
+        { duration: 6000 }
+      );
       return false;
     }
   }, []);
