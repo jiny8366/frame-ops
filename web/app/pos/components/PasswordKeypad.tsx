@@ -40,7 +40,7 @@ export const PasswordKeypad = memo(function PasswordKeypad({
   const masked = '●'.repeat(value.length) || ' ';
 
   return (
-    <div className="keypad-root flex flex-col gap-3 p-4 w-full max-w-[420px]">
+    <div className="keypad-root flex flex-col gap-3 p-5 w-full max-w-[420px] flex-1">
       <div className="keypad-display flex flex-col items-end gap-1 px-3 py-3 rounded-xl bg-[var(--color-fill-tertiary)]">
         <span className="text-caption2 text-[var(--color-label-secondary)]">{label}</span>
         <span className="text-title1 font-semibold tracking-[0.2em] text-[var(--color-label-primary)] min-h-[1.5em]">
@@ -67,12 +67,14 @@ export const PasswordKeypad = memo(function PasswordKeypad({
         <KeypadActionButton label="⌫" onPress={handleBackspace} />
       </div>
 
+      <div className="flex-1" />
+
       <div className="keypad-actions grid grid-cols-2 gap-2 mt-1">
         <button
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium disabled:opacity-50"
+          className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium disabled:opacity-50"
         >
           취소
         </button>
@@ -80,7 +82,7 @@ export const PasswordKeypad = memo(function PasswordKeypad({
           type="button"
           onClick={handleConfirm}
           disabled={busy || value.length === 0}
-          className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
+          className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
         >
           {busy ? '확인 중…' : '확인'}
         </button>
