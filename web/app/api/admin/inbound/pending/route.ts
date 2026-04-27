@@ -85,6 +85,27 @@ export async function POST(request: Request) {
       error?: string;
     }> = [];
 
+    // 1) 모든 상품 정보 한 번에 로드 (cost_price + supplier_id)
+    const productIds = body.items.map((i) => i.product_id).filter(Boolean);
+    const { data: products } = await db
+      .from('fo_products')
+      .select('id, cost_price, supplier_id')
+      .in('id', productIds);
+    const productInfo = new Map<string, { cost_price: number; supplier_id: string | null }>();
+    for (const p of products ?? []) {
+      productInfo.set(p.id, {
+        cost_price: p.cost_price ?? 0,
+        supplier_id: p.supplier_id,
+      });
+    }
+
+    // 2) 매입처별로 그룹화하여 receipt 생성용 라인 준비
+    const receiptLinesBySupplier = new Map<
+      string,
+      Array<{ product_id: string; quantity: number; unit_cost: number }>
+    >();
+    const NULL_KEY = '__null__';
+
     for (const item of body.items) {
       if (!item.product_id || typeof item.received_qty !== 'number') {
         results.push({
@@ -97,7 +118,7 @@ export async function POST(request: Request) {
       const recv = Math.max(0, Math.round(item.received_qty));
       const action: 'pending' | 'hold' | 'none' = item.remainder_action ?? 'none';
 
-      // 1) sale_items 메타 업데이트 (입고 / 차액 처리)
+      // 1) sale_items 메타 업데이트 (입고 / 차액 처리) — 재고 갱신은 RPC 가 안 함, 아래 receipt 가 처리
       const { error: rpcErr } = await (db.rpc as unknown as (
         name: string,
         args: Record<string, unknown>
@@ -116,29 +137,52 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // 2) 실제 재고 증가 (received_qty 만큼)
+      // 2) 매입처별 receipt 라인에 누적 (cost_price 는 상품 마스터에서)
       if (recv > 0) {
-        const { data: prod } = await db
-          .from('fo_products')
-          .select('stock_quantity')
-          .eq('id', item.product_id)
-          .single();
-        const cur = prod?.stock_quantity ?? 0;
-        const { error: updErr } = await db
-          .from('fo_products')
-          .update({ stock_quantity: cur + recv })
-          .eq('id', item.product_id);
-        if (updErr) {
-          results.push({
-            product_id: item.product_id,
-            ok: false,
-            error: `재고 갱신 실패: ${updErr.message}`,
-          });
-          continue;
-        }
+        const info = productInfo.get(item.product_id);
+        const supplierKey = info?.supplier_id ?? NULL_KEY;
+        const arr = receiptLinesBySupplier.get(supplierKey) ?? [];
+        arr.push({
+          product_id: item.product_id,
+          quantity: recv,
+          unit_cost: info?.cost_price ?? 0,
+        });
+        receiptLinesBySupplier.set(supplierKey, arr);
       }
 
       results.push({ product_id: item.product_id, ok: true });
+    }
+
+    // 3) 매입처별로 receipt 일괄 생성 (재고 증가 포함 — create_inbound_receipt RPC)
+    for (const [supplierKey, lines] of receiptLinesBySupplier.entries()) {
+      if (lines.length === 0) continue;
+      const supplierId = supplierKey === NULL_KEY ? null : supplierKey;
+      const { error: receiptErr } = await (db.rpc as unknown as (
+        name: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        'create_inbound_receipt',
+        {
+          p_store_id: session.store_id,
+          p_supplier_id: supplierId,
+          p_document_at: null,
+          p_note: '주문리스트 매입 처리',
+          p_lines: lines,
+        }
+      );
+      if (receiptErr) {
+        // 재고 갱신 실패 — 결과에 표시
+        for (const l of lines) {
+          const idx = results.findIndex((r) => r.product_id === l.product_id);
+          if (idx >= 0) {
+            results[idx] = {
+              product_id: l.product_id,
+              ok: false,
+              error: `재고/매입전표 갱신 실패: ${receiptErr.message}`,
+            };
+          }
+        }
+      }
     }
 
     const failed = results.filter((r) => !r.ok);
