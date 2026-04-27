@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import { normalizeShortCode } from '@/lib/product-codes';
 
 export interface SupplierRow {
   id: string;
@@ -20,6 +21,7 @@ export interface SupplierRow {
 interface BrandRow {
   id: string;
   name: string;
+  code?: string | null;
 }
 
 interface Props {
@@ -37,7 +39,10 @@ const arrayFetcher = async <T,>(url: string): Promise<T[]> => {
 };
 
 export function SupplierFormDialog({ mode, initial, onClose, onSaved }: Props) {
-  const { data: brands = [] } = useSWR<BrandRow[]>('/api/admin/brands', arrayFetcher);
+  const { data: brands = [], mutate: mutateBrands } = useSWR<BrandRow[]>(
+    '/api/admin/brands',
+    arrayFetcher
+  );
   const { data: linkedBrandIds = [], mutate: mutateLinks } = useSWR<string[]>(
     mode === 'edit' && initial ? `/api/admin/suppliers/${initial.id}/brands` : null,
     arrayFetcher
@@ -51,6 +56,10 @@ export function SupplierFormDialog({ mode, initial, onClose, onSaved }: Props) {
   const [memo, setMemo] = useState(initial?.memo ?? '');
   const [active, setActive] = useState(initial?.active ?? true);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [showAddBrand, setShowAddBrand] = useState(false);
+  const [newBrandName, setNewBrandName] = useState('');
+  const [newBrandCode, setNewBrandCode] = useState('');
+  const [addingBrand, setAddingBrand] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +86,42 @@ export function SupplierFormDialog({ mode, initial, onClose, onSaved }: Props) {
       return next;
     });
   }, []);
+
+  // 신규 브랜드 등록 — 등록 후 자동 체크 + 입력 초기화
+  const handleAddBrand = useCallback(async () => {
+    const name = newBrandName.trim();
+    if (!name) {
+      toast.error('브랜드명을 입력하세요.');
+      return;
+    }
+    setAddingBrand(true);
+    try {
+      const code = normalizeShortCode(newBrandCode || name);
+      const res = await fetch('/api/admin/brands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, code }),
+      });
+      const json = (await res.json()) as {
+        data: { id: string; name: string; code?: string | null } | null;
+        error: string | null;
+      };
+      if (!res.ok || json.error || !json.data) {
+        toast.error(json.error ?? '브랜드 추가 실패');
+        return;
+      }
+      setSelectedBrands((prev) => new Set(prev).add(json.data!.id));
+      setNewBrandName('');
+      setNewBrandCode('');
+      setShowAddBrand(false);
+      await mutateBrands();
+      toast.success(`브랜드 추가: ${json.data.name}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '네트워크 오류');
+    } finally {
+      setAddingBrand(false);
+    }
+  }, [newBrandName, newBrandCode, mutateBrands]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
@@ -232,29 +277,79 @@ export function SupplierFormDialog({ mode, initial, onClose, onSaved }: Props) {
           />
         </Field>
 
-        {/* 취급 브랜드 매핑 */}
+        {/* 취급 브랜드 — 매입처 등록 시 직접 추가 가능 */}
         <Field label={`취급 브랜드 (${selectedBrands.size}개 선택)`}>
-          {brands.length === 0 ? (
-            <p className="text-caption1 text-[var(--color-label-tertiary)]">
-              등록된 브랜드가 없습니다. 상품 등록 화면에서 먼저 추가하세요.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-[160px] overflow-auto rounded-lg border border-[var(--color-separator-opaque)] p-2 bg-[var(--color-bg-primary)]">
-              {brands.map((b) => (
-                <label
-                  key={b.id}
-                  className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[var(--color-fill-quaternary)] text-caption1"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedBrands.has(b.id)}
-                    onChange={() => toggleBrand(b.id)}
-                  />
-                  <span className="truncate">{b.name}</span>
-                </label>
-              ))}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-caption2 text-[var(--color-label-tertiary)]">
+                {brands.length === 0
+                  ? '등록된 브랜드가 없습니다 — 아래 + 버튼으로 추가하세요.'
+                  : '체크하여 이 매입처에 매핑'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAddBrand((v) => !v)}
+                className="pressable text-caption1 text-[var(--color-system-blue)] font-semibold"
+              >
+                {showAddBrand ? '취소' : '+ 브랜드 추가'}
+              </button>
             </div>
-          )}
+
+            {showAddBrand && (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  placeholder="새 브랜드명"
+                  className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                />
+                <input
+                  type="text"
+                  value={newBrandCode}
+                  onChange={(e) =>
+                    setNewBrandCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                  }
+                  placeholder="약자(영문3자)"
+                  maxLength={3}
+                  autoCapitalize="characters"
+                  pattern="[A-Z0-9]{3}"
+                  className="w-28 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddBrand}
+                  disabled={addingBrand || !newBrandName.trim()}
+                  className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold disabled:opacity-40"
+                >
+                  {addingBrand ? '저장 중…' : '저장'}
+                </button>
+              </div>
+            )}
+
+            {brands.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-[160px] overflow-auto rounded-lg border border-[var(--color-separator-opaque)] p-2 bg-[var(--color-bg-primary)]">
+                {brands.map((b) => (
+                  <label
+                    key={b.id}
+                    className="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-[var(--color-fill-quaternary)] text-caption1"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedBrands.has(b.id)}
+                      onChange={() => toggleBrand(b.id)}
+                    />
+                    <span className="truncate">{b.name}</span>
+                    {b.code && (
+                      <span className="text-caption2 text-[var(--color-label-tertiary)] font-mono">
+                        {b.code}
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </Field>
 
         {mode === 'edit' && (
