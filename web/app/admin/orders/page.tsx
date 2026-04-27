@@ -491,7 +491,7 @@ function SupplierContent({
             {group.items.map((it) => {
               const qty = getQty(it);
               const overridden = qty !== it.total_quantity;
-              const lowStock = it.current_stock === 1;
+              const lowStock = it.current_stock <= 1;
               const nameClass = lowStock
                 ? 'font-bold text-[var(--color-system-red)]'
                 : 'font-semibold';
@@ -509,7 +509,7 @@ function SupplierContent({
                       {it.color_code ? ` / ${it.color_code}` : ''}
                       {lowStock && (
                         <span className="ml-2 text-caption2 font-semibold text-[var(--color-system-red)] bg-[var(--color-system-red)]/10 rounded px-1.5 py-0.5">
-                          재고 1
+                          재고 {it.current_stock}
                         </span>
                       )}
                     </div>
@@ -603,9 +603,9 @@ function QuantityEditDialog({
             {item.brand_name} · {item.style_code ?? '—'}
             {item.color_code ? ` / ${item.color_code}` : ''}
           </p>
-          {item.current_stock === 1 && (
+          {item.current_stock <= 1 && (
             <p className="text-caption2 font-semibold text-[var(--color-system-red)] mt-1">
-              ⚠ 현재 재고 1개 (전시상품 가능성)
+              ⚠ 현재 재고 {item.current_stock}개 — 매입 대기
             </p>
           )}
         </header>
