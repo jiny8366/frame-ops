@@ -124,12 +124,12 @@ export default function OrdersPage() {
         [`매입처: ${selected.supplier_name}${selected.supplier_code ? ` (${selected.supplier_code})` : ''}`],
         [`기간: ${data.period.from} ~ ${data.period.to}`],
         [],
-        ['브랜드', '스타일코드', '색상', '제품명', '수량', '원가(₩)', '합계(₩)'],
-        ...selected.items.map((it) => [
+        ['No.', '브랜드', '제품번호', '색상', '수량', '매입가(₩)', '합계(₩)'],
+        ...selected.items.map((it, idx) => [
+          idx + 1,
           it.brand_name,
           it.style_code ?? '',
           it.color_code ?? '',
-          it.display_name ?? '',
           it.total_quantity,
           it.cost_price,
           it.total_quantity * it.cost_price,
@@ -139,7 +139,7 @@ export default function OrdersPage() {
       ];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!cols'] = [
-        { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 24 },
+        { wch: 5 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
         { wch: 6 }, { wch: 10 }, { wch: 12 },
       ];
       const wb = XLSX.utils.book_new();
