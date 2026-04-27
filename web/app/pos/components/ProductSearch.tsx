@@ -82,9 +82,9 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 
   const handleProductClick = useCallback(
     (row: SearchResultRow) => {
-      // 재고 1 이하(0, 음수 포함) 시 경고 모달. NULL 은 재고 정보 없음 → 모달 스킵.
+      // 재고 1 이하(0, 음수, NULL 포함) — 전시상품 판매 가능성 → 확인 모달.
       const stock = row.stock_quantity;
-      if (stock !== null && stock <= 1) {
+      if (stock === null || stock <= 1) {
         setPending(row);
         return;
       }
@@ -161,7 +161,7 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
         </div>
       </div>
 
-      {/* 재고 부족 (≤1) 확인 모달 — 0, 음수, 1 케이스별 메시지 차등 */}
+      {/* 재고 부족(≤1, NULL 포함) 확인 모달 — 단일 문구 */}
       {pending && (
         <Modal onClose={handleCancelPending}>
           <div className="flex flex-col gap-4 p-5 w-full max-w-[420px]">
@@ -171,18 +171,16 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
               </span>
               <div className="flex-1">
                 <h3 className="text-headline font-semibold text-[var(--color-label-primary)]">
-                  {pending.stock_quantity === 1
-                    ? '마지막 1개 (전시상품 가능성)'
-                    : pending.stock_quantity === 0
-                      ? '재고 없음'
-                      : `매입 대기 ${Math.abs(pending.stock_quantity ?? 0)}개 (입고 전)`}
+                  재고 1개 남음 – 전시상품 판매 여부 확인 필요
                 </h3>
+                <p className="mt-1 text-caption1 text-[var(--color-label-tertiary)]">
+                  현재 시스템 재고:{' '}
+                  {pending.stock_quantity === null
+                    ? '미관리'
+                    : `${pending.stock_quantity}개`}
+                </p>
                 <p className="mt-1 text-callout text-[var(--color-label-secondary)]">
-                  {pending.stock_quantity === 1
-                    ? '전시·진열 상품일 수 있습니다. 고객 고지 후 진행하세요.'
-                    : pending.stock_quantity === 0
-                      ? '시스템 재고가 0 입니다. 실제 보유 여부를 확인하세요.'
-                      : '아직 입고되지 않은 상품입니다. 판매 전 확인 필요.'}
+                  매장에 진열된 상품인지 확인 후 판매를 진행해 주세요.
                 </p>
               </div>
             </div>
