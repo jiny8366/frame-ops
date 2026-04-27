@@ -28,8 +28,32 @@ let _periodicTimerId: ReturnType<typeof setInterval> | null = null;
 //   - 30초 주기 자동 재시도 (큐 비어있어도 cheap, 빠른 검사 후 종료)
 //   - retry_count 가 임계치를 넘어도 'dead' 가 아닌 'failed' 유지 (다음 주기 재시도)
 //   - 단, 실패 누적 시 콘솔 경고 + dead-letter 콜백으로 사용자에게 노출
+//
+// 자가 회복 (2026-04-27 추가):
+//   - Zombie 'syncing' 회복: 탭 종료/크래시로 status='syncing' 멈춘 항목을
+//     ZOMBIE_THRESHOLD_MS 초과 시 'failed' 로 강제 복귀 → 다음 flush 에서 재시도.
+//   - 영구 오류 자동 정리: 페이로드 결함(필수 필드 누락 등) 으로 절대 풀 수 없는
+//     항목은 retry_count >= PERMANENT_ERROR_THRESHOLD 도달 시 큐에서 제거.
 const PERIODIC_INTERVAL_MS = 30 * 1000;
 const ALERT_THRESHOLD = 5; // 5회 이상 실패 시 사용자에게 토스트로 알림
+const ZOMBIE_THRESHOLD_MS = 60 * 1000; // status='syncing' 60초 초과 시 좀비로 간주
+const PERMANENT_ERROR_THRESHOLD = 5; // 영구 오류 패턴 + 5회 이상 실패 → 자동 삭제
+
+// 영구 오류 패턴 — 재시도해도 절대 성공할 수 없는 결함.
+// (구버전 큐의 페이로드 형태 결함, 알 수 없는 테이블, 클라이언트 검증 거부 등)
+const PERMANENT_ERROR_PATTERNS: readonly RegExp[] = [
+  /idempotency_key.*필수/i,
+  /items.*최소 1개/i,
+  /알 수 없는 테이블/i,
+  /HTTP 400/i,
+  /HTTP 422/i,
+  /Invalid.*payload/i,
+];
+
+function isPermanentError(error: string | undefined): boolean {
+  if (!error) return false;
+  return PERMANENT_ERROR_PATTERNS.some((p) => p.test(error));
+}
 
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -107,9 +131,62 @@ export async function flushSyncQueue(): Promise<void> {
 
   _flushingPromise = (async () => {
     try {
+      const rawQueue = await getSyncQueue();
+      const nowMs = Date.now();
+
+      // ── 자가 회복 1: Zombie 'syncing' 복구 ────────────────────────────────
+      // 이전 탭/세션이 'syncing' 상태 갱신 후 크래시/종료된 항목은
+      // 다음 flush 에서 status !== 'syncing' 필터에 의해 영구 제외된다.
+      // updated_at 이 ZOMBIE_THRESHOLD_MS 초과면 'failed' 로 강제 복귀.
+      for (const item of rawQueue) {
+        if (item.status !== 'syncing' || item.id === undefined) continue;
+        const ts = item.updated_at ? Date.parse(item.updated_at) : 0;
+        if (Number.isFinite(ts) && nowMs - ts > ZOMBIE_THRESHOLD_MS) {
+          console.warn(
+            `[FrameOps Sync] zombie 'syncing' 회복 (id=${item.id}, ${
+              Math.round((nowMs - ts) / 1000)
+            }s 정체)`
+          );
+          await putSyncItem({
+            ...item,
+            id: item.id,
+            status: 'failed',
+            last_error: '[zombie 회복] 이전 세션 중단으로 syncing 정체',
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      // ── 자가 회복 2: 영구 오류 자동 정리 ──────────────────────────────────
+      // payload 결함으로 절대 풀 수 없는 항목 (구버전 큐 등) 은 무한 재시도해도
+      // 5회 이상 동일 영구 오류면 큐에서 제거 — 사용자에게 토스트로 알림.
+      for (const item of rawQueue) {
+        if (item.id === undefined) continue;
+        if ((item.retry_count ?? 0) < PERMANENT_ERROR_THRESHOLD) continue;
+        if (!isPermanentError(item.last_error)) continue;
+        console.error(
+          `[FrameOps Sync] 영구 오류 자동 정리 (id=${item.id}, table=${item.table}):`,
+          item.last_error
+        );
+        try {
+          await deleteSyncItem(item.id);
+          // 사용자 알림 — dead-letter 콜백 재사용 (UI 토스트로 노출됨)
+          _deadLetterCallback?.({
+            ...item,
+            id: item.id,
+            retry_count: item.retry_count ?? 0,
+            status: 'dead',
+            last_error: `[자동 정리] ${item.last_error}`,
+            updated_at: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.warn('[FrameOps Sync] 영구 오류 항목 삭제 실패:', e);
+        }
+      }
+
+      // ── 정상 flush 경로 ───────────────────────────────────────────────────
+      // 자가 회복 후 큐를 다시 읽어 'syncing' 외 항목을 FIFO 정렬.
       const queue = await getSyncQueue();
-      // FIFO 순서 보장 — id (auto-increment) 또는 created_at 기준 정렬.
-      // 동일 ms 충돌 가능성을 대비해 id 우선, 동률이면 created_at.
       const pending = queue
         .filter((i) => i.status !== 'syncing')
         .sort((a, b) => {
@@ -121,43 +198,29 @@ export async function flushSyncQueue(): Promise<void> {
       for (const item of pending) {
         if (item.id === undefined) continue;
 
-        await putSyncItem({
-          ...item,
-          id: item.id,
-          status: 'syncing',
-          updated_at: new Date().toISOString(),
-        });
+        // 항목별 try/catch — 단일 항목 처리 중 예외가 나도 다음 항목으로 진행.
+        // 또한 'syncing' 으로 마킹 후 예외 발생 시 'failed' 로 즉시 복귀시켜
+        // 좀비 잔류를 막는다.
+        try {
+          await putSyncItem({
+            ...item,
+            id: item.id,
+            status: 'syncing',
+            updated_at: new Date().toISOString(),
+          });
 
-        const result = await applyViaApi(item);
+          const result = await applyViaApi(item);
 
-        if (result.success) {
-          await deleteSyncItem(item.id);
-          continue;
-        }
+          if (result.success) {
+            await deleteSyncItem(item.id);
+            continue;
+          }
 
-        const retry_count = (item.retry_count ?? 0) + 1;
-        const now = new Date().toISOString();
+          const retry_count = (item.retry_count ?? 0) + 1;
+          const now = new Date().toISOString();
+          const justCrossedAlertThreshold = retry_count === ALERT_THRESHOLD;
 
-        // 정책: 영구 dead 처리하지 않음 — 항상 status='failed' 로 남겨 다음 주기 재시도.
-        // 일정 횟수 이상 실패 시 사용자에게 한 번 알림(중복 알림 방지를 위해 임계치 동일 시점 1회).
-        const justCrossedAlertThreshold =
-          retry_count === ALERT_THRESHOLD;
-
-        await putSyncItem({
-          ...item,
-          id: item.id,
-          retry_count,
-          status: 'failed',
-          last_error: result.error,
-          updated_at: now,
-        });
-
-        if (justCrossedAlertThreshold) {
-          console.warn(
-            `[FrameOps Sync] ${item.table} 동기화 ${retry_count}회 실패 — 자동 재시도 계속 (id=${item.id}):`,
-            result.error
-          );
-          _deadLetterCallback?.({
+          await putSyncItem({
             ...item,
             id: item.id,
             retry_count,
@@ -165,6 +228,37 @@ export async function flushSyncQueue(): Promise<void> {
             last_error: result.error,
             updated_at: now,
           });
+
+          if (justCrossedAlertThreshold) {
+            console.warn(
+              `[FrameOps Sync] ${item.table} 동기화 ${retry_count}회 실패 — 자동 재시도 계속 (id=${item.id}):`,
+              result.error
+            );
+            _deadLetterCallback?.({
+              ...item,
+              id: item.id,
+              retry_count,
+              status: 'failed',
+              last_error: result.error,
+              updated_at: now,
+            });
+          }
+        } catch (e) {
+          console.error(
+            `[FrameOps Sync] 항목 처리 중 예외 (id=${item.id}) — failed 로 복구:`,
+            e
+          );
+          try {
+            await putSyncItem({
+              ...item,
+              id: item.id,
+              status: 'failed',
+              last_error: `[crash] ${e instanceof Error ? e.message : String(e)}`,
+              updated_at: new Date().toISOString(),
+            });
+          } catch {
+            /* IDB 자체 실패는 다음 주기에서 zombie 회복으로 처리 */
+          }
         }
       }
     } finally {

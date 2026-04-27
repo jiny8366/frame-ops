@@ -29,6 +29,25 @@ export function PendingSyncBadge() {
     return () => clearInterval(id);
   }, [refresh]);
 
+  // 모달 열림 시 자가 회복(zombie 복구 + 영구오류 정리 + 재시도) 즉시 트리거.
+  // 사용자가 별도 조작 없이도 진단/복구가 자동 시작되도록 함.
+  useEffect(() => {
+    if (!open) return;
+    if (!isOnline()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await flushSyncQueue();
+        if (!cancelled) await refresh();
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, refresh]);
+
   const flushAll = useCallback(async () => {
     if (busy) return;
     if (!isOnline()) {
@@ -161,7 +180,7 @@ export function PendingSyncBadge() {
                 disabled={busy}
                 className="pressable touch-target rounded-xl px-4 py-2 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
               >
-                {busy ? '재시도 중…' : '전체 즉시 재시도'}
+                {busy ? '진단/재시도 중…' : '자동 진단 + 즉시 재시도'}
               </button>
             </footer>
           </div>
