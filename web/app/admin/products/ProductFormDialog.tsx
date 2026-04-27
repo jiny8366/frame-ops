@@ -67,7 +67,7 @@ const arrayFetcher = async <T,>(url: string): Promise<T[]> => {
 };
 
 export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFormDialogProps) {
-  const { data: brands = [], mutate: mutateBrands } = useSWR<BrandRow[]>(
+  const { data: brands = [] } = useSWR<BrandRow[]>(
     '/api/admin/brands',
     arrayFetcher
   );
@@ -91,9 +91,6 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [showAddBrand, setShowAddBrand] = useState(false);
-  const [newBrandName, setNewBrandName] = useState('');
-  const [newBrandCode, setNewBrandCode] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
   const [newCategoryCode, setNewCategoryCode] = useState('');
@@ -143,32 +140,6 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
     if (!brand) return '';
     return displayNameThreePart(brand.name, styleCode, colorCode);
   }, [brand, styleCode, colorCode]);
-
-  const handleAddBrand = useCallback(async () => {
-    const name = newBrandName.trim();
-    const code = normalizeShortCode(newBrandCode || name);
-    if (!name) return;
-    try {
-      const res = await fetch('/api/admin/brands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, code }),
-      });
-      const json = (await res.json()) as { data: BrandRow | null; error: string | null };
-      if (!res.ok || json.error || !json.data) {
-        toast.error(json.error ?? '브랜드 추가 실패');
-        return;
-      }
-      await mutateBrands();
-      setBrandId(json.data.id);
-      setNewBrandName('');
-      setNewBrandCode('');
-      setShowAddBrand(false);
-      toast.success(`브랜드 추가: ${json.data.name} (${json.data.code ?? '-'})`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '네트워크 오류');
-    }
-  }, [newBrandName, newBrandCode, mutateBrands]);
 
   const handleAddCategory = useCallback(async () => {
     const label = newCategoryLabel.trim();
@@ -344,60 +315,24 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         )}
 
         <Field label="브랜드">
-          <div className="flex gap-1">
-            <select
-              value={brandId}
-              onChange={(e) => setBrandId(e.target.value)}
-              required
-              className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-            >
-              <option value="">선택</option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                  {b.code ? ` (${b.code})` : ''}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setShowAddBrand((v) => !v)}
-              className="pressable rounded-lg px-2 text-callout font-bold bg-[var(--color-fill-tertiary)]"
-              aria-label="브랜드 추가"
-            >
-              +
-            </button>
-          </div>
+          <select
+            value={brandId}
+            onChange={(e) => setBrandId(e.target.value)}
+            required
+            className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+          >
+            <option value="">선택</option>
+            {brands.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+                {b.code ? ` (${b.code})` : ''}
+              </option>
+            ))}
+          </select>
+          <span className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+            새 브랜드는 매입처 관리에서 등록합니다.
+          </span>
         </Field>
-
-        {showAddBrand && (
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={newBrandName}
-              onChange={(e) => setNewBrandName(e.target.value)}
-              placeholder="새 브랜드명"
-              className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-            />
-            <input
-              type="text"
-              value={newBrandCode}
-              onChange={(e) => setNewBrandCode(e.target.value.toUpperCase())}
-              placeholder="약자 (영문3자)"
-              maxLength={3}
-              autoCapitalize="characters"
-              pattern="[A-Z]{3}"
-              className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
-            />
-            <button
-              type="button"
-              onClick={handleAddBrand}
-              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
-            >
-              저장
-            </button>
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="제품번호 (숫자·영문 4자리)">
