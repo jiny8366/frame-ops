@@ -209,6 +209,10 @@ async function applyViaApi(
   const endpoint = TABLE_TO_ENDPOINT[item.table];
   if (!endpoint) return { success: false, error: `알 수 없는 테이블: ${item.table}` };
 
+  // 재시도도 10초 타임아웃 — 멈춤 방지.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const method = item.operation === 'insert' ? 'POST'
       : item.operation === 'update'  ? 'PUT'
@@ -222,6 +226,7 @@ async function applyViaApi(
         method,
         headers: { 'Content-Type': 'application/json' },
         body: method !== 'DELETE' ? JSON.stringify(item.payload) : undefined,
+        signal: controller.signal,
       }
     );
 
@@ -232,5 +237,7 @@ async function applyViaApi(
     return { success: true };
   } catch (e) {
     return { success: false, error: String(e) };
+  } finally {
+    clearTimeout(timer);
   }
 }

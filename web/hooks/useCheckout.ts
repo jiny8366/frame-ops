@@ -1,7 +1,7 @@
 // Frame Ops — POS 결제 훅
 // 정책 (강화):
 //   - 어떤 실패(네트워크/서버/검증) 든 sync_queue 에 보관 후 자동 재시도에 위임.
-//   - 사용자에겐 결과를 명확히 안내 (성공/큐 보관/온라인서버에러).
+//   - 결제 fetch 는 10초 타임아웃 — 멈춰있지 않고 빠르게 큐로 위임.
 //   - 큐는 30초 주기 자동 flush + 우하단 배지로 항상 가시화 (PendingSyncBadge).
 //   - 영구 dead-letter 폐기 — 어떤 판매도 잃어버리지 않도록 무한 재시도.
 
@@ -9,9 +9,40 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { salesApi } from '@/lib/api-client';
 import { enqueueSync } from '@/lib/db/indexeddb';
 import type { SaleInput } from '@/types';
+
+const REQUEST_TIMEOUT_MS = 10_000;
+
+interface CreateSaleApiResp {
+  data: {
+    sale_id: string;
+    sold_at: string;
+    total_amount: number;
+    items_created: number;
+  } | null;
+  error: string | null;
+}
+
+async function postSaleWithTimeout(payload: SaleInput): Promise<CreateSaleApiResp> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch('/api/sales/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const json = (await res.json().catch(() => ({}))) as CreateSaleApiResp;
+    if (!res.ok) {
+      return { data: null, error: json.error ?? `HTTP ${res.status}` };
+    }
+    return json;
+  } finally {
+    clearTimeout(t);
+  }
+}
 
 export interface UseCheckoutReturn {
   /** 성공이면 true, 실패(폴백 큐 보관 포함) 면 false. POS 페이지가 카트 비울지 결정. */
@@ -53,12 +84,11 @@ export function useCheckout(): UseCheckoutReturn {
       return false;
     }
 
-    // 2) 온라인 — 서버 호출
+    // 2) 온라인 — 10초 타임아웃 fetch
     try {
-      const { data, error } = await salesApi.createWithItems(saleData);
+      const { data, error } = await postSaleWithTimeout(saleData);
 
       if (error) {
-        // 어떤 종류의 에러든 큐에 보관 → 자동 재시도에 위임 → 손실 방지.
         console.error('[useCheckout] API error:', error);
         await queueOffline(saleData);
         toast.warning(
@@ -79,9 +109,14 @@ export function useCheckout(): UseCheckoutReturn {
       toast.success('판매 완료', { duration: 2000 });
       return true;
     } catch (err) {
-      // 예외 — 큐로 보관
-      console.error('[useCheckout] unexpected exception:', err);
-      const msg = err instanceof Error ? err.message : String(err);
+      // 타임아웃 / 네트워크 예외 — 큐로 보관
+      console.error('[useCheckout] fetch exception:', err);
+      const isTimeout = err instanceof Error && err.name === 'AbortError';
+      const msg = isTimeout
+        ? `응답 지연(${REQUEST_TIMEOUT_MS / 1000}초 초과)`
+        : err instanceof Error
+          ? err.message
+          : String(err);
       await queueOffline(saleData);
       toast.warning(
         `판매 등록 보류 — ${msg}. 자동 재시도 중 (우하단 배지).`,
