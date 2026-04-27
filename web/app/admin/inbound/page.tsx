@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -83,6 +83,8 @@ export default function InboundPage() {
   );
 
   const [submitting, setSubmitting] = useState(false);
+  const [showSupplierWarning, setShowSupplierWarning] = useState(false);
+  const supplierSelectRef = useRef<HTMLSelectElement>(null);
 
   // 라인 추가 (이미 있는 product 면 수량 +1) — 검색 모드용
   const handleAddProduct = useCallback((p: ProductRow) => {
@@ -141,6 +143,10 @@ export default function InboundPage() {
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (!canSubmit || submitting) return;
+      if (!supplierId) {
+        setShowSupplierWarning(true);
+        return;
+      }
       setSubmitting(true);
 
       const [y, m, d] = documentDate.split('-').map(Number);
@@ -189,6 +195,23 @@ export default function InboundPage() {
     [canSubmit, submitting, documentDate, supplierId, note, lines]
   );
 
+  const focusSupplierAndCloseWarning = useCallback(() => {
+    setShowSupplierWarning(false);
+    // 다이얼로그 닫힘 후 select 에 포커스 + dropdown 열기 시도
+    setTimeout(() => {
+      const el = supplierSelectRef.current;
+      if (el) {
+        el.focus();
+        // 일부 브라우저에서 select dropdown 자동 열기 (지원 안 되면 그냥 포커스만)
+        try {
+          el.showPicker?.();
+        } catch {
+          /* showPicker 미지원 브라우저 — 포커스만 */
+        }
+      }
+    }, 0);
+  }, []);
+
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <form onSubmit={handleSubmit} className="max-w-[900px] mx-auto flex flex-col gap-4">
@@ -198,6 +221,7 @@ export default function InboundPage() {
         <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <Field label="매입처">
             <select
+              ref={supplierSelectRef}
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
               className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
@@ -413,6 +437,36 @@ export default function InboundPage() {
         </button>
         )}
       </form>
+
+      {showSupplierWarning && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSupplierWarning(false);
+          }}
+        >
+          <div className="w-full max-w-[360px] rounded-2xl bg-[var(--color-bg-secondary)] p-5 flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <span className="text-title2" aria-hidden>⚠️</span>
+              <div>
+                <h3 className="text-headline font-semibold text-[var(--color-label-primary)]">
+                  매입처가 선택되지 않았습니다.
+                </h3>
+                <p className="mt-1 text-caption1 text-[var(--color-label-secondary)]">
+                  매입 등록 전 매입처를 먼저 선택해 주세요.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={focusSupplierAndCloseWarning}
+              className="pressable touch-target rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold"
+            >
+              매입처 선택
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
