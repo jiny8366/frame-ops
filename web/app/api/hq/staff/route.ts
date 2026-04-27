@@ -1,10 +1,22 @@
 // Frame Ops Web — /api/hq/staff
 // 본사용 직원 통합 조회/생성. 매장 필터 옵션.
+//
+// 권한 모델:
+//   - 본사(hq_*) 만 호출 가능.
+//   - 생성 가능 역할: 본사 역할(hq_*) + 지점 매니저(store_manager) 까지.
+//     판매사/직원(store_salesperson, store_staff)은 지점 매니저가 /api/admin/staff 로 등록.
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 import { hashPassword } from '@/lib/auth/password';
+
+const HQ_CREATABLE_ROLES = [
+  'hq_super',
+  'hq_purchase',
+  'hq_view',
+  'store_manager',
+] as const;
 
 interface CreateStaffBody {
   login_id: string;
@@ -109,6 +121,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { data: null, error: 'login_id, display_name, role_code, password 모두 필수입니다.' },
         { status: 400 }
+      );
+    }
+
+    if (!HQ_CREATABLE_ROLES.includes(roleCode as (typeof HQ_CREATABLE_ROLES)[number])) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: '본사에서는 본사 역할 또는 지점 매니저만 생성할 수 있습니다. 판매사/직원은 지점에서 등록하세요.',
+        },
+        { status: 403 }
       );
     }
 

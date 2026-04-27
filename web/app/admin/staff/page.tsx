@@ -3,9 +3,12 @@
 
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { StaffFormDialog } from './StaffFormDialog';
+import { useSession } from '@/hooks/useSession';
+
+const STORE_MANAGER_ASSIGNABLE: readonly string[] = ['store_salesperson', 'store_staff'];
 
 interface StaffRow {
   user_id: string;
@@ -29,9 +32,18 @@ const fetcher = async (url: string): Promise<StaffRow[]> => {
 };
 
 export default function StaffAdminPage() {
+  const { session } = useSession();
   const { data: staff, isLoading, mutate } = useSWR<StaffRow[]>('/api/admin/staff', fetcher);
   const [editing, setEditing] = useState<StaffRow | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // 본사(hq_*) 라면 모든 역할 허용 + store 자유 선택. 지점 매니저는 판매사/직원만 + 매장 잠금.
+  const callerIsManager = session?.role_code === 'store_manager';
+  const allowedRoles = useMemo<readonly string[] | undefined>(() => {
+    if (callerIsManager) return STORE_MANAGER_ASSIGNABLE;
+    return undefined; // HQ — 전체
+  }, [callerIsManager]);
+  const lockedStoreId = callerIsManager ? session?.store_id ?? null : null;
 
   const handleAdd = useCallback(() => setCreating(true), []);
   const handleEdit = useCallback((row: StaffRow) => setEditing(row), []);
@@ -133,6 +145,8 @@ export default function StaffAdminPage() {
           initial={editing}
           onClose={handleClose}
           onSaved={handleSaved}
+          allowedRoles={allowedRoles}
+          lockedStoreId={lockedStoreId}
         />
       )}
     </main>

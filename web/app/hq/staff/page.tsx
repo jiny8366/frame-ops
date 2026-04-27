@@ -8,6 +8,14 @@ import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { StaffFormDialog } from '@/app/admin/staff/StaffFormDialog';
 
+// 본사 화면에서 생성/수정 가능한 역할 — 판매사/직원은 지점에서 등록.
+const HQ_ASSIGNABLE_ROLES: readonly string[] = [
+  'hq_super',
+  'hq_purchase',
+  'hq_view',
+  'store_manager',
+];
+
 interface StoreOpt {
   id: string;
   store_code: string;
@@ -186,6 +194,7 @@ export default function HqStaffPage() {
           onClose={handleClose}
           onSaved={handleSaved}
           apiBase="/api/hq/staff"
+          allowedRoles={HQ_ASSIGNABLE_ROLES}
         />
       )}
     </main>

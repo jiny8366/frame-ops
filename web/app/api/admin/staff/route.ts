@@ -1,11 +1,19 @@
 // Frame Ops Web — /api/admin/staff
 // GET: 현재 매장 직원 리스트
 // POST: 신규 직원 생성 (login_id, display_name, role_code, password) + 매장 스코프 자동 연결
+//
+// 권한 모델:
+//   - 본사(hq_*) — 모든 역할 생성 가능, store_id 명시.
+//   - 지점 매니저(store_manager) — 본인 매장에서 store_salesperson / store_staff 만 생성.
+//     role/store_id 는 서버에서 강제 (클라이언트가 위조해도 무시).
+//   - 그 외 역할 — 거부 (계정 관리는 매니저 이상의 책임).
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 import { hashPassword } from '@/lib/auth/password';
+
+const STORE_MANAGEABLE_ROLES = ['store_salesperson', 'store_staff'] as const;
 
 interface CreateStaffBody {
   login_id: string;
@@ -73,6 +81,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: null, error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
+  const callerIsHq = session.role_code.startsWith('hq_');
+  const callerIsManager = session.role_code === 'store_manager';
+  if (!callerIsHq && !callerIsManager) {
+    return NextResponse.json(
+      { data: null, error: '계정 추가 권한이 없습니다 (지점 매니저 이상 필요).' },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = (await request.json()) as CreateStaffBody;
     const loginId = (body.login_id ?? '').trim();
@@ -85,6 +102,21 @@ export async function POST(request: Request) {
         { data: null, error: 'login_id, display_name, role_code, password 모두 필수입니다.' },
         { status: 400 }
       );
+    }
+
+    // 지점 매니저는 본인 매장의 판매사/직원만 생성 가능. role/store 강제 정정.
+    let targetStoreId: string;
+    if (callerIsManager) {
+      if (!STORE_MANAGEABLE_ROLES.includes(roleCode as (typeof STORE_MANAGEABLE_ROLES)[number])) {
+        return NextResponse.json(
+          { data: null, error: '지점 매니저는 판매사/직원 계정만 생성할 수 있습니다.' },
+          { status: 403 }
+        );
+      }
+      targetStoreId = session.store_id;
+    } else {
+      // HQ — store_id 가 명시되면 그것, 아니면 본인 매장 (본사 사용자에게도 기본 매장이 있음).
+      targetStoreId = body.store_id || session.store_id;
     }
 
     const db = getDB();
@@ -102,21 +134,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // 지점 계정 비밀번호 중복 체크 (활성 지점 계정 전체 대상).
+    // 지점 계정 비밀번호 중복 체크 — 같은 매장 내에서만 검사 (지점 단위 유일성).
     const isStoreRole = roleCode.startsWith('store_');
     if (isStoreRole) {
-      const { data: dup } = await db
-        .from('fo_staff_profiles')
-        .select('user_id, login_id')
-        .eq('password_plain', password)
-        .like('role_code', 'store_%')
-        .eq('active', true)
-        .maybeSingle();
-      if (dup) {
-        return NextResponse.json(
-          { data: null, error: '이미 사용 중인 비밀번호입니다. 다른 비밀번호를 사용해 주세요.' },
-          { status: 409 }
-        );
+      const { data: scoped } = await db
+        .from('fo_staff_store_scopes')
+        .select('user_id')
+        .eq('store_id', targetStoreId);
+      const scopedIds = (scoped ?? []).map((r) => r.user_id);
+      if (scopedIds.length > 0) {
+        const { data: dup } = await db
+          .from('fo_staff_profiles')
+          .select('user_id, login_id')
+          .eq('password_plain', password)
+          .like('role_code', 'store_%')
+          .eq('active', true)
+          .in('user_id', scopedIds)
+          .maybeSingle();
+        if (dup) {
+          return NextResponse.json(
+            { data: null, error: '이 매장에 이미 사용 중인 비밀번호입니다. 다른 비밀번호를 사용해 주세요.' },
+            { status: 409 }
+          );
+        }
       }
     }
 
@@ -150,9 +190,6 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-
-    // 근무지 매장: 지점 역할이고 body 에 명시되면 그 매장, 아니면 현재 세션 매장.
-    const targetStoreId = isStoreRole && body.store_id ? body.store_id : session.store_id;
 
     const { error: scopeErr } = await db.from('fo_staff_store_scopes').insert({
       user_id: created.user_id,
