@@ -1,6 +1,11 @@
 // Frame Ops Web — /api/sales/create (POST)
 // RPC create_sale_with_items 호출. 판매 + 품목 + 재고 차감 원자 처리.
 // idempotency_key 필수 — 중복 결제 방지.
+//
+// 런타임: Edge — Vercel cold-start 제거(node 함수는 idle 후 5~10초 지연 발생).
+// Supabase 서비스롤 클라이언트는 fetch 기반이라 Edge 호환.
+
+export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
