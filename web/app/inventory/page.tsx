@@ -3,8 +3,11 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import { toast } from 'sonner';
+import { useSession } from '@/hooks/useSession';
+import { hasPermission } from '@/lib/auth/permissions';
 
 interface ProductRow {
   id: string;
@@ -30,10 +33,14 @@ const fetcher = async (url: string): Promise<ProductRow[]> => {
 };
 
 export default function InventoryPage() {
+  const { session } = useSession();
+  const canEditStock = hasPermission(session?.permissions, 'inventory_edit_stock');
+
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState<'low' | 'style' | 'recent'>('style');
+  const [editing, setEditing] = useState<ProductRow | null>(null);
 
-  const { data: items = [], isLoading } = useSWR<ProductRow[]>(
+  const { data: items = [], isLoading, mutate } = useSWR<ProductRow[]>(
     '/api/inventory?limit=500',
     fetcher,
     { refreshInterval: 60_000 }
@@ -121,7 +128,17 @@ export default function InventoryPage() {
                     const isLow = stock <= 1;
                     const isOut = stock <= 0;
                     return (
-                      <tr key={p.id} className="border-t border-[var(--color-separator-opaque)]">
+                      <tr
+                        key={p.id}
+                        onClick={canEditStock ? () => setEditing(p) : undefined}
+                        className={[
+                          'border-t border-[var(--color-separator-opaque)]',
+                          canEditStock
+                            ? 'cursor-pointer hover:bg-[var(--color-fill-quaternary)]'
+                            : '',
+                        ].join(' ')}
+                        title={canEditStock ? '클릭 — 재고 수량 편집' : undefined}
+                      >
                         <td className="p-3 text-caption1">{p.brand?.name ?? '—'}</td>
                         <td className="p-3">
                           <div className="font-semibold">
@@ -166,7 +183,164 @@ export default function InventoryPage() {
           )}
         </section>
       </div>
+
+      {editing && (
+        <StockEditDialog
+          item={editing}
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            await mutate();
+            setEditing(null);
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+// ── 재고 수량 편집 다이얼로그 (숫자 키패드) ───────────────────────────
+function StockEditDialog({
+  item,
+  onClose,
+  onSaved,
+}: {
+  item: ProductRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const initial = item.stock_quantity ?? 0;
+  const [draft, setDraft] = useState<string>(String(initial));
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [onClose]);
+
+  const append = useCallback((d: string) => {
+    setDraft((prev) => {
+      const next = (prev === '0' ? '' : prev) + d;
+      return next.slice(0, 5);
+    });
+  }, []);
+  const backspace = useCallback(() => {
+    setDraft((prev) => (prev.length <= 1 ? '0' : prev.slice(0, -1)));
+  }, []);
+  const clear = useCallback(() => setDraft('0'), []);
+
+  const qtyNum = Number(draft) || 0;
+  const dirty = qtyNum !== initial;
+
+  const handleSave = useCallback(async () => {
+    if (!dirty || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/inventory/${item.id}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock_quantity: qtyNum }),
+      });
+      const json = (await res.json()) as { data: unknown; error: string | null };
+      if (!res.ok || json.error) {
+        toast.error(json.error ?? '저장 실패');
+        setSubmitting(false);
+        return;
+      }
+      toast.success(`재고 ${qtyNum} 으로 갱신`);
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '네트워크 오류');
+      setSubmitting(false);
+    }
+  }, [dirty, submitting, qtyNum, item.id, onSaved]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose();
+      }}
+    >
+      <div className="w-full max-w-[360px] rounded-2xl bg-[var(--color-bg-secondary)] p-4 flex flex-col gap-3">
+        <header>
+          <h3 className="text-headline font-semibold text-[var(--color-label-primary)]">
+            재고 수량 수정
+          </h3>
+          <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
+            {item.brand?.name ?? '—'} · {item.style_code ?? '—'}
+            {item.color_code ? ` / ${item.color_code}` : ''}
+          </p>
+        </header>
+
+        <div className="rounded-xl bg-[var(--color-fill-tertiary)] px-4 py-3 text-center">
+          <div className="text-caption2 text-[var(--color-label-tertiary)]">재고 수량</div>
+          <div className="text-title1 font-bold tabular-nums text-[var(--color-label-primary)]">
+            {qtyNum.toLocaleString()}
+          </div>
+          {dirty && (
+            <div className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+              현재 {initial}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+            <KeyBtn key={d} label={d} onClick={() => append(d)} />
+          ))}
+          <KeyBtn label="지움" subtle onClick={clear} />
+          <KeyBtn label="0" onClick={() => append('0')} />
+          <KeyBtn label="⌫" subtle onClick={backspace} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium disabled:opacity-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!dirty || submitting}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
+          >
+            {submitting ? '저장 중…' : '저장'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KeyBtn({
+  label,
+  subtle,
+  onClick,
+}: {
+  label: string;
+  subtle?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'pressable touch-target-lg rounded-xl text-title2 font-medium',
+        subtle
+          ? 'bg-[var(--color-fill-secondary)] text-[var(--color-label-secondary)]'
+          : 'bg-[var(--color-bg-elevated,var(--color-bg-primary))] text-[var(--color-label-primary)]',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   );
 }
 
