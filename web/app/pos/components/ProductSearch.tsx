@@ -112,7 +112,7 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="제품번호 입력 (키보드 또는 키패드)"
+          placeholder="제품번호 또는 영문(T9) — 예: 7732 → SPE…"
           aria-label="제품번호"
           className="flex-1 min-w-0 bg-transparent text-title1 font-semibold tabular-nums text-[var(--color-label-primary)] placeholder:text-[var(--color-label-tertiary)] placeholder:font-normal placeholder:text-callout focus:outline-none truncate"
         />
@@ -127,26 +127,26 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 
       {/* 본문: 좌측 키패드 + 우측 결과 리스트 */}
       <div className="grid grid-cols-[auto_1fr] gap-3 flex-1 min-h-0">
-        {/* 키패드 */}
+        {/* 키패드 — T9 (전화기 키패드) 영문 라벨 포함 */}
         <div className="grid grid-cols-3 gap-2 content-start">
-          <DigitButton digit="1" onPress={handleAppend} />
-          <DigitButton digit="2" onPress={handleAppend} />
-          <DigitButton digit="3" onPress={handleAppend} />
-          <DigitButton digit="4" onPress={handleAppend} />
-          <DigitButton digit="5" onPress={handleAppend} />
-          <DigitButton digit="6" onPress={handleAppend} />
-          <DigitButton digit="7" onPress={handleAppend} />
-          <DigitButton digit="8" onPress={handleAppend} />
-          <DigitButton digit="9" onPress={handleAppend} />
+          <DigitButton digit="1" letters="" onPress={handleAppend} />
+          <DigitButton digit="2" letters="ABC" onPress={handleAppend} />
+          <DigitButton digit="3" letters="DEF" onPress={handleAppend} />
+          <DigitButton digit="4" letters="GHI" onPress={handleAppend} />
+          <DigitButton digit="5" letters="JKL" onPress={handleAppend} />
+          <DigitButton digit="6" letters="MNO" onPress={handleAppend} />
+          <DigitButton digit="7" letters="PQRS" onPress={handleAppend} />
+          <DigitButton digit="8" letters="TUV" onPress={handleAppend} />
+          <DigitButton digit="9" letters="WXYZ" onPress={handleAppend} />
           <ActionButton label="지움" onPress={handleClear} />
-          <DigitButton digit="0" onPress={handleAppend} />
+          <DigitButton digit="0" letters="" onPress={handleAppend} />
           <ActionButton label="⌫" onPress={handleBackspace} />
         </div>
 
         {/* 결과 리스트 */}
         <div className="overflow-auto rounded-xl bg-[var(--color-bg-secondary)]">
           {!debouncedDraft.trim() ? (
-            <EmptyState message="숫자를 입력하면 결과가 표시됩니다" />
+            <EmptyState message="숫자(제품번호) 또는 키패드 영문(T9) 입력 — 예: 7732 → SPECTER" />
           ) : results.length === 0 ? (
             <EmptyState message={isValidating ? '검색 중…' : `"${debouncedDraft}" 결과 없음`} />
           ) : (
@@ -219,18 +219,25 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
 // ── 디지트 버튼 ──────────────────────────────────────────────────────────────
 interface DigitButtonProps {
   digit: string;
+  letters?: string;
   onPress: (digit: string) => void;
 }
 
-const DigitButton = memo(function DigitButton({ digit, onPress }: DigitButtonProps) {
+const DigitButton = memo(function DigitButton({ digit, letters, onPress }: DigitButtonProps) {
   const handleClick = useCallback(() => onPress(digit), [digit, onPress]);
   return (
     <button
       type="button"
       onClick={handleClick}
-      className="pressable touch-target-lg rounded-xl bg-[var(--color-bg-secondary)] text-title2 font-medium text-[var(--color-label-primary)] min-w-[72px]"
+      aria-label={letters ? `${digit} (${letters})` : digit}
+      className="pressable touch-target-lg rounded-xl bg-[var(--color-bg-secondary)] text-[var(--color-label-primary)] min-w-[72px] flex flex-col items-center justify-center leading-none gap-0.5 py-1"
     >
-      {digit}
+      <span className="text-title2 font-medium leading-none">{digit}</span>
+      {letters ? (
+        <span className="text-[9px] tracking-[0.08em] font-semibold text-[var(--color-label-tertiary)] leading-none">
+          {letters}
+        </span>
+      ) : null}
     </button>
   );
 });
