@@ -1,243 +1,197 @@
-// Frame Ops Web — 매입 대기 리스트 (주문 리스트 모드)
-// 재고 < 0 인 제품을 매입처별로 필터하여 체크 → 라인 일괄 추가.
+// Frame Ops Web — 주문리스트 (매입 등록 탭)
+// 발주처리됐으나 매입처리 안 된 sale_items 의 매입처×제품별 집계 표시.
+// 행 체크 + 수량 조정 (키패드) + 차액 처리(주문대기/주문보류) → 매입 처리 일괄 실행.
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import useSWR, { type KeyedMutator } from 'swr';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { toast } from 'sonner';
 
 interface PendingRow {
+  supplier_id: string;
+  supplier_name: string;
+  supplier_code: string | null;
   product_id: string;
-  brand_id: string;
-  brand_name: string;
+  brand_id: string | null;
+  brand_name: string | null;
   style_code: string | null;
   color_code: string | null;
   display_name: string | null;
-  stock_quantity: number;
-  pending_count: number;
+  ordered_at_min: string | null;
+  ordered_qty: number;
   cost_price: number;
-  inbound_hold: boolean;
 }
 
-interface AddedLine {
-  product_id: string;
-  style_code: string;
-  color_code: string;
-  display_name: string;
-  brand_name: string;
-  quantity: number;
-  unit_cost: number;
-}
+interface ApiResp { rows: PendingRow[] }
 
-export interface PendingListProps {
-  supplierId: string;
-  /** 부모(매입 등록 페이지) 의 라인 목록에 추가하는 콜백 */
-  onAddLines: (lines: AddedLine[]) => void;
+interface Draft {
+  checked: boolean;
+  qty: number; // 사용자가 적용한 수량 (기본 = ordered_qty)
+  remainderAction: 'pending' | 'hold'; // 차액 처리 방식
 }
 
 const fetcher = async (url: string): Promise<PendingRow[]> => {
   const res = await fetch(url);
-  const json = (await res.json()) as { data: PendingRow[] | null; error: string | null };
-  if (json.error) throw new Error(json.error);
-  return json.data ?? [];
+  const json = (await res.json()) as { data: ApiResp | null; error: string | null };
+  if (json.error || !json.data) throw new Error(json.error ?? '응답 없음');
+  return json.data.rows;
 };
 
-interface DraftRow {
-  checked: boolean;
-  quantity: number;
-  unit_cost: number;
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function PendingList({ supplierId, onAddLines }: PendingListProps) {
-  const url = `/api/admin/inbound/pending${supplierId ? `?supplier_id=${supplierId}` : ''}`;
+export interface PendingListProps {
+  /** 처리 후 부모에게 알림 (스낵바 등). 부모가 추가 동작을 하지 않으면 null 가능. */
+  onProcessed?: () => void;
+}
+
+export function PendingList({ onProcessed }: PendingListProps) {
+  const url = '/api/admin/inbound/pending';
   const { data: rows = [], isLoading, mutate } = useSWR<PendingRow[]>(url, fetcher);
 
-  const [showHeld, setShowHeld] = useState(false);
-  const [drafts, setDrafts] = useState<Record<string, DraftRow>>({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [editing, setEditing] = useState<PendingRow | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // 표시할 행 필터 (보류 항목 토글)
-  const visible = useMemo(
-    () => (showHeld ? rows : rows.filter((r) => !r.inbound_hold)),
-    [rows, showHeld]
-  );
-
-  // 행 토글 시 draft 초기화 (재고 부족분을 기본 수량, cost_price 를 기본 단가)
   const draftFor = useCallback(
-    (row: PendingRow): DraftRow => {
-      const d = drafts[row.product_id];
-      if (d) return d;
-      return { checked: false, quantity: row.pending_count, unit_cost: row.cost_price };
-    },
+    (r: PendingRow): Draft =>
+      drafts[r.product_id] ?? { checked: false, qty: r.ordered_qty, remainderAction: 'pending' },
     [drafts]
   );
 
-  const updateDraft = useCallback((id: string, patch: Partial<DraftRow>, init: DraftRow) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [id]: { ...init, ...prev[id], ...patch },
-    }));
+  const updateDraft = useCallback((productId: string, patch: Partial<Draft>) => {
+    setDrafts((prev) => {
+      const base = prev[productId] ?? { checked: false, qty: 0, remainderAction: 'pending' };
+      return { ...prev, [productId]: { ...base, ...patch } };
+    });
   }, []);
 
-  const handleHold = useCallback(
-    async (productId: string, nextHold: boolean, mutator: KeyedMutator<PendingRow[]>) => {
-      const res = await fetch('/api/admin/inbound/pending', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id: productId, hold: nextHold }),
-      });
-      const json = (await res.json()) as { data: unknown; error: string | null };
-      if (!res.ok || json.error) {
-        toast.error(json.error ?? '보류 변경 실패');
-        return;
-      }
-      toast.success(nextHold ? '보류 처리됨' : '보류 해제됨');
-      await mutator();
-    },
-    []
+  const checkedRows = useMemo(
+    () => rows.filter((r) => drafts[r.product_id]?.checked),
+    [rows, drafts]
   );
 
-  const checkedCount = useMemo(
-    () => visible.filter((r) => drafts[r.product_id]?.checked).length,
-    [visible, drafts]
-  );
-
-  const handleAddSelected = useCallback(() => {
-    const lines: AddedLine[] = visible
-      .filter((r) => drafts[r.product_id]?.checked)
-      .map((r) => {
-        const d = drafts[r.product_id];
-        return {
-          product_id: r.product_id,
-          style_code: r.style_code ?? '—',
-          color_code: r.color_code ?? '',
-          display_name: r.display_name ?? '',
-          brand_name: r.brand_name,
-          quantity: Math.max(1, d.quantity || 0),
-          unit_cost: Math.max(0, d.unit_cost || 0),
-        };
-      });
-    if (lines.length === 0) {
+  const handleSubmit = useCallback(async () => {
+    if (checkedRows.length === 0) {
       toast.info('체크된 항목이 없습니다.');
       return;
     }
-    onAddLines(lines);
-    // 추가된 항목은 체크 해제
-    setDrafts((prev) => {
-      const next = { ...prev };
-      for (const l of lines) {
-        next[l.product_id] = { ...next[l.product_id], checked: false } as DraftRow;
+    setSubmitting(true);
+    try {
+      const items = checkedRows.map((r) => {
+        const d = drafts[r.product_id]!;
+        const diff = r.ordered_qty - d.qty;
+        return {
+          product_id: r.product_id,
+          received_qty: d.qty,
+          remainder_action: diff > 0 ? d.remainderAction : 'none',
+        };
+      });
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const json = (await res.json()) as {
+        data: { processed: number; failed: number } | null;
+        error: string | null;
+      };
+      if (!res.ok || (json.error && json.data?.processed === 0)) {
+        toast.error(json.error ?? '매입 처리 실패');
+        return;
       }
-      return next;
-    });
-    toast.success(`${lines.length}건 라인에 추가됨`);
-  }, [visible, drafts, onAddLines]);
+      toast.success(
+        `매입 처리 ${json.data?.processed ?? 0}건 완료${
+          json.data?.failed ? ` / 실패 ${json.data.failed}건` : ''
+        }`
+      );
+      setDrafts({});
+      await mutate();
+      onProcessed?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '네트워크 오류');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [checkedRows, drafts, mutate, onProcessed]);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-caption1 text-[var(--color-label-secondary)]">
-          {supplierId
-            ? '선택한 매입처 브랜드의 매입 대기 제품'
-            : '전체 매입 대기 제품 (매입처 선택 시 필터)'}
-          {' · '}
-          총 {visible.length}건
-        </p>
-        <label className="flex items-center gap-1.5 text-caption1 text-[var(--color-label-secondary)]">
-          <input
-            type="checkbox"
-            checked={showHeld}
-            onChange={(e) => setShowHeld(e.target.checked)}
-          />
-          보류 항목 표시
-        </label>
-      </div>
+      <p className="text-caption1 text-[var(--color-label-secondary)]">
+        발주처리됐으나 매입(입고) 안 된 항목 — 총 {rows.length}건. 수량 셀을 누르면 키패드로 변경.
+      </p>
 
       {isLoading ? (
         <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-6">
           불러오는 중…
         </p>
-      ) : visible.length === 0 ? (
+      ) : rows.length === 0 ? (
         <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-6">
-          매입 대기 제품이 없습니다.
+          매입 대기 항목이 없습니다.
         </p>
       ) : (
-        <div className="overflow-auto rounded-lg max-h-[420px] border border-[var(--color-separator-opaque)]">
+        <div className="overflow-auto rounded-lg max-h-[480px] border border-[var(--color-separator-opaque)]">
           <table className="w-full text-callout">
             <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)] sticky top-0">
               <tr>
-                <th className="p-2 w-10"></th>
-                <th className="text-left p-2">제품</th>
-                <th className="text-right p-2 w-16 hidden sm:table-cell">부족</th>
+                <th className="text-left p-2">매입처</th>
+                <th className="text-left p-2 w-16">주문일자</th>
+                <th className="text-left p-2">브랜드</th>
+                <th className="text-left p-2">제품번호</th>
+                <th className="text-left p-2 w-14">색상</th>
                 <th className="text-right p-2 w-20">수량</th>
-                <th className="text-right p-2 w-24">단가</th>
-                <th className="p-2 w-16"></th>
+                <th className="text-center p-2 w-20">매입처리</th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => {
-                const init: DraftRow = {
-                  checked: false,
-                  quantity: r.pending_count,
-                  unit_cost: r.cost_price,
-                };
+              {rows.map((r) => {
                 const d = draftFor(r);
+                const diff = r.ordered_qty - d.qty;
                 return (
                   <tr
                     key={r.product_id}
-                    className={`border-t border-[var(--color-separator-opaque)] ${r.inbound_hold ? 'opacity-50' : ''}`}
+                    className="border-t border-[var(--color-separator-opaque)]"
                   >
+                    <td className="p-2 text-caption1">
+                      <div>{r.supplier_name}</div>
+                      {r.supplier_code && (
+                        <div className="text-caption2 text-[var(--color-label-tertiary)] font-mono">
+                          {r.supplier_code}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-2 text-caption1 tabular-nums">
+                      {fmtDate(r.ordered_at_min)}
+                    </td>
+                    <td className="p-2 text-caption1">{r.brand_name ?? '—'}</td>
+                    <td className="p-2 font-semibold">{r.style_code ?? '—'}</td>
+                    <td className="p-2 text-caption1">{r.color_code ?? '—'}</td>
+                    <td className="p-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(r)}
+                        className="pressable rounded-md px-2 py-1 bg-[var(--color-fill-tertiary)] tabular-nums font-semibold"
+                      >
+                        {d.qty}
+                        {diff !== 0 && (
+                          <span className="ml-1 text-caption2 text-[var(--color-system-orange)]">
+                            *
+                          </span>
+                        )}
+                      </button>
+                    </td>
                     <td className="p-2 text-center">
                       <input
                         type="checkbox"
                         checked={d.checked}
-                        disabled={r.inbound_hold}
-                        onChange={(e) => updateDraft(r.product_id, { checked: e.target.checked }, init)}
-                      />
-                    </td>
-                    <td className="p-2">
-                      <div className="text-caption2 text-[var(--color-label-secondary)]">
-                        {r.brand_name}
-                      </div>
-                      <div className="font-semibold">
-                        {r.style_code ?? '—'}
-                        {r.color_code ? ` / ${r.color_code}` : ''}
-                      </div>
-                    </td>
-                    <td className="p-2 text-right tabular-nums hidden sm:table-cell">
-                      {r.pending_count}
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        min={1}
-                        value={d.quantity || ''}
                         onChange={(e) =>
-                          updateDraft(r.product_id, { quantity: Number(e.target.value) || 0 }, init)
+                          updateDraft(r.product_id, { checked: e.target.checked })
                         }
-                        className="w-16 rounded border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
                       />
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        min={0}
-                        step={100}
-                        value={d.unit_cost || ''}
-                        onChange={(e) =>
-                          updateDraft(r.product_id, { unit_cost: Number(e.target.value) || 0 }, init)
-                        }
-                        className="w-20 rounded border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
-                      />
-                    </td>
-                    <td className="p-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleHold(r.product_id, !r.inbound_hold, mutate)}
-                        className="pressable text-caption1 text-[var(--color-system-orange)]"
-                      >
-                        {r.inbound_hold ? '복귀' : '보류'}
-                      </button>
                     </td>
                   </tr>
                 );
@@ -249,12 +203,188 @@ export function PendingList({ supplierId, onAddLines }: PendingListProps) {
 
       <button
         type="button"
-        onClick={handleAddSelected}
-        disabled={checkedCount === 0}
+        onClick={handleSubmit}
+        disabled={submitting || checkedRows.length === 0}
         className="pressable touch-target rounded-xl bg-[var(--color-system-blue)] px-4 py-2 text-callout font-semibold text-white disabled:opacity-40"
       >
-        선택 {checkedCount}건 라인에 추가
+        {submitting ? '처리 중…' : `매입 처리 (${checkedRows.length}건)`}
       </button>
+
+      {editing && (
+        <QtyEditDialog
+          row={editing}
+          initialDraft={draftFor(editing)}
+          onClose={() => setEditing(null)}
+          onApply={(qty, action) => {
+            updateDraft(editing.product_id, { qty, remainderAction: action });
+            setEditing(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// ── 수량 편집 모달 (숫자 키패드 + 차액 처리 선택) ─────────────────────
+function QtyEditDialog({
+  row,
+  initialDraft,
+  onClose,
+  onApply,
+}: {
+  row: PendingRow;
+  initialDraft: Draft;
+  onClose: () => void;
+  onApply: (qty: number, action: 'pending' | 'hold') => void;
+}) {
+  const [draft, setDraft] = useState<string>(String(initialDraft.qty));
+  const [action, setAction] = useState<'pending' | 'hold'>(initialDraft.remainderAction);
+  const freshRef = useRef(true);
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [onClose]);
+
+  const append = useCallback((d: string) => {
+    setDraft((prev) => {
+      if (freshRef.current) {
+        freshRef.current = false;
+        return d;
+      }
+      const next = (prev === '0' ? '' : prev) + d;
+      return next.slice(0, 4);
+    });
+  }, []);
+  const backspace = useCallback(() => {
+    freshRef.current = false;
+    setDraft((prev) => (prev.length <= 1 ? '0' : prev.slice(0, -1)));
+  }, []);
+  const clear = useCallback(() => {
+    freshRef.current = false;
+    setDraft('0');
+  }, []);
+
+  const qtyNum = Math.min(Number(draft) || 0, row.ordered_qty);
+  const diff = row.ordered_qty - qtyNum;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-[380px] rounded-2xl bg-[var(--color-bg-secondary)] p-4 flex flex-col gap-3">
+        <header>
+          <h3 className="text-headline font-semibold text-[var(--color-label-primary)]">
+            매입 수량 입력
+          </h3>
+          <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
+            {row.supplier_name} · {row.brand_name ?? ''} · {row.style_code ?? '—'}
+            {row.color_code ? ` / ${row.color_code}` : ''}
+          </p>
+        </header>
+
+        <div className="rounded-xl bg-[var(--color-fill-tertiary)] px-4 py-3 text-center">
+          <div className="text-caption2 text-[var(--color-label-tertiary)]">매입 수량</div>
+          <div className="text-title1 font-bold tabular-nums text-[var(--color-label-primary)]">
+            {qtyNum.toLocaleString()}
+          </div>
+          <div className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+            발주 {row.ordered_qty}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+            <KeyBtn key={d} label={d} onClick={() => append(d)} />
+          ))}
+          <KeyBtn label="지움" subtle onClick={clear} />
+          <KeyBtn label="0" onClick={() => append('0')} />
+          <KeyBtn label="⌫" subtle onClick={backspace} />
+        </div>
+
+        {/* 차액 처리 선택 — 수량이 줄었을 때만 활성 */}
+        {diff > 0 && (
+          <div className="flex flex-col gap-1">
+            <div className="text-caption1 text-[var(--color-label-secondary)]">
+              차액 {diff}개 처리
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAction('pending')}
+                className={[
+                  'pressable touch-target rounded-lg px-3 py-2 text-callout font-medium border',
+                  action === 'pending'
+                    ? 'bg-[var(--color-system-blue)] text-white border-transparent'
+                    : 'bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]',
+                ].join(' ')}
+              >
+                주문대기 (재발주)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAction('hold')}
+                className={[
+                  'pressable touch-target rounded-lg px-3 py-2 text-callout font-medium border',
+                  action === 'hold'
+                    ? 'bg-[var(--color-system-orange)] text-white border-transparent'
+                    : 'bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]',
+                ].join(' ')}
+              >
+                주문보류 (대기 제외)
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply(qtyNum, action)}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-system-blue)] text-white font-semibold"
+          >
+            적용
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KeyBtn({
+  label,
+  subtle,
+  onClick,
+}: {
+  label: string;
+  subtle?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'pressable touch-target-lg rounded-xl text-title2 font-medium',
+        subtle
+          ? 'bg-[var(--color-fill-secondary)] text-[var(--color-label-secondary)]'
+          : 'bg-[var(--color-bg-elevated,var(--color-bg-primary))] text-[var(--color-label-primary)]',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   );
 }
