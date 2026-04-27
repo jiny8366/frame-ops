@@ -79,6 +79,10 @@ export function UserMenu({ session }: UserMenuProps) {
   // 메뉴 정의 — 각 항목은 perm 키로 사용자별 표시 결정.
   const isHq = isHqRole(session.role_code);
   const allItems: MenuItem[] = [
+    // ── 로그아웃 (이름 바로 아래로 이동) ─────────────────────────
+    { label: '로그아웃', enabled: true, onClick: handleLogout },
+    { divider: true, label: '', enabled: false },
+
     // ── 본사 전용 (hq_* 만) ────────────────────────────────────────
     ...(isHq
       ? ([
@@ -123,8 +127,6 @@ export function UserMenu({ session }: UserMenuProps) {
           { label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' },
         ] as MenuItem[])
       : []),
-    { divider: true, label: '', enabled: false },
-    { label: '로그아웃', enabled: true, onClick: handleLogout },
   ];
 
   // 권한 필터 적용 + 연속된 divider 정리
