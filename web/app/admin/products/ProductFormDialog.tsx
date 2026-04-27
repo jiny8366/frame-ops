@@ -339,26 +339,36 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
             <input
               type="text"
               maxLength={4}
-              pattern="[0-9A-Za-z]{4}"
               value={styleCode}
               onChange={(e) => setStyleCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               onBlur={(e) => setStyleCode(normalizeStyleCode(e.target.value))}
               required
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoCapitalize="characters"
+              inputMode="text"
+              lang="en"
               placeholder="0101 / SP01"
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide"
+              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide text-[var(--color-label-primary)] uppercase"
             />
           </Field>
           <Field label="컬러 (숫자·영문 2자리)">
             <input
               type="text"
               maxLength={2}
-              pattern="[0-9A-Za-z]{2}"
               value={colorCode}
               onChange={(e) => setColorCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               onBlur={(e) => setColorCode(normalizeColorCode(e.target.value))}
               required
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoCapitalize="characters"
+              inputMode="text"
+              lang="en"
               placeholder="01 / BK"
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide"
+              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide text-[var(--color-label-primary)] uppercase"
             />
           </Field>
         </div>
