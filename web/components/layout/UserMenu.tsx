@@ -166,19 +166,28 @@ export function UserMenu({ session }: UserMenuProps) {
           role="menu"
           className={[
             'absolute right-0 top-[calc(100%+6px)]',
-            'min-w-[200px]',
+            'min-w-[220px]',
             'rounded-xl bg-[var(--color-bg-elevated,var(--color-bg-secondary))]',
             'shadow-lg ring-1 ring-[var(--color-separator-opaque)]',
-            'overflow-hidden z-50',
+            'flex flex-col z-50',
+            // 메뉴가 길어지면 뷰포트 안에서 스크롤. dvh 로 모바일 주소창 변동 대응.
+            'max-h-[calc(100dvh-80px)]',
+            'overflow-hidden',
           ].join(' ')}
         >
-          <div className="px-3 py-2 border-b border-[var(--color-separator-opaque)]">
+          {/* 헤더 — 고정 (스크롤 안 됨) */}
+          <div className="shrink-0 px-3 py-2 border-b border-[var(--color-separator-opaque)]">
             <div className="text-callout font-semibold truncate">{session.display_name}</div>
             <div className="text-caption2 text-[var(--color-label-tertiary)] truncate">
               {session.store_name} · {session.store_code}
             </div>
           </div>
-          <div className="py-1">
+
+          {/* 메뉴 항목 — 넘칠 때만 스크롤 */}
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain py-1"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             {items.map((item, idx) =>
               item.divider ? (
                 <div
