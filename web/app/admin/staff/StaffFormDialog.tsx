@@ -115,6 +115,20 @@ export function StaffFormDialog({
     return all.filter((r) => allowedRoles.includes(r.code));
   }, [opts?.roles, allowedRoles]);
 
+  // 지점 역할은 login_id = 매장 store_code 로 자동. 매장 변경 시 동기화.
+  const selectedStoreCode = useMemo(() => {
+    if (!storeId) return '';
+    return (stores ?? []).find((s) => s.id === storeId)?.store_code ?? '';
+  }, [storeId, stores]);
+
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (!isStoreRole) return;
+    if (selectedStoreCode && loginId !== selectedStoreCode) {
+      setLoginId(selectedStoreCode);
+    }
+  }, [mode, isStoreRole, selectedStoreCode, loginId]);
+
   // 역할 scope 에 맞는 직급만 노출 (지점 역할 → store, 본사 역할 → hq, 그 외 → both 포함)
   const visibleJobTitles = useMemo(() => {
     const all = opts?.job_titles ?? [];
@@ -272,11 +286,17 @@ export function StaffFormDialog({
                 type="text"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                disabled={mode === 'edit'}
+                disabled={mode === 'edit' || isStoreRole}
                 required
                 autoCapitalize="none"
+                placeholder={isStoreRole ? '매장 선택 시 자동 입력' : ''}
                 className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-50"
               />
+              {isStoreRole && mode === 'create' && (
+                <span className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+                  지점 계정은 매장 코드를 공통 ID 로 사용합니다 (비밀번호로 직원 구분).
+                </span>
+              )}
             </Field>
 
             <Field label="이름">

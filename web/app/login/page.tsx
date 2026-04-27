@@ -133,11 +133,9 @@ export default function LoginPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-callout text-[var(--color-label-secondary)]">비밀번호</span>
-          {/* 숫자 키보드 기본: type=password 마스킹 + inputMode=numeric (iOS/Android) */}
+          {/* 숫자·영문·한글·특수문자 모두 허용 — 입력 제한 없음 */}
           <input
             type="password"
-            inputMode="numeric"
-            pattern="[0-9]*"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

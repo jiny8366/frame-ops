@@ -16,7 +16,8 @@ import { hashPassword } from '@/lib/auth/password';
 const STORE_MANAGEABLE_ROLES = ['store_salesperson', 'store_staff'] as const;
 
 interface CreateStaffBody {
-  login_id: string;
+  /** 본사 역할에서만 의미 있음. 지점 역할은 서버가 매장 store_code 로 강제 정정. */
+  login_id?: string;
   display_name: string;
   role_code: string;
   job_title_code?: string | null;
@@ -92,14 +93,13 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as CreateStaffBody;
-    const loginId = (body.login_id ?? '').trim();
     const displayName = (body.display_name ?? '').trim();
     const password = body.password ?? '';
     const roleCode = body.role_code ?? '';
 
-    if (!loginId || !displayName || !roleCode || !password) {
+    if (!displayName || !roleCode || !password) {
       return NextResponse.json(
-        { data: null, error: 'login_id, display_name, role_code, password 모두 필수입니다.' },
+        { data: null, error: 'display_name, role_code, password 모두 필수입니다.' },
         { status: 400 }
       );
     }
@@ -120,22 +120,49 @@ export async function POST(request: Request) {
     }
 
     const db = getDB();
+    const isStoreRole = roleCode.startsWith('store_');
 
-    // login_id 중복 체크
-    const { data: existing } = await db
-      .from('fo_staff_profiles')
-      .select('user_id')
-      .eq('login_id', loginId)
-      .maybeSingle();
-    if (existing) {
-      return NextResponse.json(
-        { data: null, error: '이미 사용 중인 로그인 아이디입니다.' },
-        { status: 409 }
-      );
+    // login_id 결정:
+    //   - 지점 역할 → 매장 store_code 로 강제 (매장의 모든 직원이 동일 login_id 공유, 비밀번호로 구별)
+    //   - 본사 역할 → 본문 login_id 사용 + hq 범위 내 중복 검사
+    let loginId: string;
+    if (isStoreRole) {
+      const { data: storeRow } = await db
+        .from('fo_stores')
+        .select('store_code')
+        .eq('id', targetStoreId)
+        .maybeSingle();
+      if (!storeRow?.store_code) {
+        return NextResponse.json(
+          { data: null, error: '근무지 매장을 찾을 수 없습니다.' },
+          { status: 400 }
+        );
+      }
+      loginId = storeRow.store_code;
+    } else {
+      loginId = (body.login_id ?? '').trim();
+      if (!loginId) {
+        return NextResponse.json(
+          { data: null, error: '본사 계정은 login_id 가 필요합니다.' },
+          { status: 400 }
+        );
+      }
+      // 본사 계정 login_id 중복 검사 (hq 범위 내)
+      const { data: existing } = await db
+        .from('fo_staff_profiles')
+        .select('user_id')
+        .eq('login_id', loginId)
+        .like('role_code', 'hq_%')
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json(
+          { data: null, error: '이미 사용 중인 로그인 아이디입니다.' },
+          { status: 409 }
+        );
+      }
     }
 
     // 지점 계정 비밀번호 중복 체크 — 같은 매장 내에서만 검사 (지점 단위 유일성).
-    const isStoreRole = roleCode.startsWith('store_');
     if (isStoreRole) {
       const { data: scoped } = await db
         .from('fo_staff_store_scopes')

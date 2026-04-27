@@ -110,16 +110,19 @@ type LoginAttempt =
   | { kind: 'not_found' };
 
 async function tryHqLogin(db: DB, identifier: string, password: string): Promise<LoginAttempt> {
+  // 지점 계정도 login_id 를 store_code 로 공유하므로 같은 identifier 로 여러 행이 매칭될 수
+  // 있음. HQ 로그인 조회는 role_code = hq_% 로 좁혀 정확히 0/1 행으로 한정.
   const { data: staff, error } = await db
     .from('fo_staff_profiles')
     .select('user_id, login_id, display_name, role_code, password_hash, permissions, active')
     .eq('login_id', identifier)
     .eq('active', true)
+    .like('role_code', 'hq_%')
     .maybeSingle();
 
   if (error) return { kind: 'error', error: error.message, status: 500 };
   if (!staff) return { kind: 'not_found' };
-  if (!isHqRole(staff.role_code)) return { kind: 'not_found' }; // login_id 가 본사가 아니면 지점 로직으로
+  if (!isHqRole(staff.role_code)) return { kind: 'not_found' }; // 방어적 — partial unique 가 보장
 
   if (!staff.password_hash) {
     return { kind: 'error', error: '본사 계정에 비밀번호가 설정되지 않았습니다.', status: 401 };
