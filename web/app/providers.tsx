@@ -8,7 +8,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Toaster, toast } from 'sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
-import { initSyncListeners } from '@/lib/db/sync';
+import { getDeadLetterItems, initSyncListeners, retryDeadLetter } from '@/lib/db/sync';
 import { dbGetAll } from '@/lib/db/indexeddb';
 import type { Product } from '@/types';
 
@@ -42,9 +42,9 @@ export function Providers({ children }: ProvidersProps) {
     })();
 
     const cleanup = initSyncListeners((deadItem) => {
-      // Phase 2: Toast UI 연동 (sonner). 사용자에게 직접 알림.
       const label =
         deadItem.table === 'orders' ? '판매 저장' :
+        deadItem.table === 'sales'  ? '판매 등록' :
         deadItem.table === 'frames' ? '제품 업데이트' :
         '데이터';
       toast.error(`${label} 동기화 실패 (3회 재시도)`, {
@@ -53,6 +53,22 @@ export function Providers({ children }: ProvidersProps) {
       });
       console.warn('[FrameOps Sync] Dead letter:', deadItem);
     });
+
+    // 앱 부팅 시 누적된 dead letter 자동 재시도 1회
+    // 이전 버전 useCheckout 의 잘못된 큐잉으로 쌓인 판매가 통계에 누락된 케이스 복구.
+    void (async () => {
+      try {
+        const dead = await getDeadLetterItems();
+        if (dead.length > 0) {
+          console.info(`[FrameOps Sync] Dead letter ${dead.length}건 — 자동 재시도`);
+          for (const it of dead) {
+            if (it.id !== undefined) await retryDeadLetter(it.id);
+          }
+        }
+      } catch (e) {
+        console.warn('[FrameOps Sync] Dead letter 복구 실패:', e);
+      }
+    })();
 
     return () => {
       cancelled = true;
