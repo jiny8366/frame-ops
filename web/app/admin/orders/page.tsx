@@ -72,7 +72,7 @@ export default function OrdersPage() {
     revalidateOnFocus: false,
   });
 
-  const groups = data?.groups ?? [];
+  const groups = useMemo(() => data?.groups ?? [], [data?.groups]);
 
   // 그룹 변동 시 선택 supplier 보정 (없으면 첫 번째로)
   useEffect(() => {
