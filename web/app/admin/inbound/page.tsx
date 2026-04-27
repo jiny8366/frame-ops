@@ -29,6 +29,7 @@ interface ProductRow {
   color_code: string | null;
   display_name: string | null;
   sale_price: number | null;
+  cost_price: number | null;
   stock_quantity: number | null;
   brand_name: string;
 }
@@ -104,7 +105,7 @@ export default function InboundPage() {
           display_name: p.display_name ?? '',
           brand_name: p.brand_name,
           quantity: 1,
-          unit_cost: 0,
+          unit_cost: p.cost_price ?? 0,
         },
       ];
     });
@@ -320,7 +321,8 @@ export default function InboundPage() {
                         {r.color_code ? ` / ${r.color_code}` : ''}
                       </span>
                       <span className="text-caption2 text-[var(--color-label-tertiary)] tabular-nums">
-                        재고 {r.stock_quantity ?? 0}
+                        재고 {r.stock_quantity ?? 0} · 매입가 ₩
+                        {(r.cost_price ?? 0).toLocaleString()}
                       </span>
                     </button>
                   ))}
