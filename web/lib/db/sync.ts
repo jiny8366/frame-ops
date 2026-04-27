@@ -48,6 +48,12 @@ const PERMANENT_ERROR_PATTERNS: readonly RegExp[] = [
   /HTTP 400/i,
   /HTTP 422/i,
   /Invalid.*payload/i,
+  // PostgreSQL 제약 위반 — 페이로드의 참조 무결성/체크 위반은 재시도해도 절대 안 풀림.
+  // (서버 RPC 의 graceful degrade 가 우선 동작하지만 배포 지연 시의 안전망)
+  /violates foreign key constraint/i,
+  /violates check constraint/i,
+  /violates not-null constraint/i,
+  /violates unique constraint/i,
 ];
 
 function isPermanentError(error: string | undefined): boolean {
