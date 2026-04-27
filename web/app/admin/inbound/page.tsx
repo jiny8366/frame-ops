@@ -1,8 +1,8 @@
 // Frame Ops Web — 매입 등록
 // 두 가지 입력 방식:
-//   1) 제품 검색 모드 — 직접 검색 후 라인 추가
-//   2) 주문 대기 리스트 모드 — 재고 부족(stock_quantity < 0) 제품 일괄 체크
-// 매입처 선택 시 주문 대기는 supplier_brands 매핑 기준으로 필터됨.
+//   1) 제품 검색 모드 — 직접 검색 후 라인 추가 (ad-hoc 매입)
+//   2) 주문리스트 모드 — 발주처리됐으나 매입 안 된 항목, 행 단위 매입처리
+// 주문리스트 탭은 자체적으로 매입 처리 (parent 폼 거치지 않음).
 
 'use client';
 
@@ -107,27 +107,6 @@ export default function InboundPage() {
       ];
     });
     setQuery('');
-  }, []);
-
-  // 다건 라인 추가 (대기 리스트 일괄 체크 → 추가) — 동일 product_id 면 수량 합산
-  const handleAddManyLines = useCallback((batch: InboundLine[]) => {
-    setLines((prev) => {
-      const next = [...prev];
-      for (const inc of batch) {
-        const idx = next.findIndex((l) => l.product_id === inc.product_id);
-        if (idx >= 0) {
-          next[idx] = {
-            ...next[idx],
-            quantity: next[idx].quantity + inc.quantity,
-            // 기존 단가가 0 이고 새 항목 단가가 있으면 채워줌
-            unit_cost: next[idx].unit_cost > 0 ? next[idx].unit_cost : inc.unit_cost,
-          };
-        } else {
-          next.push(inc);
-        }
-      }
-      return next;
-    });
   }, []);
 
   const handleQty = useCallback((idx: number, value: number) => {
@@ -279,7 +258,7 @@ export default function InboundPage() {
                   : 'text-[var(--color-label-secondary)]'
               }`}
             >
-              주문 대기 리스트
+              주문리스트
             </button>
           </div>
 
@@ -330,15 +309,16 @@ export default function InboundPage() {
               )}
             </>
           ) : (
-            <PendingList supplierId={supplierId} onAddLines={handleAddManyLines} />
+            <PendingList />
           )}
         </div>
 
-        {/* 라인 리스트 */}
+        {/* 라인 리스트 + 등록 버튼 — 제품 검색 모드 전용 */}
+        {mode === 'search' && (
         <div className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
           {lines.length === 0 ? (
             <p className="text-callout text-[var(--color-label-tertiary)] text-center py-8">
-              위 탭에서 제품을 검색하거나 주문 대기 리스트에서 체크하여 추가하세요
+              위 검색에서 제품을 추가하세요
             </p>
           ) : (
             <table className="w-full text-callout">
@@ -419,7 +399,9 @@ export default function InboundPage() {
             </table>
           )}
         </div>
+        )}
 
+        {mode === 'search' && (
         <button
           type="submit"
           disabled={!canSubmit || submitting}
@@ -429,6 +411,7 @@ export default function InboundPage() {
             ? '저장 중…'
             : `매입 등록 (${lines.length}품목 / ₩${totalCost.toLocaleString()})`}
         </button>
+        )}
       </form>
     </main>
   );
