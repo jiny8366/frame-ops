@@ -18,6 +18,7 @@ interface PendingRow {
   style_code: string | null;
   color_code: string | null;
   display_name: string | null;
+  current_stock: number;
   ordered_at_min: string | null;
   ordered_qty: number;
   cost_price: number;
@@ -143,6 +144,8 @@ export function PendingList({ onProcessed }: PendingListProps) {
                 <th className="text-left p-2">브랜드</th>
                 <th className="text-left p-2">제품번호</th>
                 <th className="text-left p-2 w-14">색상</th>
+                <th className="text-right p-2 w-16 hidden sm:table-cell">현재고</th>
+                <th className="text-right p-2 w-24 hidden md:table-cell">매입가</th>
                 <th className="text-right p-2 w-20">수량</th>
                 <th className="text-center p-2 w-20">매입처리</th>
               </tr>
@@ -170,6 +173,22 @@ export function PendingList({ onProcessed }: PendingListProps) {
                     <td className="p-2 text-caption1">{r.brand_name ?? '—'}</td>
                     <td className="p-2 font-semibold">{r.style_code ?? '—'}</td>
                     <td className="p-2 text-caption1">{r.color_code ?? '—'}</td>
+                    <td className="p-2 text-right tabular-nums hidden sm:table-cell">
+                      <span
+                        className={
+                          r.current_stock < 0
+                            ? 'text-[var(--color-system-red)]'
+                            : r.current_stock <= 1
+                              ? 'text-[var(--color-system-orange)]'
+                              : ''
+                        }
+                      >
+                        {r.current_stock}
+                      </span>
+                    </td>
+                    <td className="p-2 text-right tabular-nums hidden md:table-cell">
+                      ₩{r.cost_price.toLocaleString()}
+                    </td>
                     <td className="p-2 text-right">
                       <button
                         type="button"
@@ -295,7 +314,11 @@ function QtyEditDialog({
             {qtyNum.toLocaleString()}
           </div>
           <div className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
-            발주 {row.ordered_qty}
+            발주 {row.ordered_qty} · 현재고 {row.current_stock}
+          </div>
+          <div className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+            매입가 ₩{row.cost_price.toLocaleString()} ×{' '}
+            {qtyNum.toLocaleString()} = ₩{(qtyNum * row.cost_price).toLocaleString()}
           </div>
         </div>
 

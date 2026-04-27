@@ -16,6 +16,7 @@ interface Row {
   style_code: string | null;
   color_code: string | null;
   display_name: string | null;
+  current_stock: number;
   ordered_at_min: string | null;
   ordered_qty: number;
   cost_price: number;
