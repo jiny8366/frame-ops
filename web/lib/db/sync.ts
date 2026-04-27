@@ -108,9 +108,14 @@ export async function flushSyncQueue(): Promise<void> {
   _flushingPromise = (async () => {
     try {
       const queue = await getSyncQueue();
-      // 'syncing' 만 건너뜀(다른 인스턴스가 처리 중일 가능성).
-      // 'dead' 는 자동 회복 정책 — 항상 재시도 후보에 포함.
-      const pending = queue.filter((i) => i.status !== 'syncing');
+      // FIFO 순서 보장 — id (auto-increment) 또는 created_at 기준 정렬.
+      // 동일 ms 충돌 가능성을 대비해 id 우선, 동률이면 created_at.
+      const pending = queue
+        .filter((i) => i.status !== 'syncing')
+        .sort((a, b) => {
+          if (a.id !== undefined && b.id !== undefined) return a.id - b.id;
+          return (a.created_at ?? '').localeCompare(b.created_at ?? '');
+        });
       if (!pending.length) return;
 
       for (const item of pending) {
