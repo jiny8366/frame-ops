@@ -1,5 +1,5 @@
-// Frame Ops Web — 본사 직원 통합 관리
-// 모든 매장의 직원 리스트 + 매장 필터 + 추가/편집.
+// Frame Ops Web — 계정설정 (본사)
+// 모든 매장의 계정 리스트 + 매장 필터 + 추가/편집.
 // StaffFormDialog 를 apiBase=/api/hq/staff 로 재사용.
 
 'use client';
@@ -71,7 +71,7 @@ export default function HqStaffPage() {
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
         <header className="flex items-center justify-between gap-2 flex-wrap">
           <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">
-            직원 통합 관리
+            계정설정
           </h1>
           <button
             type="button"
