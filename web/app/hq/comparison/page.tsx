@@ -78,7 +78,7 @@ export default function HqComparisonPage() {
     setTo(today.toISOString().slice(0, 10));
   }, []);
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const totals = useMemo(() => {
     return {
       revenue: rows.reduce((s, r) => s + r.revenue, 0),

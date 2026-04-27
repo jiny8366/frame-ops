@@ -267,7 +267,7 @@ export default function OrdersPrintPage() {
           창 닫기
         </button>
         <span className="text-xs text-gray-500">
-          인쇄 대화상자에서 "PDF 로 저장" 선택 가능
+          인쇄 대화상자에서 &ldquo;PDF 로 저장&rdquo; 선택 가능
         </span>
       </div>
 
