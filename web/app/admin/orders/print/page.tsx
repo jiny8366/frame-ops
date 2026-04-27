@@ -350,14 +350,13 @@ export default function OrdersPrintPage() {
       <table>
         <thead>
           <tr>
-            <th style={{ width: '8%' }}>No</th>
+            <th style={{ width: '8%' }}>No.</th>
             <th>브랜드</th>
-            <th>스타일</th>
+            <th>제품번호</th>
             <th>색상</th>
-            <th>제품명</th>
-            <th className="right" style={{ width: '8%' }}>수량</th>
-            <th className="right" style={{ width: '12%' }}>원가</th>
-            <th className="right" style={{ width: '14%' }}>합계</th>
+            <th className="right" style={{ width: '10%' }}>수량</th>
+            <th className="right" style={{ width: '14%' }}>매입가</th>
+            <th className="right" style={{ width: '16%' }}>합계</th>
           </tr>
         </thead>
         <tbody>
@@ -367,7 +366,6 @@ export default function OrdersPrintPage() {
               <td>{it.brand_name}</td>
               <td>{it.style_code ?? '—'}</td>
               <td>{it.color_code ?? '—'}</td>
-              <td>{it.display_name ?? ''}</td>
               <td className="right">{it.total_quantity.toLocaleString()}</td>
               <td className="right">₩{it.cost_price.toLocaleString()}</td>
               <td className="right">
