@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { mutate } from 'swr';
 import type { SessionMe } from '@/hooks/useSession';
@@ -27,6 +27,9 @@ export function UserMenu({ session }: UserMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // 메뉴 항목 영역의 스크롤 위치 보존: 닫았다 다시 열어도 같은 위치로 복원.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTopRef = useRef(0);
 
   const handleLogout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -64,6 +67,13 @@ export function UserMenu({ session }: UserMenuProps) {
       document.removeEventListener('mousedown', onClickOutside);
       document.removeEventListener('keydown', onEsc);
     };
+  }, [open]);
+
+  // 메뉴를 다시 열 때 직전 스크롤 위치로 복원 (paint 전에 적용 → 깜빡임 없음).
+  useLayoutEffect(() => {
+    if (open && scrollRef.current) {
+      scrollRef.current.scrollTop = savedScrollTopRef.current;
+    }
   }, [open]);
 
   // 메뉴 정의 — 각 항목은 perm 키로 사용자별 표시 결정.
@@ -188,8 +198,12 @@ export function UserMenu({ session }: UserMenuProps) {
             </div>
           </div>
 
-          {/* 메뉴 항목 — 넘칠 때만 스크롤 */}
+          {/* 메뉴 항목 — 넘칠 때만 스크롤. 위치 보존(open 토글 시 복원). */}
           <div
+            ref={scrollRef}
+            onScroll={(e) => {
+              savedScrollTopRef.current = e.currentTarget.scrollTop;
+            }}
             className="flex-1 overflow-y-auto overscroll-contain py-1"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
