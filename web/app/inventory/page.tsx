@@ -19,8 +19,18 @@ interface ProductRow {
   product_line: string | null;
   cost_price: number | null;
   sale_price: number | null;
+  /** fo_products.stock_quantity (수동 편집 가능) */
   stock_quantity: number | null;
-  brand: { id: string; name: string } | null;
+  /** 거래 이력 합산: 매입 누계 */
+  total_inbound: number;
+  /** 거래 이력 합산: 판매 누계 */
+  total_sold: number;
+  /** total_inbound - total_sold (현재고) */
+  computed_stock: number;
+  brand_id: string | null;
+  brand_name: string | null;
+  /** 호환성 — 기존 코드 일부에서 brand?.name 으로 접근 */
+  brand?: { id: string; name: string } | null;
 }
 
 interface Resp { data: ProductRow[] | null; error: string | null }
@@ -29,7 +39,11 @@ const fetcher = async (url: string): Promise<ProductRow[]> => {
   const res = await fetch(url);
   const json = (await res.json()) as Resp;
   if (json.error) throw new Error(json.error);
-  return json.data ?? [];
+  // brand 호환 필드 채움 (기존 코드 일부가 p.brand?.name 사용)
+  return (json.data ?? []).map((p) => ({
+    ...p,
+    brand: p.brand_id ? { id: p.brand_id, name: p.brand_name ?? '' } : null,
+  }));
 };
 
 export default function InventoryPage() {
@@ -57,20 +71,20 @@ export default function InventoryPage() {
         (p.style_code ?? '').toLowerCase().includes(q) ||
         (p.color_code ?? '').toLowerCase().includes(q) ||
         (p.display_name ?? '').toLowerCase().includes(q) ||
-        (p.brand?.name ?? '').toLowerCase().includes(q)
+        (p.brand_name ?? '').toLowerCase().includes(q)
       );
     }
     arr = [...arr];
     if (sortMode === 'low') {
-      arr.sort((a, b) => (a.stock_quantity ?? 0) - (b.stock_quantity ?? 0));
+      arr.sort((a, b) => a.computed_stock - b.computed_stock);
     } else if (sortMode === 'style') {
       arr.sort((a, b) => (a.style_code ?? '').localeCompare(b.style_code ?? ''));
     }
     return arr;
   }, [items, query, sortMode]);
 
-  const lowCount = items.filter((p) => (p.stock_quantity ?? 0) <= 1).length;
-  const totalQty = items.reduce((s, p) => s + (p.stock_quantity ?? 0), 0);
+  const lowCount = items.filter((p) => p.computed_stock <= 1).length;
+  const totalQty = items.reduce((s, p) => s + p.computed_stock, 0);
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
@@ -143,15 +157,17 @@ export default function InventoryPage() {
                     <th className="text-left p-3">브랜드</th>
                     <th className="text-left p-3">상품</th>
                     <th className="text-left p-3 hidden sm:table-cell">분류</th>
-                    <th className="text-right p-3 w-20">재고</th>
-                    <th className="text-right p-3 w-24 hidden md:table-cell">원가</th>
+                    <th className="text-right p-3 w-16 hidden md:table-cell">매입</th>
+                    <th className="text-right p-3 w-16 hidden md:table-cell">판매</th>
+                    <th className="text-right p-3 w-20">현재고</th>
+                    <th className="text-right p-3 w-24 hidden lg:table-cell">매입가</th>
                     <th className="text-right p-3 w-28">판매가</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((p) => {
-                    // NULL(미관리) 도 0 으로 노출 — 판매 시 자동 차감으로 음수 진입 가능
-                    const stock = p.stock_quantity ?? 0;
+                    // 거래 이력 기반 계산 재고 (매입 누계 - 판매 누계)
+                    const stock = p.computed_stock;
                     const isNegative = stock < 0;
                     const isOut = stock === 0;
                     const isLow = stock === 1;
@@ -167,7 +183,7 @@ export default function InventoryPage() {
                         ].join(' ')}
                         title={canEditStock ? '클릭 — 재고 수량 편집' : undefined}
                       >
-                        <td className="p-3 text-caption1">{p.brand?.name ?? '—'}</td>
+                        <td className="p-3 text-caption1">{p.brand_name ?? '—'}</td>
                         <td className="p-3">
                           <div className="font-semibold">
                             {p.style_code ?? '—'}
@@ -181,6 +197,12 @@ export default function InventoryPage() {
                         </td>
                         <td className="p-3 text-caption1 text-[var(--color-label-secondary)] hidden sm:table-cell">
                           {[p.category, p.product_line].filter(Boolean).join('/') || '—'}
+                        </td>
+                        <td className="p-3 text-right tabular-nums hidden md:table-cell text-[var(--color-label-secondary)]">
+                          {p.total_inbound}
+                        </td>
+                        <td className="p-3 text-right tabular-nums hidden md:table-cell text-[var(--color-label-secondary)]">
+                          {p.total_sold}
                         </td>
                         <td className="p-3 text-right tabular-nums font-semibold">
                           <span
@@ -196,7 +218,7 @@ export default function InventoryPage() {
                             {stock}
                           </span>
                         </td>
-                        <td className="p-3 text-right tabular-nums hidden md:table-cell">
+                        <td className="p-3 text-right tabular-nums hidden lg:table-cell">
                           ₩{(p.cost_price ?? 0).toLocaleString()}
                         </td>
                         <td className="p-3 text-right tabular-nums">

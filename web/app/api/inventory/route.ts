@@ -1,38 +1,54 @@
 // Frame Ops Web — /api/inventory
-// GET: 재고 현황
-// ⚠️  fo_inventory 테이블 미존재 — 실제 테이블명 확인 필요
-// 현재는 fo_products의 status 기반으로 재고 파악
+// GET: 재고 조회 — 매입 누계 - 판매 누계 = 계산 재고.
+// 매장 단위(현재 세션) 집계.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
+import { getServerSession } from '@/lib/auth/server-session';
+
+interface InventoryRow {
+  id: string;
+  product_code: string;
+  brand_id: string | null;
+  brand_name: string | null;
+  style_code: string | null;
+  color_code: string | null;
+  display_name: string | null;
+  category: string | null;
+  product_line: string | null;
+  cost_price: number;
+  sale_price: number;
+  total_inbound: number;
+  total_sold: number;
+  computed_stock: number;
+  stock_quantity: number;
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = req.nextUrl;
-    const brandId = searchParams.get('brand_id');
-    const limit   = Math.min(Number(searchParams.get('limit') ?? 100), 500);
-    const page    = Number(searchParams.get('page') ?? 0);
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json({ data: null, error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+
+    const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') ?? 1000), 2000);
 
     const db = getDB();
+    const { data, error } = await (db.rpc as unknown as (
+      name: string,
+      args: Record<string, unknown>
+    ) => Promise<{ data: InventoryRow[] | null; error: { message: string } | null }>)(
+      'get_inventory_computed',
+      { p_store_id: session.store_id, p_limit: limit }
+    );
 
-    // fo_inventory 테이블이 없으므로 fo_products에서 active 상품을 재고 대용으로 반환
-    let query = db
-      .from('fo_products')
-      .select('*, brand:fo_brands(id, name)')
-      .eq('status', 'active')
-      .order('style_code', { ascending: true })
-      .range(page * limit, (page + 1) * limit - 1);
-
-    if (brandId) query = query.eq('brand_id', brandId);
-
-    const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      return NextResponse.json({ data: null, error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({ data: data ?? [], error: null });
   } catch (e) {
-    const msg = e instanceof Error ? e.message
-      : typeof e === 'object' && e !== null ? JSON.stringify(e)
-      : String(e);
+    const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ data: null, error: msg }, { status: 500 });
   }
 }
