@@ -141,10 +141,29 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
     return displayNameThreePart(brand.name, styleCode, colorCode);
   }, [brand, styleCode, colorCode]);
 
-  const handleAddCategory = useCallback(async () => {
+  // [+] 토글: 펼칠 때 현재 선택된 카테고리의 값을 prefill — 사용자가 그대로 [수정]
+  // 하거나 내용을 바꿔 [생성] 으로 신규 추가 가능.
+  const toggleAddCategory = useCallback(() => {
+    setShowAddCategory((prev) => {
+      const next = !prev;
+      if (next) {
+        // 펼치는 시점에 선택된 카테고리 값으로 입력란 채움.
+        const selected = categories.find((c) => c.label === category);
+        setNewCategoryLabel(selected?.label ?? '');
+        setNewCategoryCode(selected?.code ?? '');
+      }
+      return next;
+    });
+  }, [categories, category]);
+
+  // [생성] — 신규 카테고리 추가
+  const handleCreateCategory = useCallback(async () => {
     const label = newCategoryLabel.trim();
     const code = normalizeShortCode(newCategoryCode || label);
-    if (!label) return;
+    if (!label) {
+      toast.error('이름을 입력하세요.');
+      return;
+    }
     try {
       const res = await fetch('/api/admin/categories', {
         method: 'POST',
@@ -166,6 +185,42 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
       toast.error(e instanceof Error ? e.message : '네트워크 오류');
     }
   }, [newCategoryLabel, newCategoryCode, mutateCategories]);
+
+  // [수정] — 현재 선택된 카테고리를 갱신 (label/code 변경)
+  const handleUpdateCategory = useCallback(async () => {
+    const targetId = categoryRow?.id;
+    if (!targetId) {
+      toast.error('수정할 카테고리가 선택되지 않았습니다.');
+      return;
+    }
+    const label = newCategoryLabel.trim();
+    const code = normalizeShortCode(newCategoryCode || label);
+    if (!label) {
+      toast.error('이름을 입력하세요.');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/categories/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, code }),
+      });
+      const json = (await res.json()) as { data: CategoryRow | null; error: string | null };
+      if (!res.ok || json.error || !json.data) {
+        toast.error(json.error ?? '카테고리 수정 실패');
+        return;
+      }
+      await mutateCategories();
+      // 라벨이 바뀌면 현재 선택값도 갱신 (드롭다운 동기화)
+      setCategory(json.data.label);
+      setNewCategoryLabel('');
+      setNewCategoryCode('');
+      setShowAddCategory(false);
+      toast.success(`카테고리 수정: ${json.data.label} (${json.data.code ?? '-'})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '네트워크 오류');
+    }
+  }, [categoryRow, newCategoryLabel, newCategoryCode, mutateCategories]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
@@ -275,9 +330,9 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               </select>
               <button
                 type="button"
-                onClick={() => setShowAddCategory((v) => !v)}
+                onClick={toggleAddCategory}
                 className="pressable rounded-lg px-2 text-callout font-bold bg-[var(--color-fill-tertiary)]"
-                aria-label="카테고리 추가"
+                aria-label="카테고리 수정/추가"
               >
                 +
               </button>
@@ -286,31 +341,48 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         </div>
 
         {showAddCategory && (
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={newCategoryLabel}
-              onChange={(e) => setNewCategoryLabel(e.target.value)}
-              placeholder="이름 (예: 나일론)"
-              className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
-            />
-            <input
-              type="text"
-              value={newCategoryCode}
-              onChange={(e) => setNewCategoryCode(e.target.value.toUpperCase())}
-              placeholder="약자 (영문3자, 예: NYL)"
-              maxLength={3}
-              autoCapitalize="characters"
-              pattern="[A-Z]{3}"
-              className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
-            />
-            <button
-              type="button"
-              onClick={handleAddCategory}
-              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
-            >
-              저장
-            </button>
+          <div className="flex flex-col gap-2 rounded-lg bg-[var(--color-fill-quaternary)] p-3">
+            <div className="text-caption2 text-[var(--color-label-secondary)]">
+              {categoryRow
+                ? `선택된 "${categoryRow.label}" 항목의 내용입니다. 변경 후 [수정] — 새 항목이면 [생성]`
+                : '신규 카테고리 입력 후 [생성]'}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={newCategoryLabel}
+                onChange={(e) => setNewCategoryLabel(e.target.value)}
+                placeholder="이름 (예: 나일론)"
+                className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              />
+              <input
+                type="text"
+                value={newCategoryCode}
+                onChange={(e) => setNewCategoryCode(e.target.value.toUpperCase())}
+                placeholder="약자 (영문3자)"
+                maxLength={3}
+                autoCapitalize="characters"
+                pattern="[A-Z]{3}"
+                className="w-28 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleUpdateCategory}
+                disabled={!categoryRow}
+                className="pressable rounded-lg bg-[var(--color-system-orange)] px-3 py-2 text-white text-caption1 font-semibold disabled:opacity-40"
+                title={categoryRow ? '선택된 카테고리 정보를 변경합니다' : '드롭다운에서 카테고리 선택 후 사용 가능'}
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
+                title="입력한 내용으로 신규 카테고리 추가"
+              >
+                생성
+              </button>
+            </div>
           </div>
         )}
 
