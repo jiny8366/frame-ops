@@ -400,32 +400,30 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="제품번호 (숫자 4자리)">
+          <Field label="제품번호 (숫자·영문 4자리)">
             <input
               type="text"
-              inputMode="numeric"
               maxLength={4}
-              pattern="[0-9]{4}"
+              pattern="[0-9A-Za-z]{4}"
               value={styleCode}
-              onChange={(e) => setStyleCode(e.target.value.replace(/[^0-9]/g, ''))}
+              onChange={(e) => setStyleCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               onBlur={(e) => setStyleCode(normalizeStyleCode(e.target.value))}
               required
-              placeholder="0101"
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tabular-nums"
+              placeholder="0101 / SP01"
+              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide"
             />
           </Field>
-          <Field label="컬러 (숫자 2자리)">
+          <Field label="컬러 (숫자·영문 2자리)">
             <input
               type="text"
-              inputMode="numeric"
               maxLength={2}
-              pattern="[0-9]{2}"
+              pattern="[0-9A-Za-z]{2}"
               value={colorCode}
-              onChange={(e) => setColorCode(e.target.value.replace(/[^0-9]/g, ''))}
+              onChange={(e) => setColorCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
               onBlur={(e) => setColorCode(normalizeColorCode(e.target.value))}
               required
-              placeholder="01"
-              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tabular-nums"
+              placeholder="01 / BK"
+              className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide"
             />
           </Field>
         </div>
