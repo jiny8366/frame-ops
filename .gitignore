@@ -54,3 +54,7 @@ packaging/mac/Launcher.build.applescript
 supabase/.temp/
 *.tar.gz
 *.zip
+
+# Next.js 빌드 산출물 (web/ 외 루트에서 실수로 빌드 시 대비)
+.next/
+node_modules/
