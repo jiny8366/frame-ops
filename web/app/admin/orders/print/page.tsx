@@ -18,9 +18,21 @@ interface OrderItem {
   style_code: string | null;
   color_code: string | null;
   display_name: string | null;
+  current_stock?: number;
   total_quantity: number;
   unit_price: number;
   cost_price: number;
+}
+
+const QTY_OVERRIDE_KEY = 'fo_orders_qty_overrides';
+function loadOverrides(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = sessionStorage.getItem(QTY_OVERRIDE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
 }
 
 interface SupplierGroup {
@@ -137,14 +149,24 @@ export default function OrdersPrintPage() {
     );
   }
 
-  const group = data.groups.find((g) => g.supplier_id === supplierId);
-  if (!group) {
+  const rawGroup = data.groups.find((g) => g.supplier_id === supplierId);
+  if (!rawGroup) {
     return (
       <main className="p-8">
         <p>해당 매입처 데이터가 없습니다 (이미 발주됐거나 만료된 링크).</p>
       </main>
     );
   }
+
+  // 부모 창에서 편집한 수량 override 적용
+  const overrides = loadOverrides();
+  const items = rawGroup.items.map((it) => ({
+    ...it,
+    qty: overrides[it.product_id] ?? it.total_quantity,
+  }));
+  const totalQty = items.reduce((s, it) => s + it.qty, 0);
+  const totalCost = items.reduce((s, it) => s + it.qty * it.cost_price, 0);
+  const group = { ...rawGroup, items, total_quantity: totalQty, total_cost: totalCost };
 
   const issueDate = new Date().toLocaleDateString('ko-KR');
 
@@ -366,10 +388,10 @@ export default function OrdersPrintPage() {
               <td>{it.brand_name}</td>
               <td>{it.style_code ?? '—'}</td>
               <td>{it.color_code ?? '—'}</td>
-              <td className="right">{it.total_quantity.toLocaleString()}</td>
+              <td className="right">{it.qty.toLocaleString()}</td>
               <td className="right">₩{it.cost_price.toLocaleString()}</td>
               <td className="right">
-                ₩{(it.total_quantity * it.cost_price).toLocaleString()}
+                ₩{(it.qty * it.cost_price).toLocaleString()}
               </td>
             </tr>
           ))}

@@ -19,6 +19,7 @@ interface OrderItem {
   style_code: string | null;
   color_code: string | null;
   display_name: string | null;
+  current_stock: number;
   total_quantity: number;
   unit_price: number;
   cost_price: number;
@@ -60,12 +61,56 @@ function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
+// 발주 수량 override 를 sessionStorage 에 저장 — PDF 인쇄 페이지(다른 창)에서도 읽음.
+const QTY_OVERRIDE_KEY = 'fo_orders_qty_overrides';
+function loadOverrides(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = sessionStorage.getItem(QTY_OVERRIDE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+function saveOverrides(map: Record<string, number>) {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(QTY_OVERRIDE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function OrdersPage() {
   const [from, setFrom] = useState<string>(todayDate());
   const [to, setTo] = useState<string>(todayDate());
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // 수량 override (product_id → 수량). 다운로드 시 적용.
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
+  useEffect(() => {
+    setOverrides(loadOverrides());
+  }, []);
+  const setOverride = useCallback((productId: string, qty: number) => {
+    setOverrides((prev) => {
+      const next = { ...prev, [productId]: Math.max(0, Math.floor(qty)) };
+      saveOverrides(next);
+      return next;
+    });
+  }, []);
+  const clearOverride = useCallback((productId: string) => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      saveOverrides(next);
+      return next;
+    });
+  }, []);
+
+  // 수량 편집 모달용 state
+  const [editing, setEditing] = useState<OrderItem | null>(null);
 
   const url = `/api/admin/orders/pending?from=${from}&to=${to}`;
   const { data, isLoading, mutate } = useSWR<OrdersResponse>(url, fetcher, {
@@ -114,28 +159,36 @@ export default function OrdersPage() {
     [from, to, mutate]
   );
 
+  const effectiveQty = useCallback(
+    (it: OrderItem) => overrides[it.product_id] ?? it.total_quantity,
+    [overrides]
+  );
+
   const handleExcel = useCallback(async () => {
     if (!data || !selected) return;
     setPickerOpen(false);
     setBusy(true);
     try {
+      const items = selected.items.map((it) => ({ ...it, qty: effectiveQty(it) }));
+      const totalQty = items.reduce((s, it) => s + it.qty, 0);
+      const totalCost = items.reduce((s, it) => s + it.qty * it.cost_price, 0);
       const aoa: (string | number)[][] = [
         [`매장: ${data.store?.name ?? '-'} (${data.store?.store_code ?? '-'})`],
         [`매입처: ${selected.supplier_name}${selected.supplier_code ? ` (${selected.supplier_code})` : ''}`],
         [`기간: ${data.period.from} ~ ${data.period.to}`],
         [],
         ['No.', '브랜드', '제품번호', '색상', '수량', '매입가(₩)', '합계(₩)'],
-        ...selected.items.map((it, idx) => [
+        ...items.map((it, idx) => [
           idx + 1,
           it.brand_name,
           it.style_code ?? '',
           it.color_code ?? '',
-          it.total_quantity,
+          it.qty,
           it.cost_price,
-          it.total_quantity * it.cost_price,
+          it.qty * it.cost_price,
         ]),
         [],
-        ['합계', '', '', '', selected.total_quantity, '', selected.total_cost],
+        ['합계', '', '', '', totalQty, '', totalCost],
       ];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!cols'] = [
@@ -150,7 +203,7 @@ export default function OrdersPage() {
     } finally {
       setBusy(false);
     }
-  }, [data, selected, markPlaced]);
+  }, [data, selected, markPlaced, effectiveQty]);
 
   const handlePrint = useCallback(() => {
     if (!selected) return;
@@ -294,9 +347,25 @@ export default function OrdersPage() {
             onPreview={handlePreview}
             onExcel={handleExcel}
             onPrint={handlePrint}
+            getQty={effectiveQty}
+            onEditItem={setEditing}
           />
         )}
       </div>
+
+      {/* 수량 편집 모달 */}
+      {editing && (
+        <QuantityEditDialog
+          item={editing}
+          initialQty={effectiveQty(editing)}
+          onClose={() => setEditing(null)}
+          onApply={(qty) => {
+            if (qty === editing.total_quantity) clearOverride(editing.product_id);
+            else setOverride(editing.product_id, qty);
+            setEditing(null);
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -319,6 +388,8 @@ function SupplierContent({
   onPreview,
   onExcel,
   onPrint,
+  getQty,
+  onEditItem,
 }: {
   group: SupplierGroup;
   busy: boolean;
@@ -328,7 +399,12 @@ function SupplierContent({
   onPreview: () => void;
   onExcel: () => void;
   onPrint: () => void;
+  getQty: (it: OrderItem) => number;
+  onEditItem: (it: OrderItem) => void;
 }) {
+  // 합계는 override 적용 후 재계산
+  const itemsQty = group.items.reduce((s, it) => s + getQty(it), 0);
+  const itemsCost = group.items.reduce((s, it) => s + getQty(it) * it.cost_price, 0);
   return (
     <section className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
       <div className="p-4 flex items-center justify-between flex-wrap gap-2 border-b border-[var(--color-separator-opaque)]">
@@ -342,8 +418,8 @@ function SupplierContent({
             )}
           </h2>
           <p className="text-caption1 text-[var(--color-label-secondary)]">
-            {group.items.length}품목 / 수량 {group.total_quantity} / 원가 ₩
-            {group.total_cost.toLocaleString()}
+            {group.items.length}품목 / 수량 {itemsQty} / 원가 ₩
+            {itemsCost.toLocaleString()}
           </p>
         </div>
 
@@ -412,37 +488,182 @@ function SupplierContent({
             </tr>
           </thead>
           <tbody>
-            {group.items.map((it) => (
-              <tr
-                key={it.product_id}
-                className="border-t border-[var(--color-separator-opaque)]"
-              >
-                <td className="p-3 text-caption1">{it.brand_name}</td>
-                <td className="p-3">
-                  <div className="font-semibold">
-                    {it.style_code ?? '—'}
-                    {it.color_code ? ` / ${it.color_code}` : ''}
-                  </div>
-                  {it.display_name && it.display_name !== it.style_code && (
-                    <div className="text-caption2 text-[var(--color-label-tertiary)] truncate max-w-[260px]">
-                      {it.display_name}
+            {group.items.map((it) => {
+              const qty = getQty(it);
+              const overridden = qty !== it.total_quantity;
+              const lowStock = it.current_stock === 1;
+              const nameClass = lowStock
+                ? 'font-bold text-[var(--color-system-red)]'
+                : 'font-semibold';
+              return (
+                <tr
+                  key={it.product_id}
+                  onClick={() => onEditItem(it)}
+                  className="cursor-pointer border-t border-[var(--color-separator-opaque)] hover:bg-[var(--color-fill-quaternary)]"
+                  title="클릭 — 수량 편집"
+                >
+                  <td className="p-3 text-caption1">{it.brand_name}</td>
+                  <td className="p-3">
+                    <div className={nameClass}>
+                      {it.style_code ?? '—'}
+                      {it.color_code ? ` / ${it.color_code}` : ''}
+                      {lowStock && (
+                        <span className="ml-2 text-caption2 font-semibold text-[var(--color-system-red)] bg-[var(--color-system-red)]/10 rounded px-1.5 py-0.5">
+                          재고 1
+                        </span>
+                      )}
                     </div>
-                  )}
-                </td>
-                <td className="p-3 text-right tabular-nums font-semibold">
-                  {it.total_quantity}
-                </td>
-                <td className="p-3 text-right tabular-nums hidden sm:table-cell">
-                  ₩{it.cost_price.toLocaleString()}
-                </td>
-                <td className="p-3 text-right tabular-nums font-semibold">
-                  ₩{(it.total_quantity * it.cost_price).toLocaleString()}
-                </td>
-              </tr>
-            ))}
+                    {it.display_name && it.display_name !== it.style_code && (
+                      <div className="text-caption2 text-[var(--color-label-tertiary)] truncate max-w-[260px]">
+                        {it.display_name}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-3 text-right tabular-nums font-semibold">
+                    {qty}
+                    {overridden && (
+                      <span className="ml-1 text-caption2 text-[var(--color-system-orange)]">*</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-right tabular-nums hidden sm:table-cell">
+                    ₩{it.cost_price.toLocaleString()}
+                  </td>
+                  <td className="p-3 text-right tabular-nums font-semibold">
+                    ₩{(qty * it.cost_price).toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </section>
+  );
+}
+
+// ── 수량 편집 다이얼로그 (숫자 키패드) ─────────────────────────────────────
+function QuantityEditDialog({
+  item,
+  initialQty,
+  onClose,
+  onApply,
+}: {
+  item: OrderItem;
+  initialQty: number;
+  onClose: () => void;
+  onApply: (qty: number) => void;
+}) {
+  const [draft, setDraft] = useState<string>(String(initialQty));
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [onClose]);
+
+  const append = useCallback((d: string) => {
+    setDraft((prev) => {
+      // 0 으로 시작하는 다중 자리 방지
+      const next = (prev === '0' ? '' : prev) + d;
+      return next.slice(0, 4);
+    });
+  }, []);
+  const backspace = useCallback(() => {
+    setDraft((prev) => (prev.length <= 1 ? '0' : prev.slice(0, -1)));
+  }, []);
+  const clear = useCallback(() => setDraft('0'), []);
+
+  const qtyNum = Number(draft) || 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-[360px] rounded-2xl bg-[var(--color-bg-secondary)] p-4 flex flex-col gap-3">
+        <header>
+          <h3 className="text-headline font-semibold text-[var(--color-label-primary)]">
+            수량 편집
+          </h3>
+          <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
+            {item.brand_name} · {item.style_code ?? '—'}
+            {item.color_code ? ` / ${item.color_code}` : ''}
+          </p>
+          {item.current_stock === 1 && (
+            <p className="text-caption2 font-semibold text-[var(--color-system-red)] mt-1">
+              ⚠ 현재 재고 1개 (전시상품 가능성)
+            </p>
+          )}
+        </header>
+
+        <div className="rounded-xl bg-[var(--color-fill-tertiary)] px-4 py-3 text-center">
+          <div className="text-caption2 text-[var(--color-label-tertiary)]">발주 수량</div>
+          <div className="text-title1 font-bold tabular-nums text-[var(--color-label-primary)]">
+            {qtyNum.toLocaleString()}
+          </div>
+          {qtyNum !== item.total_quantity && (
+            <div className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+              자동집계 {item.total_quantity}
+            </div>
+          )}
+        </div>
+
+        {/* 숫자 키패드 */}
+        <div className="grid grid-cols-3 gap-2">
+          {['1','2','3','4','5','6','7','8','9'].map((d) => (
+            <KeypadBtn key={d} label={d} onClick={() => append(d)} />
+          ))}
+          <KeypadBtn label="지움" subtle onClick={clear} />
+          <KeypadBtn label="0" onClick={() => append('0')} />
+          <KeypadBtn label="⌫" subtle onClick={backspace} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-fill-secondary)] text-[var(--color-label-primary)] font-medium"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => onApply(qtyNum)}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-system-blue)] text-white font-semibold"
+          >
+            적용
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KeypadBtn({
+  label,
+  subtle,
+  onClick,
+}: {
+  label: string;
+  subtle?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'pressable touch-target-lg rounded-xl text-title2 font-medium',
+        subtle
+          ? 'bg-[var(--color-fill-secondary)] text-[var(--color-label-secondary)]'
+          : 'bg-[var(--color-bg-elevated,var(--color-bg-primary))] text-[var(--color-label-primary)]',
+      ].join(' ')}
+    >
+      {label}
+    </button>
   );
 }
