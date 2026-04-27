@@ -13,9 +13,10 @@ export interface PermissionDef {
  */
 export const ALL_PERMISSIONS: PermissionDef[] = [
   // 지점 일상 운영
-  { key: 'pos_sales',         label: 'POS 판매',           group: '운영',     scope: 'store' },
-  { key: 'inventory_view',    label: '재고 조회',          group: '운영',     scope: 'store' },
-  { key: 'inventory_pending', label: '발주 대기',          group: '운영',     scope: 'store' },
+  { key: 'pos_sales',          label: 'POS 판매',           group: '운영',     scope: 'store' },
+  { key: 'inventory_view',     label: '재고 조회',          group: '운영',     scope: 'store' },
+  { key: 'inventory_edit_stock', label: '재고 수량 수정',   group: '운영',     scope: 'both'  },
+  { key: 'inventory_pending',  label: '발주 대기',          group: '운영',     scope: 'store' },
   { key: 'orders_list',       label: '주문리스트',         group: '운영',     scope: 'store' },
   { key: 'inbound_register',  label: '매입 등록',          group: '운영',     scope: 'store' },
   { key: 'settlement',        label: '정산',               group: '운영',     scope: 'store' },
@@ -72,6 +73,7 @@ export const ROLE_DEFAULTS: Record<string, string[]> = {
   store_manager: [
     'pos_sales',
     'inventory_view',
+    'inventory_edit_stock',
     'inventory_pending',
     'orders_list',
     'inbound_register',
