@@ -22,6 +22,14 @@ import {
 let _flushingPromise: Promise<void> | null = null;
 let _listenersAttached = false;
 let _deadLetterCallback: ((item: SyncQueueItem) => void) | null = null;
+let _periodicTimerId: ReturnType<typeof setInterval> | null = null;
+
+// 정책: 어떤 판매도 영구 손실되지 않도록 재시도를 포기하지 않음.
+//   - 30초 주기 자동 재시도 (큐 비어있어도 cheap, 빠른 검사 후 종료)
+//   - retry_count 가 임계치를 넘어도 'dead' 가 아닌 'failed' 유지 (다음 주기 재시도)
+//   - 단, 실패 누적 시 콘솔 경고 + dead-letter 콜백으로 사용자에게 노출
+const PERIODIC_INTERVAL_MS = 30 * 1000;
+const ALERT_THRESHOLD = 5; // 5회 이상 실패 시 사용자에게 토스트로 알림
 
 export function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -46,9 +54,21 @@ export function initSyncListeners(
   window.addEventListener('offline', handleOffline);
   if (navigator.onLine) flushSyncQueue().catch(console.error);
 
+  // 30초 주기 자동 재시도 — 큐 비어있어도 빠른 검사 후 종료.
+  // 어떤 판매도 영구 손실되지 않도록 보장.
+  if (!_periodicTimerId) {
+    _periodicTimerId = setInterval(() => {
+      if (isOnline()) flushSyncQueue().catch(console.error);
+    }, PERIODIC_INTERVAL_MS);
+  }
+
   return () => {
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
+    if (_periodicTimerId !== null) {
+      clearInterval(_periodicTimerId);
+      _periodicTimerId = null;
+    }
     _listenersAttached = false;
     _deadLetterCallback = null;
   };
@@ -88,17 +108,14 @@ export async function flushSyncQueue(): Promise<void> {
   _flushingPromise = (async () => {
     try {
       const queue = await getSyncQueue();
-      // 'dead'와 'syncing'은 건너뜀. status 미기재 레코드는 pending으로 취급.
-      const pending = queue.filter((i) => {
-        const s = i.status;
-        return !s || s === 'pending' || s === 'failed';
-      });
+      // 'syncing' 만 건너뜀(다른 인스턴스가 처리 중일 가능성).
+      // 'dead' 는 자동 회복 정책 — 항상 재시도 후보에 포함.
+      const pending = queue.filter((i) => i.status !== 'syncing');
       if (!pending.length) return;
 
       for (const item of pending) {
         if (item.id === undefined) continue;
 
-        // syncing 마킹 (크래시 복구용 흔적)
         await putSyncItem({
           ...item,
           id: item.id,
@@ -116,20 +133,26 @@ export async function flushSyncQueue(): Promise<void> {
         const retry_count = (item.retry_count ?? 0) + 1;
         const now = new Date().toISOString();
 
-        if (retry_count >= 3) {
-          const dead: SyncQueueItem & { id: number } = {
-            ...item,
-            id: item.id,
-            retry_count,
-            status: 'dead',
-            last_error: result.error,
-            updated_at: now,
-          };
-          await putSyncItem(dead);
-          _deadLetterCallback?.(dead);
-          console.error('[FrameOps Sync] Dead letter:', dead);
-        } else {
-          await putSyncItem({
+        // 정책: 영구 dead 처리하지 않음 — 항상 status='failed' 로 남겨 다음 주기 재시도.
+        // 일정 횟수 이상 실패 시 사용자에게 한 번 알림(중복 알림 방지를 위해 임계치 동일 시점 1회).
+        const justCrossedAlertThreshold =
+          retry_count === ALERT_THRESHOLD;
+
+        await putSyncItem({
+          ...item,
+          id: item.id,
+          retry_count,
+          status: 'failed',
+          last_error: result.error,
+          updated_at: now,
+        });
+
+        if (justCrossedAlertThreshold) {
+          console.warn(
+            `[FrameOps Sync] ${item.table} 동기화 ${retry_count}회 실패 — 자동 재시도 계속 (id=${item.id}):`,
+            result.error
+          );
+          _deadLetterCallback?.({
             ...item,
             id: item.id,
             retry_count,
