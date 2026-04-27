@@ -77,20 +77,28 @@ export function useCheckout(): UseCheckoutReturn {
       return false;
     }
 
+    // 클라이언트 타임스탬프(밀리초) 항상 부여 — 큐 보관 후 늦게 업로드돼도
+    // 실제 판매 시점이 보존됨 (서버 now() 사용 시 통계 시간이 어긋남).
+    // 사용자가 미리 sold_at 을 지정한 경우(과거 일자 보정 등) 그대로 유지.
+    const stamped: SaleInput = {
+      ...saleData,
+      sold_at: saleData.sold_at ?? new Date().toISOString(),
+    };
+
     // 1) 오프라인이면 즉시 큐잉 (재시도 위임)
     if (!isOnline()) {
-      await queueOffline(saleData);
+      await queueOffline(stamped);
       toast.info('오프라인 — 네트워크 복구 시 자동 재시도됩니다.', { duration: 4000 });
       return false;
     }
 
     // 2) 온라인 — 10초 타임아웃 fetch
     try {
-      const { data, error } = await postSaleWithTimeout(saleData);
+      const { data, error } = await postSaleWithTimeout(stamped);
 
       if (error) {
         console.error('[useCheckout] API error:', error);
-        await queueOffline(saleData);
+        await queueOffline(stamped);
         toast.warning(
           `판매 등록 보류 — ${error}. 자동 재시도 중 (우하단 배지).`,
           { duration: 6000 }
@@ -99,7 +107,7 @@ export function useCheckout(): UseCheckoutReturn {
       }
       if (!data) {
         console.error('[useCheckout] empty response — 큐로 보관');
-        await queueOffline(saleData);
+        await queueOffline(stamped);
         toast.warning('응답이 비어있어 큐로 보관 — 자동 재시도 중 (우하단 배지).', {
           duration: 6000,
         });
@@ -117,7 +125,7 @@ export function useCheckout(): UseCheckoutReturn {
         : err instanceof Error
           ? err.message
           : String(err);
-      await queueOffline(saleData);
+      await queueOffline(stamped);
       toast.warning(
         `판매 등록 보류 — ${msg}. 자동 재시도 중 (우하단 배지).`,
         { duration: 6000 }
