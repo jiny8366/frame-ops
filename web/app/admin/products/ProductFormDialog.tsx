@@ -95,6 +95,11 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
   const [newCategoryCode, setNewCategoryCode] = useState('');
 
+  // 카테고리 편집 (선택된 카테고리의 label/code 수정)
+  const [editingCategory, setEditingCategory] = useState(false);
+  const [editCategoryLabel, setEditCategoryLabel] = useState('');
+  const [editCategoryCode, setEditCategoryCode] = useState('');
+
   // 첫 진입 시 카테고리 디폴트
   useEffect(() => {
     if (!category && categories.length > 0) {
@@ -166,6 +171,65 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
       toast.error(e instanceof Error ? e.message : '네트워크 오류');
     }
   }, [newCategoryLabel, newCategoryCode, mutateCategories]);
+
+  const openEditCategory = useCallback(() => {
+    if (!categoryRow) {
+      toast.error('편집할 카테고리를 먼저 선택하세요.');
+      return;
+    }
+    setEditCategoryLabel(categoryRow.label);
+    setEditCategoryCode(categoryRow.code ?? '');
+    setShowAddCategory(false);
+    setEditingCategory(true);
+  }, [categoryRow]);
+
+  const handleUpdateCategory = useCallback(async () => {
+    if (!categoryRow) return;
+    const label = editCategoryLabel.trim();
+    if (!label) {
+      toast.error('이름이 필요합니다.');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/categories/${categoryRow.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, code: editCategoryCode || null }),
+      });
+      const json = (await res.json()) as { data: CategoryRow | null; error: string | null };
+      if (!res.ok || json.error || !json.data) {
+        toast.error(json.error ?? '카테고리 수정 실패');
+        return;
+      }
+      await mutateCategories();
+      setCategory(json.data.label);
+      setEditingCategory(false);
+      toast.success(`카테고리 수정: ${json.data.label} (${json.data.code ?? '-'})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '네트워크 오류');
+    }
+  }, [categoryRow, editCategoryLabel, editCategoryCode, mutateCategories]);
+
+  const handleDeleteCategory = useCallback(async () => {
+    if (!categoryRow) return;
+    if (!confirm(`'${categoryRow.label}' 카테고리를 삭제할까요?\n사용 중인 상품이 있으면 삭제되지 않습니다.`)) return;
+    try {
+      const res = await fetch(`/api/admin/categories/${categoryRow.id}`, {
+        method: 'DELETE',
+      });
+      const json = (await res.json()) as { data: unknown; error: string | null };
+      if (!res.ok || json.error) {
+        toast.error(json.error ?? '카테고리 삭제 실패');
+        return;
+      }
+      await mutateCategories();
+      setCategory('');
+      setEditingCategory(false);
+      toast.success('카테고리 삭제 완료');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '네트워크 오류');
+    }
+  }, [categoryRow, mutateCategories]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
@@ -275,11 +339,24 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               </select>
               <button
                 type="button"
-                onClick={() => setShowAddCategory((v) => !v)}
+                onClick={() => {
+                  setEditingCategory(false);
+                  setShowAddCategory((v) => !v);
+                }}
                 className="pressable rounded-lg px-2 text-callout font-bold bg-[var(--color-fill-tertiary)]"
                 aria-label="카테고리 추가"
               >
                 +
+              </button>
+              <button
+                type="button"
+                onClick={openEditCategory}
+                disabled={!categoryRow}
+                className="pressable rounded-lg px-2 text-callout bg-[var(--color-fill-tertiary)] disabled:opacity-40"
+                aria-label="선택한 카테고리 편집"
+                title="선택한 카테고리 편집"
+              >
+                ✎
               </button>
             </div>
           </Field>
@@ -310,6 +387,49 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
             >
               저장
+            </button>
+          </div>
+        )}
+
+        {editingCategory && categoryRow && (
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={editCategoryLabel}
+              onChange={(e) => setEditCategoryLabel(e.target.value)}
+              placeholder="이름"
+              className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+            />
+            <input
+              type="text"
+              value={editCategoryCode}
+              onChange={(e) => setEditCategoryCode(e.target.value.toUpperCase())}
+              placeholder="약자"
+              maxLength={3}
+              autoCapitalize="characters"
+              pattern="[A-Z]{3}"
+              className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono"
+            />
+            <button
+              type="button"
+              onClick={handleUpdateCategory}
+              className="pressable rounded-lg bg-[var(--color-system-blue)] px-3 py-2 text-white text-caption1 font-semibold"
+            >
+              저장
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteCategory}
+              className="pressable rounded-lg bg-[var(--color-system-red,#FF3B30)] px-3 py-2 text-white text-caption1 font-semibold"
+            >
+              삭제
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingCategory(false)}
+              className="pressable rounded-lg bg-[var(--color-fill-tertiary)] px-3 py-2 text-caption1"
+            >
+              취소
             </button>
           </div>
         )}

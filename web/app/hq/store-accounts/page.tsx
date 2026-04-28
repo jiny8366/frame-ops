@@ -1,6 +1,6 @@
-// Frame Ops Web — 계정설정 (본사용)
-// 본사 역할(hq_*) + 지점 매니저(store_manager) 통합 조회/관리.
-// 판매사·일반 매장 계정은 /hq/store-accounts 에서 별도 관리.
+// Frame Ops Web — 매장 계정 (본사용)
+// 모든 매장의 판매사·일반 계정 통합 조회 + 매장 필터 + 추가/편집.
+// StaffFormDialog 를 apiBase=/api/hq/store-accounts 로 재사용.
 
 'use client';
 
@@ -8,13 +8,7 @@ import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { StaffFormDialog } from '@/app/admin/staff/StaffFormDialog';
 
-// 본사 화면에서 생성/수정 가능한 역할 — 판매사/직원은 지점에서 등록.
-const HQ_ASSIGNABLE_ROLES: readonly string[] = [
-  'hq_super',
-  'hq_purchase',
-  'hq_view',
-  'store_manager',
-];
+const STORE_ACCOUNT_ROLES: readonly string[] = ['store_salesperson', 'store_staff'];
 
 interface StoreOpt {
   id: string;
@@ -52,9 +46,9 @@ const fetcher = async (url: string): Promise<ApiResponse> => {
   return json.data;
 };
 
-export default function HqStaffPage() {
+export default function HqStoreAccountsPage() {
   const [storeId, setStoreId] = useState<string>('');
-  const url = `/api/hq/staff${storeId ? `?store_id=${storeId}` : ''}`;
+  const url = `/api/hq/store-accounts${storeId ? `?store_id=${storeId}` : ''}`;
   const { data, isLoading, mutate } = useSWR<ApiResponse>(url, fetcher);
 
   const [editing, setEditing] = useState<StaffRow | null>(null);
@@ -79,14 +73,14 @@ export default function HqStaffPage() {
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
         <header className="flex items-center justify-between gap-2 flex-wrap">
           <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">
-            계정설정 (본사용)
+            매장 계정
           </h1>
           <button
             type="button"
             onClick={handleAdd}
             className="pressable touch-target rounded-xl bg-[var(--color-system-blue)] px-4 py-2 text-callout font-semibold text-white"
           >
-            + 계정 추가
+            + 매장 계정 추가
           </button>
         </header>
 
@@ -118,7 +112,7 @@ export default function HqStaffPage() {
           </p>
         ) : staff.length === 0 ? (
           <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
-            조건에 맞는 직원이 없습니다.
+            조건에 맞는 매장 계정이 없습니다.
           </p>
         ) : (
           <div className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
@@ -136,16 +130,12 @@ export default function HqStaffPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {staff.map((s) => {
-                    const isHqAccount = s.role_code.startsWith('hq_');
-                    return (
+                  {staff.map((s) => (
                     <tr key={s.user_id} className="border-t border-[var(--color-separator-opaque)]">
                       <td className="p-3 font-mono">{s.login_id ?? '—'}</td>
                       <td className="p-3">{s.display_name ?? '—'}</td>
                       <td className="p-3 hidden sm:table-cell">
-                        {isHqAccount ? (
-                          <span className="text-[var(--color-label-secondary)]">전체 매장</span>
-                        ) : s.store_name ? (
+                        {s.store_name ? (
                           <div>
                             <div>{s.store_name}</div>
                             <div className="text-caption2 text-[var(--color-label-tertiary)] font-mono">
@@ -183,8 +173,7 @@ export default function HqStaffPage() {
                         </button>
                       </td>
                     </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -198,8 +187,8 @@ export default function HqStaffPage() {
           initial={editing}
           onClose={handleClose}
           onSaved={handleSaved}
-          apiBase="/api/hq/staff"
-          allowedRoles={HQ_ASSIGNABLE_ROLES}
+          apiBase="/api/hq/store-accounts"
+          allowedRoles={STORE_ACCOUNT_ROLES}
         />
       )}
     </main>

@@ -88,6 +88,7 @@ export function UserMenu({ session }: UserMenuProps) {
       ? ([
           { label: '대시보드', enabled: true, href: '/hq', perm: 'hq_dashboard' },
           { label: '매장 관리', enabled: true, href: '/hq/stores', perm: 'hq_stores_manage' },
+          { label: '계정설정', enabled: true, href: '/hq/staff', perm: 'hq_staff_manage' },
           { label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' },
           { label: '본사 통합 통계', enabled: true, href: '/hq/stats', perm: 'hq_stats' },
           { label: '본사 판매내역', enabled: true, href: '/hq/sales-search', perm: 'hq_sales_search' },
@@ -112,12 +113,12 @@ export function UserMenu({ session }: UserMenuProps) {
     { divider: true, label: '', enabled: false },
 
     // ── 지점 관리 ───────────────────────────────────────────────────
-    // 계정설정: 본사 사용자는 /hq/staff (전 매장), 지점 사용자는 /admin/staff (현재 매장)
+    // 매장 계정: 지점 매니저는 본인 매장. 본사도 권한 있으면 전 매장 통합으로 진입 가능.
     {
-      label: '계정설정',
+      label: '매장 계정',
       enabled: true,
-      href: isHq ? '/hq/staff' : '/admin/staff',
-      perm: isHq ? 'hq_staff_manage' : 'store_staff_manage',
+      href: isHq ? '/hq/store-accounts' : '/admin/staff',
+      perm: isHq ? 'hq_store_accounts' : 'store_staff_manage',
     },
     // HQ 사용자는 '매장 관리' 에 매장 정보가 통합되어 있으므로 '매장 정보' 메뉴 회피
     // HQ 사용자는 본사 그룹의 '근태관리' 사용
@@ -192,11 +193,11 @@ export function UserMenu({ session }: UserMenuProps) {
             'overflow-hidden',
           ].join(' ')}
         >
-          {/* 헤더 — 고정 (스크롤 안 됨) */}
+          {/* 헤더 — 고정 (스크롤 안 됨). 본사 계정은 전 매장 통합 관리이므로 '전체 매장' 로 표시. */}
           <div className="shrink-0 px-3 py-2 border-b border-[var(--color-separator-opaque)]">
             <div className="text-callout font-semibold truncate">{session.display_name}</div>
             <div className="text-caption2 text-[var(--color-label-tertiary)] truncate">
-              {session.store_name} · {session.store_code}
+              {isHq ? '전체 매장' : `${session.store_name} · ${session.store_code}`}
             </div>
           </div>
 

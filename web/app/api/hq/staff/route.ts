@@ -18,6 +18,9 @@ const HQ_CREATABLE_ROLES = [
   'store_manager',
 ] as const;
 
+/** /hq/staff 페이지 노출 대상 — 본사 역할 + 지점 매니저까지. 판매사/직원은 /hq/store-accounts 에서 별도 관리. */
+const HQ_VISIBLE_ROLES = HQ_CREATABLE_ROLES;
+
 interface CreateStaffBody {
   /** 본사 역할에서만 의미 있음. 지점 역할(매니저)은 서버가 매장 store_code 로 강제. */
   login_id?: string;
@@ -61,12 +64,14 @@ export async function GET(request: Request) {
   }
 
   // 3) 본사 관리자만 password_plain 조회 가능 (지점 계정 한정)
+  //    /hq/staff 는 본사 역할 + 지점 매니저만 노출. 판매사/직원은 /hq/store-accounts 에서 관리.
   const { data: rows, error } = await db
     .from('fo_staff_profiles')
     .select(
       'user_id, login_id, display_name, role_code, job_title_code, phone, active, permissions, password_plain, password_updated_at, created_at'
     )
     .in('user_id', ids)
+    .in('role_code', HQ_VISIBLE_ROLES as unknown as string[])
     .order('active', { ascending: false })
     .order('created_at', { ascending: true });
   if (error) {

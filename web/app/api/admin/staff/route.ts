@@ -15,6 +15,9 @@ import { hashPassword } from '@/lib/auth/password';
 
 const STORE_MANAGEABLE_ROLES = ['store_salesperson', 'store_staff'] as const;
 
+/** /admin/staff 페이지 노출 대상 — 매장 운영 직원(판매사·일반)만. 매니저/본사는 본사 화면에서 관리. */
+const STORE_VISIBLE_ROLES = STORE_MANAGEABLE_ROLES;
+
 interface CreateStaffBody {
   /** 본사 역할에서만 의미 있음. 지점 역할은 서버가 매장 store_code 로 강제 정정. */
   login_id?: string;
@@ -52,6 +55,7 @@ export async function GET() {
       'user_id, login_id, display_name, role_code, job_title_code, phone, active, permissions, password_plain, password_updated_at, created_at'
     )
     .in('user_id', ids)
+    .in('role_code', STORE_VISIBLE_ROLES as unknown as string[])
     .order('active', { ascending: false })
     .order('created_at', { ascending: true });
 
@@ -104,20 +108,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 지점 매니저는 본인 매장의 판매사/직원만 생성 가능. role/store 강제 정정.
-    let targetStoreId: string;
-    if (callerIsManager) {
-      if (!STORE_MANAGEABLE_ROLES.includes(roleCode as (typeof STORE_MANAGEABLE_ROLES)[number])) {
-        return NextResponse.json(
-          { data: null, error: '지점 매니저는 판매사/직원 계정만 생성할 수 있습니다.' },
-          { status: 403 }
-        );
-      }
-      targetStoreId = session.store_id;
-    } else {
-      // HQ — store_id 가 명시되면 그것, 아니면 본인 매장 (본사 사용자에게도 기본 매장이 있음).
-      targetStoreId = body.store_id || session.store_id;
+    // /admin/staff 는 매장 계정(판매사·일반) 전용 엔드포인트. 본사 역할/매니저 생성은 /api/hq/staff.
+    if (!STORE_MANAGEABLE_ROLES.includes(roleCode as (typeof STORE_MANAGEABLE_ROLES)[number])) {
+      return NextResponse.json(
+        { data: null, error: '매장 계정은 판매사/직원 역할만 생성할 수 있습니다.' },
+        { status: 403 }
+      );
     }
+
+    // 지점 매니저는 본인 매장으로 강제. HQ 는 명시 store_id 또는 본인 기본 매장.
+    const targetStoreId: string = callerIsManager
+      ? session.store_id
+      : body.store_id || session.store_id;
 
     const db = getDB();
     const isStoreRole = roleCode.startsWith('store_');
