@@ -6,11 +6,13 @@
 
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { formatColor } from '@/lib/product-codes';
 import { PendingList } from './PendingList';
 
 interface Supplier {
@@ -32,6 +34,7 @@ interface ProductRow {
   cost_price: number | null;
   stock_quantity: number | null;
   brand_name: string;
+  category?: string | null;
 }
 
 interface InboundLine {
@@ -40,6 +43,7 @@ interface InboundLine {
   color_code: string;
   display_name: string;
   brand_name: string;
+  category: string;
   quantity: number;
   unit_cost: number;
 }
@@ -107,6 +111,7 @@ export default function InboundPage() {
           color_code: p.color_code ?? '',
           display_name: p.display_name ?? '',
           brand_name: p.brand_name,
+          category: p.category ?? '',
           quantity: 1,
           unit_cost: p.cost_price ?? 0,
         },
@@ -219,7 +224,15 @@ export default function InboundPage() {
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <form onSubmit={handleSubmit} className="max-w-[900px] mx-auto flex flex-col gap-4">
-        <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">매입 등록</h1>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">매입 등록</h1>
+          <Link
+            href="/admin/inbound/history"
+            className="pressable touch-target rounded-xl bg-[var(--color-fill-tertiary)] px-3 py-2 text-callout font-medium"
+          >
+            📋 매입 내역 조회
+          </Link>
+        </div>
 
         {/* 전표 정보 */}
         <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -340,7 +353,7 @@ export default function InboundPage() {
                       </span>
                       <span className="text-callout font-semibold truncate w-full">
                         {r.style_code ?? '—'}
-                        {r.color_code ? ` / ${r.color_code}` : ''}
+                        {r.color_code ? ` / ${formatColor(r.color_code)}` : ''}
                       </span>
                       <span className="text-caption2 text-[var(--color-label-tertiary)] tabular-nums">
                         재고 {r.stock_quantity ?? 0} · 매입가 ₩
@@ -369,82 +382,77 @@ export default function InboundPage() {
               위 검색에서 제품을 추가하세요
             </p>
           ) : (
-            <table className="w-full text-callout">
-              <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)]">
-                <tr>
-                  <th className="text-left p-3">제품</th>
-                  <th className="text-right p-3 w-24">수량</th>
-                  <th className="text-right p-3 w-28">단가</th>
-                  <th className="text-right p-3 w-28 hidden sm:table-cell">금액</th>
-                  <th className="p-3 w-12"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((l, idx) => (
-                  <tr key={l.product_id} className="border-t border-[var(--color-separator-opaque)]">
-                    <td className="p-3">
-                      <div className="text-caption2 text-[var(--color-label-secondary)]">
-                        {l.brand_name}
-                      </div>
-                      <div className="font-semibold">
-                        {l.style_code}
-                        {l.color_code ? ` / ${l.color_code}` : ''}
-                      </div>
-                      {l.display_name && l.display_name !== l.style_code && (
-                        <div className="text-caption2 text-[var(--color-label-tertiary)] truncate">
-                          {l.display_name}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3 text-right">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        value={l.quantity}
-                        onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
-                        className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-right tabular-nums"
-                      />
-                    </td>
-                    <td className="p-3 text-right">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={100}
-                        value={l.unit_cost}
-                        onChange={(e) => handleCost(idx, Number(e.target.value) || 0)}
-                        className="w-24 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-right tabular-nums"
-                      />
-                    </td>
-                    <td className="p-3 text-right hidden sm:table-cell tabular-nums">
-                      ₩{(l.quantity * l.unit_cost).toLocaleString()}
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(idx)}
-                        className="pressable text-[var(--color-system-red)]"
-                        aria-label="삭제"
-                      >
-                        ✕
-                      </button>
-                    </td>
+            <div className="data-list-scroll">
+              <table className="data-list-table">
+                <thead>
+                  <tr>
+                    <th>카테고리</th>
+                    <th className="num">라인</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">수량</th>
+                    <th className="num">단가</th>
+                    <th className="num">합계</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-[var(--color-fill-quaternary)] text-callout">
-                <tr>
-                  <td className="p-3 font-semibold text-[var(--color-label-secondary)]">합계</td>
-                  <td className="p-3 text-right font-semibold tabular-nums">{totalQty}</td>
-                  <td className="p-3"></td>
-                  <td className="p-3 text-right font-semibold tabular-nums hidden sm:table-cell">
-                    ₩{totalCost.toLocaleString()}
-                  </td>
-                  <td className="p-3"></td>
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {lines.map((l, idx) => (
+                    <tr key={l.product_id}>
+                      <td>{l.category || '—'}</td>
+                      <td className="num meta">{idx + 1}</td>
+                      <td>{l.brand_name || '—'}</td>
+                      <td className="code">{l.style_code}</td>
+                      <td className="code">{formatColor(l.color_code)}</td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          value={l.quantity}
+                          onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
+                          className="w-16 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
+                        />
+                      </td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={100}
+                          value={l.unit_cost}
+                          onChange={(e) => handleCost(idx, Number(e.target.value) || 0)}
+                          className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
+                        />
+                      </td>
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        ₩{(l.quantity * l.unit_cost).toLocaleString()}
+                      </td>
+                      <td className="num">
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(idx)}
+                          className="pressable text-[var(--color-system-red)]"
+                          aria-label="삭제"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={5}>합계</td>
+                    <td className="num">{totalQty}</td>
+                    <td></td>
+                    <td className="num">₩{totalCost.toLocaleString()}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           )}
         </div>
         )}

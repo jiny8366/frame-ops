@@ -46,10 +46,30 @@ export function normalizeStyleCode(s: string): string {
   return t || 'XXXX';
 }
 
-/** 컬러 — 영숫자 대문자만, 길이 자유. 비어있으면 00. */
+/** 컬러 — 영숫자 대문자만, 길이 자유. 비어있으면 00.
+ *  표시 시 'C_' 가 자동 부착되므로 입력에서 'C' 또는 'C_' 접두는 제거.
+ */
 export function normalizeColorCode(s: string): string {
-  const t = alphaNumUpper(s);
+  let t = alphaNumUpper(s);
+  // 'C' 접두 + 추가 영숫자 → 'C' 제거 (표시에서 'C_' 자동 부착되므로)
+  if (/^C[A-Z0-9]/.test(t)) t = t.slice(1);
   return t || '00';
+}
+
+/**
+ * 컬러 표시 포맷 — 항상 'C_' 접두. idempotent.
+ * - "01"     → "C_01"
+ * - "C01"    → "C_01"  (레거시)
+ * - "C_BLK"  → "C_BLK" (idempotent)
+ * - null/""  → "—"
+ */
+export function formatColor(code: string | null | undefined): string {
+  if (!code) return '—';
+  const s = code.trim().toUpperCase();
+  if (!s) return '—';
+  if (s.startsWith('C_')) return s;
+  if (/^C[A-Z0-9]/.test(s)) return `C_${s.slice(1)}`;
+  return `C_${s}`;
 }
 
 /** YYYY-MM-DD 또는 Date → YYMM (4 chars) */
@@ -77,9 +97,12 @@ export function buildProductCodeBase(params: {
   return `${line}_${cat}/${brand}/${yymm}/${style}/${color}`;
 }
 
-/** 표시 상품명: 브랜드/제품번호/컬러 (변경 없음) */
+/** 표시 상품명: 브랜드/제품번호/컬러 — 컬러는 'C_' 접두 자동 부착. */
 export function displayNameThreePart(brand: string, style: string, color: string): string {
-  return `${(brand ?? '').trim()}/${(style ?? '').trim()}/${(color ?? '').trim()}`;
+  const b = (brand ?? '').trim();
+  const s = (style ?? '').trim();
+  const c = color ? formatColor(color) : '';
+  return `${b}/${s}/${c}`;
 }
 
 /**

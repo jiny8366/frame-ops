@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import { formatColor } from '@/lib/product-codes';
 
 interface PendingRow {
   supplier_id: string;
@@ -172,7 +173,7 @@ export function PendingList({ onProcessed }: PendingListProps) {
                     </td>
                     <td className="p-2 text-caption1">{r.brand_name ?? '—'}</td>
                     <td className="p-2 font-semibold">{r.style_code ?? '—'}</td>
-                    <td className="p-2 text-caption1">{r.color_code ?? '—'}</td>
+                    <td className="p-2 text-caption1">{formatColor(r.color_code)}</td>
                     <td className="p-2 text-right tabular-nums hidden sm:table-cell">
                       <span
                         className={
@@ -304,7 +305,7 @@ function QtyEditDialog({
           </h3>
           <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
             {row.supplier_name} · {row.brand_name ?? ''} · {row.style_code ?? '—'}
-            {row.color_code ? ` / ${row.color_code}` : ''}
+            {row.color_code ? ` / ${formatColor(row.color_code)}` : ''}
           </p>
         </header>
 

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import {
   buildProductCodeBase,
   displayNameThreePart,
+  formatColor,
   LINE_FRM,
   LINE_LABELS,
   LINE_SUN,
@@ -98,6 +99,21 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
   // 카테고리 편집 (선택된 카테고리의 label/code 수정)
   const [editingCategory, setEditingCategory] = useState(false);
   const [editCategoryLabel, setEditCategoryLabel] = useState('');
+
+  // 대기 등록 리스트 (create 모드에서 [추가] 클릭 시 누적, [저장] 시 일괄 POST)
+  interface PendingProduct {
+    brand_id: string;
+    brand_name: string;
+    product_line: string;
+    category: string;
+    style_code: string;
+    color_code: string;
+    cost_price: number;
+    suggested_retail: number;
+    sale_price: number;
+    code_preview: string;
+  }
+  const [pending, setPending] = useState<PendingProduct[]>([]);
   const [editCategoryCode, setEditCategoryCode] = useState('');
 
   // 첫 진입 시 카테고리 디폴트
@@ -231,6 +247,52 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
     }
   }, [categoryRow, mutateCategories]);
 
+  // 현재 폼 → PendingProduct 변환 (검증 포함)
+  const snapshotCurrent = useCallback((): PendingProduct | null => {
+    if (!brandId || !category || !styleCode.trim() || !colorCode.trim()) return null;
+    return {
+      brand_id: brandId,
+      brand_name: brand?.name ?? '',
+      product_line: productLine,
+      category,
+      style_code: styleCode.trim(),
+      color_code: colorCode.trim(),
+      cost_price: costPrice,
+      suggested_retail: suggestedRetail,
+      sale_price: salePrice,
+      code_preview: codePreview,
+    };
+  }, [brandId, brand, productLine, category, styleCode, colorCode, costPrice, suggestedRetail, salePrice, codePreview]);
+
+  // [추가] — 현재 폼을 pending 에 누적. 헤더 입력은 그대로 유지 (유사상품 빠른 입력).
+  // 중복 방지: 같은 브랜드+제품번호+컬러 조합은 거부.
+  const handleAddPending = useCallback(() => {
+    if (mode !== 'create') return;
+    const item = snapshotCurrent();
+    if (!item) {
+      toast.error('브랜드 / 카테고리 / 제품번호 / 컬러 모두 입력하세요.');
+      return;
+    }
+    const dupInPending = pending.some(
+      (p) =>
+        p.brand_id === item.brand_id &&
+        p.style_code === item.style_code &&
+        p.color_code === item.color_code
+    );
+    if (dupInPending) {
+      toast.error('대기 목록에 이미 같은 조합이 있습니다.');
+      return;
+    }
+    setPending((prev) => [...prev, item]);
+    toast.success(`추가됨: ${item.style_code}/${item.color_code} (${pending.length + 1}건 대기)`);
+    // 컬러 코드만 비워서 같은 제품번호의 다른 컬러 빠르게 입력 가능하도록 함.
+    setColorCode('');
+  }, [mode, snapshotCurrent, pending]);
+
+  const handleRemovePending = useCallback((idx: number) => {
+    setPending((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -240,26 +302,50 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
 
       try {
         if (mode === 'create') {
-          const res = await fetch('/api/admin/products', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              brand_id: brandId,
-              product_line: productLine,
-              category,
-              style_code: styleCode.trim(),
-              color_code: colorCode.trim(),
-              cost_price: costPrice,
-              suggested_retail: suggestedRetail,
-              sale_price: salePrice,
-            }),
-          });
-          const json = (await res.json()) as { data: unknown; error: string | null };
-          if (!res.ok || json.error) {
-            setError(json.error ?? '저장 실패');
+          // 대기 목록 + 현재 폼(있으면) 합침
+          const items: PendingProduct[] = [...pending];
+          const current = snapshotCurrent();
+          if (current) {
+            const dup = items.some(
+              (p) =>
+                p.brand_id === current.brand_id &&
+                p.style_code === current.style_code &&
+                p.color_code === current.color_code
+            );
+            if (!dup) items.push(current);
+          }
+          if (items.length === 0) {
+            setError('등록할 상품이 없습니다. 폼을 채우거나 [추가]로 항목을 누적하세요.');
             setSubmitting(false);
             return;
           }
+          const failed: string[] = [];
+          for (const item of items) {
+            const res = await fetch('/api/admin/products', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                brand_id: item.brand_id,
+                product_line: item.product_line,
+                category: item.category,
+                style_code: item.style_code,
+                color_code: item.color_code,
+                cost_price: item.cost_price,
+                suggested_retail: item.suggested_retail,
+                sale_price: item.sale_price,
+              }),
+            });
+            const json = (await res.json()) as { data: unknown; error: string | null };
+            if (!res.ok || json.error) {
+              failed.push(`${item.style_code}/${item.color_code}: ${json.error ?? '실패'}`);
+            }
+          }
+          if (failed.length > 0) {
+            setError(`일부 등록 실패 (${failed.length}/${items.length}):\n${failed.join('\n')}`);
+            setSubmitting(false);
+            return;
+          }
+          toast.success(`${items.length}건 등록 완료`);
         } else if (initial) {
           const res = await fetch(`/api/admin/products/${initial.id}`, {
             method: 'PATCH',
@@ -293,7 +379,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
         setSubmitting(false);
       }
     },
-    [mode, initial, brandId, productLine, category, styleCode, colorCode, costPrice, suggestedRetail, salePrice, active, submitting, onSaved]
+    [mode, initial, brandId, productLine, category, styleCode, colorCode, costPrice, suggestedRetail, salePrice, active, submitting, onSaved, pending, snapshotCurrent]
   );
 
   return (
@@ -472,11 +558,16 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide text-[var(--color-label-primary)] uppercase"
             />
           </Field>
-          <Field label="컬러 (숫자·영문 — 자릿수 자유)">
+          <Field label="컬러 ('C' 제외, 표시 시 'C_' 자동 부착)">
             <input
               type="text"
               value={colorCode}
-              onChange={(e) => setColorCode(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
+              onChange={(e) => {
+                let v = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+                // 사용자가 'C' 또는 'C_' 입력 시 즉시 제거 (표시는 'C_' 자동 부착)
+                if (/^C[A-Z0-9]/.test(v)) v = v.slice(1);
+                setColorCode(v);
+              }}
               onBlur={(e) => setColorCode(normalizeColorCode(e.target.value))}
               required
               autoComplete="off"
@@ -485,7 +576,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
               autoCapitalize="characters"
               inputMode="text"
               lang="en"
-              placeholder="01 / BK / BLK"
+              placeholder="01 / BK / BLK (C 제외)"
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout font-mono tracking-wide text-[var(--color-label-primary)] uppercase"
             />
           </Field>
@@ -549,8 +640,83 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
           </label>
         )}
 
+        {/* [추가] — 폼 바로 아래. 현재 폼 내용을 등록 대기 리스트에 누적. 헤더는 유지(컬러만 비움). */}
+        {mode === 'create' && (
+          <button
+            type="button"
+            onClick={handleAddPending}
+            disabled={submitting || !brandId || !category || !styleCode.trim() || !colorCode.trim()}
+            className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-fill-tertiary)] text-[var(--color-label-primary)] font-semibold disabled:opacity-40"
+          >
+            + 대기 목록에 추가
+          </button>
+        )}
+
+        {/* 대기 목록 — create 모드 전용. [추가] 누른 항목이 누적되어 [저장] 시 일괄 등록. */}
+        {mode === 'create' && pending.length > 0 && (
+          <div className="rounded-lg border border-[var(--color-separator-opaque)] overflow-hidden">
+            <div className="bg-[var(--color-fill-quaternary)] px-3 py-2 text-caption1 text-[var(--color-label-secondary)] flex items-center justify-between">
+              <span>등록 대기 ({pending.length}건)</span>
+              <button
+                type="button"
+                onClick={() => setPending([])}
+                disabled={submitting}
+                className="pressable text-caption2 text-[var(--color-system-red)]"
+              >
+                전체 비우기
+              </button>
+            </div>
+            <div className="data-list-scroll">
+              <table className="data-list-table">
+                <thead>
+                  <tr>
+                    <th>라인</th>
+                    <th>카테고리</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">매입가</th>
+                    <th className="num">권장소비자가</th>
+                    <th className="num">실판매가</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pending.map((p, idx) => (
+                    <tr key={`${p.brand_id}-${p.style_code}-${p.color_code}`}>
+                      <td>
+                        {LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line?.toUpperCase() ?? '—'}
+                      </td>
+                      <td>{p.category}</td>
+                      <td>{p.brand_name || '—'}</td>
+                      <td className="code">{p.style_code}</td>
+                      <td className="code">{formatColor(p.color_code)}</td>
+                      <td className="num">₩{p.cost_price.toLocaleString()}</td>
+                      <td className="num">₩{p.suggested_retail.toLocaleString()}</td>
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        ₩{p.sale_price.toLocaleString()}
+                      </td>
+                      <td className="num">
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePending(idx)}
+                          disabled={submitting}
+                          className="pressable text-[var(--color-system-red)]"
+                          aria-label="삭제"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {error && (
-          <p className="text-caption1 text-[var(--color-system-red)] text-center">{error}</p>
+          <p className="text-caption1 text-[var(--color-system-red)] text-center whitespace-pre-line">{error}</p>
         )}
 
         <div className="grid grid-cols-2 gap-2 mt-2">
@@ -564,10 +730,20 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
           </button>
           <button
             type="submit"
-            disabled={submitting || !brandId || !category || !styleCode.trim() || !colorCode.trim()}
+            disabled={
+              submitting ||
+              (mode === 'create'
+                ? pending.length === 0 &&
+                  (!brandId || !category || !styleCode.trim() || !colorCode.trim())
+                : !brandId || !category || !styleCode.trim() || !colorCode.trim())
+            }
             className="pressable touch-target rounded-xl px-4 py-2.5 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
           >
-            {submitting ? '저장 중…' : '저장'}
+            {submitting
+              ? '저장 중…'
+              : mode === 'create' && pending.length > 0
+              ? `저장 (${pending.length + (snapshotCurrent() ? 1 : 0)}건)`
+              : '저장'}
           </button>
         </div>
       </form>
