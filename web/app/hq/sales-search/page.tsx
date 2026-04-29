@@ -76,8 +76,9 @@ export default function HqSalesSearchPage() {
     keepPreviousData: true,
   });
 
-  const rows = data?.rows ?? [];
-  const stores = data?.stores ?? [];
+  // useMemo dep 안정화 — data 가 undefined 일 때마다 새 배열 생성되는 것 방지
+  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const stores = useMemo(() => data?.stores ?? [], [data]);
 
   const totalQty = rows.reduce((s, r) => s + r.quantity, 0);
   const totalAmount = rows.reduce((s, r) => s + r.line_total, 0);
