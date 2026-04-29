@@ -19,6 +19,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { formatColor } from '@/lib/product-codes';
 
 interface StoreOpt {
   id: string;
@@ -307,7 +308,7 @@ function ProductsTable({ products }: { products: ProductRow[] }) {
                   </div>
                   <div className="font-semibold">
                     {p.style_code ?? '—'}
-                    {p.color_code ? ` / ${p.color_code}` : ''}
+                    {p.color_code ? ` / ${formatColor(p.color_code)}` : ''}
                   </div>
                 </td>
                 <td className="p-3 text-right tabular-nums font-semibold">{p.quantity}</td>

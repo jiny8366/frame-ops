@@ -6,6 +6,7 @@
 
 import { memo, useCallback } from 'react';
 import type { CartItem as CartItemData } from '@/hooks/useCart';
+import { formatColor } from '@/lib/product-codes';
 
 export interface CartItemProps {
   item: CartItemData;
@@ -38,7 +39,7 @@ export const CartItem = memo(function CartItem({
 
   const lineTotal = item.unit_price * item.quantity - item.discount_amount;
   const titleText =
-    [item.brand_name, item.style_code, item.color_code]
+    [item.brand_name, item.style_code, item.color_code ? formatColor(item.color_code) : null]
       .map((s) => (s ?? '').trim())
       .filter((s) => s.length > 0)
       .join('/') || '—';

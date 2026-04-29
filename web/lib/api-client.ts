@@ -103,6 +103,8 @@ export interface PendingStockItem {
   brand_name: string;
   stock_quantity: number;
   pending_count: number;
+  product_line?: string | null;
+  category?: string | null;
 }
 
 export const inventoryApi = {

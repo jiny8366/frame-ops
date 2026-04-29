@@ -1,29 +1,31 @@
 // Frame Ops Web — 판매내역 검색
-// 기간 + 제품 키워드 필터 → 판매 행 + 담당자 + 항목 요약 + 결제수단.
+// 라인 단위 표시 — 일시 / 브랜드 / 제품번호 / 컬러 / 수량 / 담당자 / 결제수단 / 금액
 
 'use client';
 
 import { useState } from 'react';
 import useSWR from 'swr';
 import { useDebounce } from '@/hooks/useDebounce';
+import { formatColor } from '@/lib/product-codes';
 
-interface SaleRow {
+interface SaleLineRow {
   sale_id: string;
+  item_id: string;
   sold_at: string;
-  cash_amount: number;
-  card_amount: number;
-  discount_total: number;
-  total_amount: number;
-  payment_method: string;
-  seller_user_id: string | null;
+  brand_name: string | null;
+  style_code: string | null;
+  color_code: string | null;
+  quantity: number;
+  unit_price: number;
+  discount_amount: number;
+  line_total: number;
   seller_name: string | null;
-  item_count: number;
-  items_summary: string | null;
+  payment_method: string;
 }
 
-const fetcher = async (url: string): Promise<SaleRow[]> => {
+const fetcher = async (url: string): Promise<SaleLineRow[]> => {
   const res = await fetch(url);
-  const json = (await res.json()) as { data: SaleRow[] | null; error: string | null };
+  const json = (await res.json()) as { data: SaleLineRow[] | null; error: string | null };
   if (json.error) throw new Error(json.error);
   return json.data ?? [];
 };
@@ -32,34 +34,31 @@ function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
 function formatDateTime(iso: string): string {
+  if (!iso) return '—';
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export default function SalesSearchPage() {
-  const [from, setFrom] = useState<string>(daysAgo(7));
+  // 기본값: 시작일·종료일 모두 오늘
+  const [from, setFrom] = useState<string>(todayDate());
   const [to, setTo] = useState<string>(todayDate());
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 250);
 
   const url = `/api/admin/sales-search?from=${from}&to=${to}${debouncedQuery ? `&q=${encodeURIComponent(debouncedQuery)}` : ''}`;
-  const { data: rows = [], isLoading } = useSWR<SaleRow[]>(url, fetcher, {
+  const { data: rows = [], isLoading } = useSWR<SaleLineRow[]>(url, fetcher, {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
 
-  const totalRevenue = rows.reduce((s, r) => s + r.total_amount, 0);
+  const totalQty = rows.reduce((s, r) => s + r.quantity, 0);
+  const totalAmount = rows.reduce((s, r) => s + r.line_total, 0);
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
-      <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-4">
         <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">판매내역 검색</h1>
 
         <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_2fr] gap-2 items-end">
@@ -67,7 +66,7 @@ export default function SalesSearchPage() {
             <input
               type="date"
               value={from}
-              max={to}
+              max={to || todayDate()}
               onChange={(e) => setFrom(e.target.value || todayDate())}
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
             />
@@ -85,7 +84,7 @@ export default function SalesSearchPage() {
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
             />
           </Field>
-          <Field label="제품 검색 (스타일 / 제품명 / 색상)">
+          <Field label="제품 검색 (브랜드 / 제품번호 / 컬러 — 비워두면 전체)">
             <input
               type="search"
               value={query}
@@ -99,10 +98,10 @@ export default function SalesSearchPage() {
         {/* 합계 */}
         <div className="flex items-center justify-between px-1">
           <span className="text-caption1 text-[var(--color-label-secondary)]">
-            결과 {rows.length}건 {rows.length === 200 ? '(상한 200)' : ''}
+            결과 {rows.length}건 · 수량 {totalQty}점
           </span>
           <span className="text-callout font-semibold tabular-nums">
-            합계 ₩{totalRevenue.toLocaleString()}
+            합계 ₩{totalAmount.toLocaleString()}
           </span>
         </div>
 
@@ -117,44 +116,48 @@ export default function SalesSearchPage() {
               조건에 맞는 판매 내역이 없습니다.
             </p>
           ) : (
-            <div className="overflow-auto">
-              <table className="w-full text-callout">
-                <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)]">
+            <div className="data-list-scroll">
+              <table className="data-list-table">
+                <thead>
                   <tr>
-                    <th className="text-left p-3 whitespace-nowrap">일시</th>
-                    <th className="text-left p-3">상품</th>
-                    <th className="text-left p-3 w-24 whitespace-nowrap">담당자</th>
-                    <th className="text-right p-3 w-24 whitespace-nowrap">결제수단</th>
-                    <th className="text-right p-3 w-32 whitespace-nowrap">금액</th>
+                    <th>일시</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">수량</th>
+                    <th>담당자</th>
+                    <th>결제수단</th>
+                    <th className="num">금액</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr
-                      key={r.sale_id}
-                      className="border-t border-[var(--color-separator-opaque)]"
-                    >
-                      <td className="p-3 text-caption1 tabular-nums whitespace-nowrap">
+                    <tr key={r.item_id}>
+                      <td className="num" style={{ textAlign: 'left' }}>
                         {formatDateTime(r.sold_at)}
                       </td>
-                      <td className="p-3">
-                        <div className="text-caption2 text-[var(--color-label-tertiary)]">
-                          {r.item_count}건
-                        </div>
-                        <div className="truncate max-w-[420px]" title={r.items_summary ?? ''}>
-                          {r.items_summary ?? '—'}
-                        </div>
-                      </td>
-                      <td className="p-3 text-callout">{r.seller_name ?? '—'}</td>
-                      <td className="p-3 text-right">
+                      <td>{r.brand_name ?? '—'}</td>
+                      <td className="code">{r.style_code ?? '—'}</td>
+                      <td className="code">{formatColor(r.color_code)}</td>
+                      <td className="num">{r.quantity}</td>
+                      <td>{r.seller_name ?? '—'}</td>
+                      <td>
                         <PaymentBadge method={r.payment_method} />
                       </td>
-                      <td className="p-3 text-right tabular-nums font-semibold">
-                        ₩{r.total_amount.toLocaleString()}
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        ₩{r.line_total.toLocaleString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={4}>합계</td>
+                    <td className="num">{totalQty}</td>
+                    <td colSpan={2}></td>
+                    <td className="num">₩{totalAmount.toLocaleString()}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}

@@ -5,6 +5,7 @@
 
 import { useCallback, useState } from 'react';
 import useSWR from 'swr';
+import { formatColor } from '@/lib/product-codes';
 
 interface StatsResponse {
   period: { from: string; to: string };
@@ -178,7 +179,7 @@ export default function StatsPage() {
                         className="border-t border-[var(--color-separator-opaque)]"
                       >
                         <td className="p-3 font-semibold">
-                          {joinParts([p.brand_name, p.style_code, p.color_code]) || '—'}
+                          {joinParts([p.brand_name, p.style_code, p.color_code ? formatColor(p.color_code) : null]) || '—'}
                         </td>
                         <td className="p-3 text-caption1 text-[var(--color-label-secondary)]">
                           {joinParts([p.category, p.product_line]) || '—'}

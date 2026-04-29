@@ -6,6 +6,7 @@
 import { memo } from 'react';
 import Image from 'next/image';
 import type { Product } from '@/types';
+import { formatColor } from '@/lib/product-codes';
 
 interface FrameCardProps {
   frame: Product;
@@ -57,7 +58,7 @@ function FrameCardComponent({ frame, index, onClick, onPrefetch }: FrameCardProp
       </p>
       {/* 스타일코드 / 컬러 */}
       <p className="text-footnote font-semibold text-gray-900 truncate">
-        {frame.style_code}/{frame.color_code}
+        {frame.style_code}/{formatColor(frame.color_code)}
       </p>
       {/* 제품명 */}
       {frame.display_name && (

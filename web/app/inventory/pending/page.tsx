@@ -6,6 +6,7 @@
 
 import useSWR from 'swr';
 import { inventoryApi, type PendingStockItem } from '@/lib/api-client';
+import { formatColor, LINE_LABELS } from '@/lib/product-codes';
 
 export default function PendingStockPage() {
   const { data: items = [], isLoading, error } = useSWR<PendingStockItem[]>(
@@ -58,40 +59,45 @@ export default function PendingStockPage() {
           </div>
         ) : (
           <div className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
-            {items.map((item) => (
-              <PendingRow key={item.id} item={item} />
-            ))}
+            <div className="data-list-scroll">
+              <table className="data-list-table">
+                <thead>
+                  <tr>
+                    <th>라인</th>
+                    <th>카테고리</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">현재고</th>
+                    <th className="num">매입대기</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        {item.product_line
+                          ? LINE_LABELS[item.product_line as keyof typeof LINE_LABELS] ?? item.product_line.toUpperCase()
+                          : '—'}
+                      </td>
+                      <td>{item.category ?? '—'}</td>
+                      <td>{item.brand_name ?? '—'}</td>
+                      <td className="code">{item.style_code ?? '—'}</td>
+                      <td className="code">{formatColor(item.color_code)}</td>
+                      <td className="num" style={item.stock_quantity < 0 ? { color: 'var(--color-system-red)' } : undefined}>
+                        {item.stock_quantity}
+                      </td>
+                      <td className="num" style={{ color: 'var(--color-system-red)', fontWeight: 700 }}>
+                        {item.pending_count}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>
     </main>
-  );
-}
-
-function PendingRow({ item }: { item: PendingStockItem }) {
-  return (
-    <div className="flex items-baseline gap-3 px-4 py-3 border-b border-[var(--color-separator-opaque)] last:border-b-0">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="text-caption2 text-[var(--color-label-secondary)] truncate">
-            {item.brand_name}
-          </span>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-callout font-semibold text-[var(--color-label-primary)] truncate">
-            {item.style_code ?? '—'}
-            {item.color_code ? ` / ${item.color_code}` : ''}
-          </span>
-        </div>
-        {item.display_name && item.display_name !== item.style_code && (
-          <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
-            {item.display_name}
-          </p>
-        )}
-      </div>
-      <span className="text-callout font-bold tabular-nums text-[var(--color-system-red)]">
-        {item.pending_count}개
-      </span>
-    </div>
   );
 }
