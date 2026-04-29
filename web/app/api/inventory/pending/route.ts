@@ -13,8 +13,28 @@ export async function GET() {
       return NextResponse.json({ data: null, error: error.message }, { status: 500 });
     }
 
+    // RPC 미반환 필드(product_line, category) 보강 — fo_products 별도 조회 후 머지.
+    type Row = (typeof data extends Array<infer R> ? R : never) & {
+      product_line?: string | null;
+      category?: string | null;
+    };
+    const rows = (data ?? []) as Row[];
+    const productIds = Array.from(new Set(rows.map((r) => r.id)));
+    if (productIds.length > 0) {
+      const { data: meta } = await db
+        .from('fo_products')
+        .select('id, product_line, category')
+        .in('id', productIds);
+      const m = new Map((meta ?? []).map((p) => [p.id, p]));
+      for (const r of rows) {
+        const found = m.get(r.id);
+        r.product_line = found?.product_line ?? null;
+        r.category = found?.category ?? null;
+      }
+    }
+
     return NextResponse.json(
-      { data, error: null },
+      { data: rows, error: null },
       {
         headers: {
           // 발주 대기는 실시간성이 중요 — 짧은 캐시 + SWR

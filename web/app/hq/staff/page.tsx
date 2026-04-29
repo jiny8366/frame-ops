@@ -1,12 +1,20 @@
-// Frame Ops Web — 계정설정 (본사)
-// 모든 매장의 계정 리스트 + 매장 필터 + 추가/편집.
-// StaffFormDialog 를 apiBase=/api/hq/staff 로 재사용.
+// Frame Ops Web — 계정설정 (본사용)
+// 본사 역할(hq_*) + 지점 매니저(store_manager) 통합 조회/관리.
+// 판매사·일반 매장 계정은 /hq/store-accounts 에서 별도 관리.
 
 'use client';
 
 import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { StaffFormDialog } from '@/app/admin/staff/StaffFormDialog';
+
+// 본사 화면에서 생성/수정 가능한 역할 — 판매사/직원은 지점에서 등록.
+const HQ_ASSIGNABLE_ROLES: readonly string[] = [
+  'hq_super',
+  'hq_purchase',
+  'hq_view',
+  'store_manager',
+];
 
 interface StoreOpt {
   id: string;
@@ -71,7 +79,7 @@ export default function HqStaffPage() {
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
         <header className="flex items-center justify-between gap-2 flex-wrap">
           <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">
-            계정설정
+            계정설정 (본사용)
           </h1>
           <button
             type="button"
@@ -128,12 +136,16 @@ export default function HqStaffPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {staff.map((s) => (
+                  {staff.map((s) => {
+                    const isHqAccount = s.role_code.startsWith('hq_');
+                    return (
                     <tr key={s.user_id} className="border-t border-[var(--color-separator-opaque)]">
                       <td className="p-3 font-mono">{s.login_id ?? '—'}</td>
                       <td className="p-3">{s.display_name ?? '—'}</td>
                       <td className="p-3 hidden sm:table-cell">
-                        {s.store_name ? (
+                        {isHqAccount ? (
+                          <span className="text-[var(--color-label-secondary)]">전체 매장</span>
+                        ) : s.store_name ? (
                           <div>
                             <div>{s.store_name}</div>
                             <div className="text-caption2 text-[var(--color-label-tertiary)] font-mono">
@@ -171,7 +183,8 @@ export default function HqStaffPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -186,6 +199,7 @@ export default function HqStaffPage() {
           onClose={handleClose}
           onSaved={handleSaved}
           apiBase="/api/hq/staff"
+          allowedRoles={HQ_ASSIGNABLE_ROLES}
         />
       )}
     </main>

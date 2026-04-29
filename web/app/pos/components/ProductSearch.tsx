@@ -10,6 +10,7 @@ import useSWR from 'swr';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { CartProductSnapshot } from '@/hooks/useCart';
+import { formatColor } from '@/lib/product-codes';
 import { Modal } from './Modal';
 
 interface SearchResultRow {
@@ -190,7 +191,7 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
                 {pending.brand_name}
               </div>
               <div className="font-semibold text-[var(--color-label-primary)]">
-                {[pending.brand_name, pending.style_code, pending.color_code]
+                {[pending.brand_name, pending.style_code, pending.color_code ? formatColor(pending.color_code) : null]
                   .filter(Boolean)
                   .join('/')}
               </div>
@@ -312,10 +313,10 @@ const ResultRow = memo(function ResultRow({ row, onClick }: ResultRowProps) {
         {row.style_code ?? '—'}
       </span>
 
-      {/* 칼라 */}
+      {/* 컬러 */}
       {row.color_code && (
         <span className="text-callout text-[var(--color-label-primary)] tabular-nums flex-none">
-          {row.color_code}
+          {formatColor(row.color_code)}
         </span>
       )}
 

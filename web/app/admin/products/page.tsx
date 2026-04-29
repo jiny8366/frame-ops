@@ -8,7 +8,7 @@ import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { ProductFormDialog, type ProductRow } from './ProductFormDialog';
 import { useDebounce } from '@/hooks/useDebounce';
-import { LINE_FRM, LINE_LABELS, LINE_SUN } from '@/lib/product-codes';
+import { LINE_FRM, LINE_LABELS, LINE_SUN, formatColor } from '@/lib/product-codes';
 
 const productsFetcher = async (url: string): Promise<ProductRow[]> => {
   const res = await fetch(url);
@@ -120,55 +120,43 @@ export default function ProductsAdminPage() {
               조건에 맞는 상품이 없습니다.
             </p>
           ) : (
-            <div className="overflow-auto">
-              <table className="w-full text-callout">
-                <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)]">
+            <div className="data-list-scroll">
+              <table className="data-list-table">
+                <thead>
                   <tr>
-                    <th className="text-left p-3 whitespace-nowrap">상품코드</th>
-                    <th className="text-left p-3">브랜드</th>
-                    <th className="text-left p-3">제품번호 / 컬러</th>
-                    <th className="text-left p-3 hidden md:table-cell">카테고리</th>
-                    <th className="text-left p-3 w-12 hidden sm:table-cell">라인</th>
-                    <th className="text-right p-3 w-20 hidden md:table-cell">매입가</th>
-                    <th className="text-right p-3 w-20">판매가</th>
-                    <th className="text-right p-3 w-16">재고</th>
-                    <th className="p-3 w-12"></th>
+                    <th>라인</th>
+                    <th>카테고리</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">매입가</th>
+                    <th className="num">권장소비자가</th>
+                    <th className="num">실판매가</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-t border-[var(--color-separator-opaque)]"
-                    >
-                      <td className="p-3 font-mono text-caption1 whitespace-nowrap">
-                        {p.product_code}
+                    <tr key={p.id}>
+                      <td>
+                        {p.product_line
+                          ? LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line.toUpperCase()
+                          : '—'}
                       </td>
-                      <td className="p-3 text-caption1">{p.brand_name ?? '—'}</td>
-                      <td className="p-3">
-                        <div className="font-semibold">
-                          {p.style_code ?? '—'}
-                          {p.color_code ? ` / ${p.color_code}` : ''}
-                        </div>
-                      </td>
-                      <td className="p-3 text-caption1 hidden md:table-cell">{p.category}</td>
-                      <td className="p-3 text-caption1 hidden sm:table-cell">
-                        {p.product_line ?? '—'}
-                      </td>
-                      <td className="p-3 text-right tabular-nums hidden md:table-cell">
-                        ₩{(p.cost_price ?? 0).toLocaleString()}
-                      </td>
-                      <td className="p-3 text-right tabular-nums font-semibold">
+                      <td>{p.category}</td>
+                      <td>{p.brand_name ?? '—'}</td>
+                      <td className="code">{p.style_code ?? '—'}</td>
+                      <td className="code">{formatColor(p.color_code)}</td>
+                      <td className="num">₩{(p.cost_price ?? 0).toLocaleString()}</td>
+                      <td className="num">₩{(p.suggested_retail ?? 0).toLocaleString()}</td>
+                      <td className="num" style={{ fontWeight: 600 }}>
                         ₩{(p.sale_price ?? 0).toLocaleString()}
                       </td>
-                      <td className="p-3 text-right tabular-nums">
-                        {p.stock_quantity ?? '—'}
-                      </td>
-                      <td className="p-3 text-right">
+                      <td className="num">
                         <button
                           type="button"
                           onClick={() => handleEdit(p)}
-                          className="pressable text-[var(--color-system-blue)] text-caption1"
+                          className="pressable text-[var(--color-system-blue)]"
                         >
                           편집
                         </button>

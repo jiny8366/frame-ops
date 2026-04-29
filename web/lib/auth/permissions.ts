@@ -19,6 +19,7 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   { key: 'inventory_pending',  label: '발주 대기',          group: '운영',     scope: 'store' },
   { key: 'orders_list',       label: '주문리스트',         group: '운영',     scope: 'store' },
   { key: 'inbound_register',  label: '매입 등록',          group: '운영',     scope: 'store' },
+  { key: 'interstore_transfer', label: '점간이동',         group: '운영',     scope: 'both'  },
   { key: 'settlement',        label: '정산',               group: '운영',     scope: 'store' },
 
   // 분석
@@ -37,7 +38,8 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   // 본사 (HQ portal)
   { key: 'hq_dashboard',         label: '본사 대시보드',          group: '본사',     scope: 'hq' },
   { key: 'hq_stores_manage',     label: '매장 관리 (본사)',       group: '본사',     scope: 'hq' },
-  { key: 'hq_staff_manage',      label: '직원 통합 관리',         group: '본사',     scope: 'hq' },
+  { key: 'hq_staff_manage',      label: '계정설정 (본사용)',      group: '본사',     scope: 'hq' },
+  { key: 'hq_store_accounts',    label: '매장 계정 (본사용)',     group: '본사',     scope: 'hq' },
   { key: 'hq_stats',             label: '본사 통합 통계',         group: '본사',     scope: 'hq' },
   { key: 'hq_sales_search',      label: '본사 판매내역',          group: '본사',     scope: 'hq' },
   { key: 'hq_comparison',        label: '매장 비교',              group: '본사',     scope: 'hq' },
@@ -77,6 +79,7 @@ export const ROLE_DEFAULTS: Record<string, string[]> = {
     'inventory_pending',
     'orders_list',
     'inbound_register',
+    'interstore_transfer',
     'settlement',
     'sales_stats',
     'sales_search',

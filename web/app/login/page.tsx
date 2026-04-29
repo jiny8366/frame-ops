@@ -112,7 +112,7 @@ export default function LoginPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-callout text-[var(--color-label-secondary)]">아이디</span>
-          {/* 영문 + _ 허용 — 지점 코드(BKC01) 또는 본사 login_id(hq_admin) */}
+          {/* 입력 형식 제한 없음 — 서버에서 매칭 검증 */}
           <input
             type="text"
             inputMode="text"
@@ -120,8 +120,6 @@ export default function LoginPage() {
             autoCorrect="off"
             spellCheck={false}
             autoComplete="username"
-            lang="en"
-            pattern="[A-Za-z0-9_-]*"
             value={storeCode}
             onChange={(e) => setStoreCode(e.target.value)}
             placeholder="지점코드 (BKC01) 또는 본사ID (hq_admin)"
@@ -133,11 +131,9 @@ export default function LoginPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-callout text-[var(--color-label-secondary)]">비밀번호</span>
-          {/* 숫자 키보드 기본: type=password 마스킹 + inputMode=numeric (iOS/Android) */}
+          {/* 숫자·영문·한글·특수문자 모두 허용 — 입력 제한 없음 */}
           <input
             type="password"
-            inputMode="numeric"
-            pattern="[0-9]*"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

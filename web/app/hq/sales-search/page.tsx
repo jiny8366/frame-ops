@@ -1,11 +1,12 @@
-// Frame Ops Web — 본사 판매내역 검색
-// 기간 + 키워드 + 매장 필터. 결과에 매장명 컬럼 포함.
+// Frame Ops Web — 본사 판매내역
+// admin/sales-search 와 동일 동작 + 매장 셀렉터 + 일자별/브랜드별/담당자별 실적 탭.
 
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useDebounce } from '@/hooks/useDebounce';
+import { formatColor } from '@/lib/product-codes';
 
 interface StoreOpt {
   id: string;
@@ -14,25 +15,26 @@ interface StoreOpt {
   active: boolean;
 }
 
-interface SaleRow {
+interface SaleLineRow {
   sale_id: string;
+  item_id: string;
   sold_at: string;
   store_id: string;
   store_code: string;
   store_name: string;
-  cash_amount: number;
-  card_amount: number;
-  discount_total: number;
-  total_amount: number;
-  payment_method: string;
-  seller_user_id: string | null;
+  brand_name: string | null;
+  style_code: string | null;
+  color_code: string | null;
+  quantity: number;
+  unit_price: number;
+  discount_amount: number;
+  line_total: number;
   seller_name: string | null;
-  item_count: number;
-  items_summary: string | null;
+  payment_method: string;
 }
 
 interface ApiResponse {
-  rows: SaleRow[];
+  rows: SaleLineRow[];
   stores: StoreOpt[];
 }
 
@@ -47,23 +49,26 @@ function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+function formatDateTime(iso: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+function dateOnly(iso: string): string {
+  if (!iso) return '';
+  return iso.slice(0, 10);
 }
+
+type ViewTab = 'lines' | 'by_date' | 'by_brand' | 'by_seller';
 
 export default function HqSalesSearchPage() {
-  const [from, setFrom] = useState<string>(daysAgo(7));
+  const [from, setFrom] = useState<string>(todayDate());
   const [to, setTo] = useState<string>(todayDate());
   const [storeId, setStoreId] = useState<string>('');
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 250);
+  const [tab, setTab] = useState<ViewTab>('lines');
 
   const url = `/api/hq/sales-search?from=${from}&to=${to}${storeId ? `&store_id=${storeId}` : ''}${debouncedQuery ? `&q=${encodeURIComponent(debouncedQuery)}` : ''}`;
   const { data, isLoading } = useSWR<ApiResponse>(url, fetcher, {
@@ -71,9 +76,60 @@ export default function HqSalesSearchPage() {
     keepPreviousData: true,
   });
 
-  const rows = data?.rows ?? [];
-  const stores = data?.stores ?? [];
-  const totalRevenue = rows.reduce((s, r) => s + r.total_amount, 0);
+  // useMemo dep 안정화 — data 가 undefined 일 때마다 새 배열 생성되는 것 방지
+  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const stores = useMemo(() => data?.stores ?? [], [data]);
+
+  const totalQty = rows.reduce((s, r) => s + r.quantity, 0);
+  const totalAmount = rows.reduce((s, r) => s + r.line_total, 0);
+
+  // 일자별 집계 (sold_at 의 날짜 부분 기준)
+  const byDate = useMemo(() => {
+    const m = new Map<string, { date: string; qty: number; amount: number; sales: Set<string> }>();
+    for (const r of rows) {
+      const d = dateOnly(r.sold_at);
+      const e = m.get(d) ?? { date: d, qty: 0, amount: 0, sales: new Set<string>() };
+      e.qty += r.quantity;
+      e.amount += r.line_total;
+      e.sales.add(r.sale_id);
+      m.set(d, e);
+    }
+    return Array.from(m.values())
+      .map((e) => ({ date: e.date, qty: e.qty, amount: e.amount, saleCount: e.sales.size }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [rows]);
+
+  // 브랜드별 집계
+  const byBrand = useMemo(() => {
+    const m = new Map<string, { brand: string; qty: number; amount: number; sales: Set<string> }>();
+    for (const r of rows) {
+      const k = r.brand_name ?? '미지정';
+      const e = m.get(k) ?? { brand: k, qty: 0, amount: 0, sales: new Set<string>() };
+      e.qty += r.quantity;
+      e.amount += r.line_total;
+      e.sales.add(r.sale_id);
+      m.set(k, e);
+    }
+    return Array.from(m.values())
+      .map((e) => ({ brand: e.brand, qty: e.qty, amount: e.amount, saleCount: e.sales.size }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [rows]);
+
+  // 담당자별 집계
+  const bySeller = useMemo(() => {
+    const m = new Map<string, { seller: string; qty: number; amount: number; sales: Set<string> }>();
+    for (const r of rows) {
+      const k = r.seller_name ?? '미지정';
+      const e = m.get(k) ?? { seller: k, qty: 0, amount: 0, sales: new Set<string>() };
+      e.qty += r.quantity;
+      e.amount += r.line_total;
+      e.sales.add(r.sale_id);
+      m.set(k, e);
+    }
+    return Array.from(m.values())
+      .map((e) => ({ seller: e.seller, qty: e.qty, amount: e.amount, saleCount: e.sales.size }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [rows]);
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
@@ -86,12 +142,14 @@ export default function HqSalesSearchPage() {
             <input
               type="date"
               value={from}
-              max={to}
+              max={to || todayDate()}
               onChange={(e) => setFrom(e.target.value || todayDate())}
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout tabular-nums"
             />
           </Field>
-          <span className="hidden md:flex items-center justify-center text-callout text-[var(--color-label-tertiary)] pb-2">~</span>
+          <span className="hidden md:flex items-center justify-center text-callout text-[var(--color-label-tertiary)] pb-2">
+            ~
+          </span>
           <Field label="종료일">
             <input
               type="date"
@@ -116,27 +174,53 @@ export default function HqSalesSearchPage() {
               ))}
             </select>
           </Field>
-          <Field label="제품 키워드">
+          <Field label="제품 검색 (브랜드 / 제품번호 / 컬러)">
             <input
-              type="text"
+              type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="스타일코드/제품명/색상"
+              placeholder="비워두면 전체"
               className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
             />
           </Field>
         </div>
 
-        {/* 합계 + 결과 */}
-        <div className="rounded-xl bg-[var(--color-bg-secondary)] p-3 flex items-baseline justify-between flex-wrap gap-2">
-          <span className="text-callout font-semibold">
-            결과 {rows.length.toLocaleString()}건
+        {/* 합계 */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-caption1 text-[var(--color-label-secondary)]">
+            결과 {rows.length}건 · 수량 {totalQty}점
           </span>
-          <span className="text-callout tabular-nums font-bold">
-            합계 ₩{totalRevenue.toLocaleString()}
+          <span className="text-callout font-semibold tabular-nums">
+            합계 ₩{totalAmount.toLocaleString()}
           </span>
         </div>
 
+        {/* 탭 */}
+        <div role="tablist" className="grid grid-cols-4 gap-1 p-1 rounded-lg bg-[var(--color-fill-quaternary)]">
+          {([
+            ['lines', '거래내역'],
+            ['by_date', '일자별'],
+            ['by_brand', '브랜드별'],
+            ['by_seller', '담당자별'],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`pressable touch-target rounded-md px-3 py-2 text-callout font-medium transition-colors ${
+                tab === key
+                  ? 'bg-[var(--color-bg-primary)] text-[var(--color-label-primary)] shadow-sm'
+                  : 'text-[var(--color-label-secondary)]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* 컨텐츠 */}
         <section className="rounded-xl bg-[var(--color-bg-secondary)] overflow-hidden">
           {isLoading && rows.length === 0 ? (
             <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
@@ -146,53 +230,118 @@ export default function HqSalesSearchPage() {
             <p className="text-callout text-[var(--color-label-tertiary)] text-center py-12">
               조건에 맞는 판매 내역이 없습니다.
             </p>
-          ) : (
-            <div className="overflow-auto max-h-[720px]">
-              <table className="w-full text-callout">
-                <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)] sticky top-0">
+          ) : tab === 'lines' ? (
+            <div className="data-list-scroll" style={{ maxHeight: 720 }}>
+              <table className="data-list-table">
+                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr>
-                    <th className="text-left p-3 whitespace-nowrap">일시</th>
-                    <th className="text-left p-3">매장</th>
-                    <th className="text-left p-3">담당자</th>
-                    <th className="text-left p-3 hidden md:table-cell">항목</th>
-                    <th className="text-left p-3 w-20">결제</th>
-                    <th className="text-right p-3 w-28">금액</th>
+                    <th>일시</th>
+                    <th>매장</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">수량</th>
+                    <th>담당자</th>
+                    <th>결제수단</th>
+                    <th className="num">금액</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr
-                      key={r.sale_id}
-                      className="border-t border-[var(--color-separator-opaque)]"
-                    >
-                      <td className="p-3 text-caption1 tabular-nums whitespace-nowrap">
-                        {formatDateTime(r.sold_at)}
+                    <tr key={r.item_id}>
+                      <td className="num" style={{ textAlign: 'left' }}>{formatDateTime(r.sold_at)}</td>
+                      <td>{r.store_name || '—'}</td>
+                      <td>{r.brand_name ?? '—'}</td>
+                      <td className="code">{r.style_code ?? '—'}</td>
+                      <td className="code">{formatColor(r.color_code)}</td>
+                      <td className="num">{r.quantity}</td>
+                      <td>{r.seller_name ?? '—'}</td>
+                      <td>
+                        <PaymentBadge method={r.payment_method} />
                       </td>
-                      <td className="p-3 text-caption1">
-                        <div>{r.store_name}</div>
-                        <div className="text-caption2 text-[var(--color-label-tertiary)] font-mono">
-                          {r.store_code}
-                        </div>
-                      </td>
-                      <td className="p-3 text-caption1">{r.seller_name ?? '—'}</td>
-                      <td className="p-3 text-caption1 hidden md:table-cell">
-                        <div className="truncate max-w-[300px]">
-                          {r.items_summary ?? `${r.item_count}건`}
-                        </div>
-                      </td>
-                      <td className="p-3 text-caption1">{r.payment_method}</td>
-                      <td className="p-3 text-right tabular-nums font-semibold">
-                        ₩{r.total_amount.toLocaleString()}
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        ₩{r.line_total.toLocaleString()}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={5}>합계</td>
+                    <td className="num">{totalQty}</td>
+                    <td colSpan={2}></td>
+                    <td className="num">₩{totalAmount.toLocaleString()}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
+          ) : tab === 'by_date' ? (
+            <AggTable
+              keyLabel="날짜"
+              rows={byDate.map((r) => ({ key: r.date, qty: r.qty, amount: r.amount, sales: r.saleCount }))}
+              total={{ qty: totalQty, amount: totalAmount, sales: new Set(rows.map((r) => r.sale_id)).size }}
+            />
+          ) : tab === 'by_brand' ? (
+            <AggTable
+              keyLabel="브랜드"
+              rows={byBrand.map((r) => ({ key: r.brand, qty: r.qty, amount: r.amount, sales: r.saleCount }))}
+              total={{ qty: totalQty, amount: totalAmount, sales: new Set(rows.map((r) => r.sale_id)).size }}
+            />
+          ) : (
+            <AggTable
+              keyLabel="담당자"
+              rows={bySeller.map((r) => ({ key: r.seller, qty: r.qty, amount: r.amount, sales: r.saleCount }))}
+              total={{ qty: totalQty, amount: totalAmount, sales: new Set(rows.map((r) => r.sale_id)).size }}
+            />
           )}
         </section>
       </div>
     </main>
+  );
+}
+
+function AggTable({
+  keyLabel,
+  rows,
+  total,
+}: {
+  keyLabel: string;
+  rows: Array<{ key: string; qty: number; amount: number; sales: number }>;
+  total: { qty: number; amount: number; sales: number };
+}) {
+  return (
+    <div className="data-list-scroll" style={{ maxHeight: 720 }}>
+      <table className="data-list-table">
+        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+          <tr>
+            <th>{keyLabel}</th>
+            <th className="num">건수</th>
+            <th className="num">수량</th>
+            <th className="num">매출</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key}>
+              <td>{r.key}</td>
+              <td className="num">{r.sales}</td>
+              <td className="num">{r.qty}</td>
+              <td className="num" style={{ fontWeight: 600 }}>
+                ₩{r.amount.toLocaleString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>합계</td>
+            <td className="num">{total.sales}</td>
+            <td className="num">{total.qty}</td>
+            <td className="num">₩{total.amount.toLocaleString()}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   );
 }
 
@@ -202,5 +351,22 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-caption1 text-[var(--color-label-secondary)]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function PaymentBadge({ method }: { method: string }) {
+  const colorMap: Record<string, string> = {
+    현금: 'var(--color-system-green)',
+    카드: 'var(--color-system-blue)',
+    혼합: 'var(--color-system-orange)',
+  };
+  const c = colorMap[method] ?? 'var(--color-label-tertiary)';
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-caption2 font-medium"
+      style={{ color: c, backgroundColor: `color-mix(in srgb, ${c} 15%, transparent)` }}
+    >
+      {method}
+    </span>
   );
 }

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { formatColor, LINE_LABELS } from '@/lib/product-codes';
 
 interface OrderItem {
   supplier_id: string;
@@ -19,6 +20,8 @@ interface OrderItem {
   style_code: string | null;
   color_code: string | null;
   display_name: string | null;
+  product_line: string | null;
+  category: string | null;
   current_stock: number;
   total_quantity: number;
   unit_price: number;
@@ -177,22 +180,26 @@ export default function OrdersPage() {
         [`매입처: ${selected.supplier_name}${selected.supplier_code ? ` (${selected.supplier_code})` : ''}`],
         [`기간: ${data.period.from} ~ ${data.period.to}`],
         [],
-        ['No.', '브랜드', '제품번호', '색상', '수량', '매입가(₩)', '합계(₩)'],
+        ['No.', '라인', '카테고리', '브랜드', '제품번호', '컬러', '수량', '매입가(₩)', '합계(₩)'],
         ...items.map((it, idx) => [
           idx + 1,
+          it.product_line
+            ? LINE_LABELS[it.product_line as keyof typeof LINE_LABELS] ?? it.product_line.toUpperCase()
+            : '',
+          it.category ?? '',
           it.brand_name,
           it.style_code ?? '',
-          it.color_code ?? '',
+          it.color_code ? formatColor(it.color_code) : '',
           it.qty,
           it.cost_price,
           it.qty * it.cost_price,
         ]),
         [],
-        ['합계', '', '', '', totalQty, '', totalCost],
+        ['합계', '', '', '', '', '', totalQty, '', totalCost],
       ];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws['!cols'] = [
-        { wch: 5 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
+        { wch: 5 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
         { wch: 6 }, { wch: 10 }, { wch: 12 },
       ];
       const wb = XLSX.utils.book_new();
@@ -476,15 +483,18 @@ function SupplierContent({
         </div>
       </div>
 
-      <div className="overflow-auto">
-        <table className="w-full text-callout">
-          <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)]">
+      <div className="data-list-scroll">
+        <table className="data-list-table">
+          <thead>
             <tr>
-              <th className="text-left p-3">브랜드</th>
-              <th className="text-left p-3">제품</th>
-              <th className="text-right p-3 w-16">수량</th>
-              <th className="text-right p-3 w-24 hidden sm:table-cell">원가</th>
-              <th className="text-right p-3 w-28">합계</th>
+              <th>라인</th>
+              <th>카테고리</th>
+              <th>브랜드</th>
+              <th>제품번호</th>
+              <th>컬러</th>
+              <th className="num">수량</th>
+              <th className="num">원가</th>
+              <th className="num">합계</th>
             </tr>
           </thead>
           <tbody>
@@ -492,43 +502,37 @@ function SupplierContent({
               const qty = getQty(it);
               const overridden = qty !== it.total_quantity;
               const lowStock = it.current_stock <= 1;
-              const nameClass = lowStock
-                ? 'font-bold text-[var(--color-system-red)]'
-                : 'font-semibold';
               return (
                 <tr
                   key={it.product_id}
                   onClick={() => onEditItem(it)}
-                  className="cursor-pointer border-t border-[var(--color-separator-opaque)] hover:bg-[var(--color-fill-quaternary)]"
+                  style={{ cursor: 'pointer' }}
                   title="클릭 — 수량 편집"
                 >
-                  <td className="p-3 text-caption1">{it.brand_name}</td>
-                  <td className="p-3">
-                    <div className={nameClass}>
-                      {it.style_code ?? '—'}
-                      {it.color_code ? ` / ${it.color_code}` : ''}
-                      {lowStock && (
-                        <span className="ml-2 text-caption2 font-semibold text-[var(--color-system-red)] bg-[var(--color-system-red)]/10 rounded px-1.5 py-0.5">
-                          재고 {it.current_stock}
-                        </span>
-                      )}
-                    </div>
-                    {it.display_name && it.display_name !== it.style_code && (
-                      <div className="text-caption2 text-[var(--color-label-tertiary)] truncate max-w-[260px]">
-                        {it.display_name}
-                      </div>
+                  <td>
+                    {it.product_line
+                      ? LINE_LABELS[it.product_line as keyof typeof LINE_LABELS] ?? it.product_line.toUpperCase()
+                      : '—'}
+                  </td>
+                  <td>{it.category ?? '—'}</td>
+                  <td>{it.brand_name}</td>
+                  <td className="code" style={lowStock ? { color: 'var(--color-system-red)', fontWeight: 700 } : undefined}>
+                    {it.style_code ?? '—'}
+                    {lowStock && (
+                      <span className="ml-2 text-caption2 font-semibold text-[var(--color-system-red)] bg-[var(--color-system-red)]/10 rounded px-1.5 py-0.5">
+                        재고 {it.current_stock}
+                      </span>
                     )}
                   </td>
-                  <td className="p-3 text-right tabular-nums font-semibold">
+                  <td className="code">{formatColor(it.color_code)}</td>
+                  <td className="num" style={{ fontWeight: 600 }}>
                     {qty}
                     {overridden && (
                       <span className="ml-1 text-caption2 text-[var(--color-system-orange)]">*</span>
                     )}
                   </td>
-                  <td className="p-3 text-right tabular-nums hidden sm:table-cell">
-                    ₩{it.cost_price.toLocaleString()}
-                  </td>
-                  <td className="p-3 text-right tabular-nums font-semibold">
+                  <td className="num">₩{it.cost_price.toLocaleString()}</td>
+                  <td className="num" style={{ fontWeight: 600 }}>
                     ₩{(qty * it.cost_price).toLocaleString()}
                   </td>
                 </tr>
@@ -601,7 +605,7 @@ function QuantityEditDialog({
           </h3>
           <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
             {item.brand_name} · {item.style_code ?? '—'}
-            {item.color_code ? ` / ${item.color_code}` : ''}
+            {item.color_code ? ` / ${formatColor(item.color_code)}` : ''}
           </p>
           {item.current_stock <= 1 && (
             <p className="text-caption2 font-semibold text-[var(--color-system-red)] mt-1">

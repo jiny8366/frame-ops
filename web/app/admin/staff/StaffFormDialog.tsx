@@ -46,6 +46,10 @@ interface StaffFormDialogProps {
   onSaved: () => void;
   /** 호출할 API 베이스. 기본 /api/admin/staff. HQ 페이지에서는 /api/hq/staff 사용. */
   apiBase?: string;
+  /** 역할 드롭다운에 노출할 코드 화이트리스트. 미지정 시 전체. */
+  allowedRoles?: readonly string[];
+  /** 근무지(매장) 잠금. 지정되면 select 비활성 + 해당 store_id 강제. */
+  lockedStoreId?: string | null;
 }
 
 const fetcher = async (url: string) => {
@@ -62,21 +66,38 @@ const storesFetcher = async (url: string): Promise<StoreOpt[]> => {
   return json.data ?? [];
 };
 
-export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/api/admin/staff' }: StaffFormDialogProps) {
+export function StaffFormDialog({
+  mode,
+  initial,
+  onClose,
+  onSaved,
+  apiBase = '/api/admin/staff',
+  allowedRoles,
+  lockedStoreId,
+}: StaffFormDialogProps) {
   const { session } = useSession();
   const callerIsHq = !!session && session.role_code.startsWith('hq_');
 
   const { data: opts } = useSWR<RolesResponse>('/api/admin/staff/roles', fetcher);
   const { data: stores } = useSWR<StoreOpt[]>('/api/hq/stores', storesFetcher);
 
+  // 신규 생성 시 기본 role — 화이트리스트가 있으면 그 첫 항목, 없으면 store_staff.
+  const defaultRoleCode = useMemo(() => {
+    if (initial?.role_code) return initial.role_code;
+    if (allowedRoles && allowedRoles.length > 0) return allowedRoles[0];
+    return 'store_staff';
+  }, [initial?.role_code, allowedRoles]);
+
   const [loginId, setLoginId] = useState(initial?.login_id ?? '');
   const [displayName, setDisplayName] = useState(initial?.display_name ?? '');
-  const [roleCode, setRoleCode] = useState(initial?.role_code ?? 'store_staff');
+  const [roleCode, setRoleCode] = useState(defaultRoleCode);
   const [jobTitleCode, setJobTitleCode] = useState(initial?.job_title_code ?? '');
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [active, setActive] = useState(initial?.active ?? true);
   const [password, setPassword] = useState('');
-  const [storeId, setStoreId] = useState<string>(initial?.store_id ?? '');
+  const [storeId, setStoreId] = useState<string>(
+    lockedStoreId ?? initial?.store_id ?? ''
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +107,27 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/a
     () => (stores ?? []).filter((s) => s.active),
     [stores]
   );
+
+  // 화이트리스트 적용된 역할 옵션
+  const visibleRoles = useMemo(() => {
+    const all = opts?.roles ?? [];
+    if (!allowedRoles || allowedRoles.length === 0) return all;
+    return all.filter((r) => allowedRoles.includes(r.code));
+  }, [opts?.roles, allowedRoles]);
+
+  // 지점 역할은 login_id = 매장 store_code 로 자동. 매장 변경 시 동기화.
+  const selectedStoreCode = useMemo(() => {
+    if (!storeId) return '';
+    return (stores ?? []).find((s) => s.id === storeId)?.store_code ?? '';
+  }, [storeId, stores]);
+
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (!isStoreRole) return;
+    if (selectedStoreCode && loginId !== selectedStoreCode) {
+      setLoginId(selectedStoreCode);
+    }
+  }, [mode, isStoreRole, selectedStoreCode, loginId]);
 
   // 역할 scope 에 맞는 직급만 노출 (지점 역할 → store, 본사 역할 → hq, 그 외 → both 포함)
   const visibleJobTitles = useMemo(() => {
@@ -244,11 +286,17 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/a
                 type="text"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                disabled={mode === 'edit'}
+                disabled={mode === 'edit' || isStoreRole}
                 required
                 autoCapitalize="none"
+                placeholder={isStoreRole ? '매장 선택 시 자동 입력' : ''}
                 className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-50"
               />
+              {isStoreRole && mode === 'create' && (
+                <span className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
+                  지점 계정은 매장 코드를 공통 ID 로 사용합니다 (비밀번호로 직원 구분).
+                </span>
+              )}
             </Field>
 
             <Field label="이름">
@@ -267,7 +315,7 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/a
                 onChange={(e) => setRoleCode(e.target.value)}
                 className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
               >
-                {(opts?.roles ?? []).map((r) => (
+                {visibleRoles.map((r) => (
                   <option key={r.code} value={r.code}>
                     {r.label}
                   </option>
@@ -348,7 +396,8 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/a
                   value={storeId}
                   onChange={(e) => setStoreId(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                  disabled={!!lockedStoreId}
+                  className="w-full rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
                 >
                   <option value="">매장 선택</option>
                   {activeStores.map((s) => (
@@ -358,7 +407,9 @@ export function StaffFormDialog({ mode, initial, onClose, onSaved, apiBase = '/a
                   ))}
                 </select>
                 <span className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
-                  지점 역할은 한 매장에 소속됩니다.
+                  {lockedStoreId
+                    ? '본인 매장으로 자동 지정됩니다.'
+                    : '지점 역할은 한 매장에 소속됩니다.'}
                 </span>
               </Field>
             )}

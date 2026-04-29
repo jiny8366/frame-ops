@@ -1,11 +1,15 @@
-// Frame Ops Web — 계정설정
-// 현재 매장 소속 계정 리스트 + 추가/편집 모달.
+// Frame Ops Web — 매장 계정 (지점 매니저 화면)
+// 현재 매장 소속 판매사/일반 직원 계정 리스트 + 추가/편집 모달.
+// 본사·매니저 계정은 /hq/staff 에서 관리.
 
 'use client';
 
 import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { StaffFormDialog } from './StaffFormDialog';
+import { useSession } from '@/hooks/useSession';
+
+const STORE_MANAGER_ASSIGNABLE: readonly string[] = ['store_salesperson', 'store_staff'];
 
 interface StaffRow {
   user_id: string;
@@ -29,9 +33,15 @@ const fetcher = async (url: string): Promise<StaffRow[]> => {
 };
 
 export default function StaffAdminPage() {
+  const { session } = useSession();
   const { data: staff, isLoading, mutate } = useSWR<StaffRow[]>('/api/admin/staff', fetcher);
   const [editing, setEditing] = useState<StaffRow | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // 매장 계정 페이지는 판매사/직원만 다룸. 매니저는 본인 매장 잠금, HQ 는 자유 선택.
+  const callerIsManager = session?.role_code === 'store_manager';
+  const allowedRoles = STORE_MANAGER_ASSIGNABLE;
+  const lockedStoreId = callerIsManager ? session?.store_id ?? null : null;
 
   const handleAdd = useCallback(() => setCreating(true), []);
   const handleEdit = useCallback((row: StaffRow) => setEditing(row), []);
@@ -48,13 +58,13 @@ export default function StaffAdminPage() {
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <div className="max-w-[900px] mx-auto flex flex-col gap-4">
         <header className="flex items-center justify-between">
-          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">계정설정</h1>
+          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">매장 계정</h1>
           <button
             type="button"
             onClick={handleAdd}
             className="pressable touch-target rounded-xl bg-[var(--color-system-blue)] px-4 py-2 text-callout font-semibold text-white"
           >
-            + 계정 추가
+            + 매장 계정 추가
           </button>
         </header>
 
@@ -133,6 +143,8 @@ export default function StaffAdminPage() {
           initial={editing}
           onClose={handleClose}
           onSaved={handleSaved}
+          allowedRoles={allowedRoles}
+          lockedStoreId={lockedStoreId}
         />
       )}
     </main>

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { formatColor } from '@/lib/product-codes';
 
 interface OrderItem {
   product_id: string;
@@ -387,7 +388,7 @@ export default function OrdersPrintPage() {
               <td>{idx + 1}</td>
               <td>{it.brand_name}</td>
               <td>{it.style_code ?? '—'}</td>
-              <td>{it.color_code ?? '—'}</td>
+              <td>{formatColor(it.color_code)}</td>
               <td className="right">{it.qty.toLocaleString()}</td>
               <td className="right">₩{it.cost_price.toLocaleString()}</td>
               <td className="right">

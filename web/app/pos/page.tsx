@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { CartView } from './components/CartView';
 import { PriceSummary } from './components/PriceSummary';
 import { ProductSearch } from './components/ProductSearch';
@@ -15,6 +16,24 @@ import { useCart, type CartProductSnapshot } from '@/hooks/useCart';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useSession } from '@/hooks/useSession';
 
+interface AccessibleStore {
+  id: string;
+  store_code: string;
+  name: string;
+}
+
+const HQ_DEFAULT_STORE_NAME = '명안당 서울 북촌점';
+
+const accessibleStoresFetcher = async (url: string): Promise<AccessibleStore[]> => {
+  const res = await fetch(url);
+  const json = (await res.json()) as {
+    data: { stores: AccessibleStore[] } | null;
+    error: string | null;
+  };
+  if (json.error || !json.data) throw new Error(json.error ?? '응답 없음');
+  return json.data.stores ?? [];
+};
+
 function todayIso(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
@@ -24,7 +43,29 @@ export default function PosPage() {
   const { submit } = useCheckout();
   const { session } = useSession();
 
-  const storeId = session?.store_id ?? '';
+  const isHq = session?.role_code?.startsWith('hq_') ?? false;
+
+  // HQ 사용자는 매장 드롭다운에서 선택. 비-HQ 는 세션 매장 고정.
+  const { data: accessibleStores = [] } = useSWR<AccessibleStore[]>(
+    isHq ? '/api/auth/accessible-stores' : null,
+    accessibleStoresFetcher
+  );
+
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+
+  // HQ — 매장 리스트 도착 시 기본값 세팅 (명안당 서울 북촌점 우선, 없으면 첫 매장)
+  useEffect(() => {
+    if (!isHq || selectedStoreId || accessibleStores.length === 0) return;
+    const preferred = accessibleStores.find((s) => s.name === HQ_DEFAULT_STORE_NAME);
+    setSelectedStoreId(preferred?.id ?? accessibleStores[0].id);
+  }, [isHq, selectedStoreId, accessibleStores]);
+
+  const selectedStore = useMemo(
+    () => (isHq ? accessibleStores.find((s) => s.id === selectedStoreId) ?? null : null),
+    [isHq, accessibleStores, selectedStoreId]
+  );
+
+  const storeId = isHq ? selectedStoreId : session?.store_id ?? '';
 
   const [discountOpen, setDiscountOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -140,16 +181,43 @@ export default function PosPage() {
 
         {/* 우측: 장바구니 + 가격 + 액션 */}
         <section className="flex flex-col gap-3 min-h-0">
-          {/* 헤더: 지점명 + 판매일자 picker */}
+          {/* 헤더: 지점명 (HQ 는 드롭다운) + 판매일자 picker */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-baseline gap-2 min-w-0">
-              <h1 className="text-title3 font-bold text-[var(--color-label-primary)] truncate">
-                {session?.store_name ?? 'POS 판매'}
-              </h1>
-              {session && (
-                <span className="text-caption1 text-[var(--color-label-tertiary)]">
-                  {session.store_code}
-                </span>
+              {isHq ? (
+                <>
+                  <select
+                    value={selectedStoreId}
+                    onChange={(e) => setSelectedStoreId(e.target.value)}
+                    className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-title3 font-bold text-[var(--color-label-primary)] max-w-[260px] truncate"
+                    aria-label="POS 판매 매장 선택"
+                  >
+                    {accessibleStores.length === 0 && (
+                      <option value="">매장 로딩 중…</option>
+                    )}
+                    {accessibleStores.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedStore && (
+                    <span className="text-caption1 text-[var(--color-label-tertiary)]">
+                      {selectedStore.store_code}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h1 className="text-title3 font-bold text-[var(--color-label-primary)] truncate">
+                    {session?.store_name ?? 'POS 판매'}
+                  </h1>
+                  {session && (
+                    <span className="text-caption1 text-[var(--color-label-tertiary)]">
+                      {session.store_code}
+                    </span>
+                  )}
+                </>
               )}
             </div>
             <label className="flex items-center gap-2 shrink-0">

@@ -9,6 +9,7 @@ import { Toaster, toast } from 'sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 import { PendingSyncBadge } from '@/components/PendingSyncBadge';
+import { TransferInboxDialog } from '@/components/transfers/TransferInboxDialog';
 import { getDeadLetterItems, initSyncListeners, retryDeadLetter } from '@/lib/db/sync';
 import { dbGetAll } from '@/lib/db/indexeddb';
 import type { Product } from '@/types';
@@ -107,6 +108,8 @@ export function Providers({ children }: ProvidersProps) {
         {children}
         {/* 미동기화 판매 배지 — 우하단 고정, 큐 비어있으면 미렌더 */}
         <PendingSyncBadge />
+        {/* 점간이동 받은 전표함 팝업 — 미처리 전표 있으면 자동 표시 */}
+        <TransferInboxDialog />
         {/* sonner Toast — 결제 완료/실패, 동기화 알림 등 */}
         <Toaster
           position="top-center"

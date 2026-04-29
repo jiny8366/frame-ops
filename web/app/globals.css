@@ -240,3 +240,76 @@
     transition: transform 0.1s ease-out;
   }
 }
+
+/* ── 데이터 리스트 표준 (Frame Ops 정책) ─────────────────────────────────────
+   - 본문 텍스트: callout (15px) — 모든 컬럼 동일 사이즈
+   - 헤더 텍스트: caption1 (12px) — 본문보다 작게
+   - 셀 패딩: px-3 py-2 — 너무 넓지 않게, 한 행 다수 컬럼이 보이도록
+   - 가로 스크롤 컨테이너로 좁은 화면에서도 모든 컬럼 표시 (hidden 컬럼 X)
+   - 숫자/코드 셀 위치 표준화
+*/
+@layer components {
+  .data-list-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;          /* text-callout */
+    line-height: 1.35;
+  }
+
+  .data-list-table thead {
+    background-color: var(--color-fill-quaternary);
+    color: var(--color-label-secondary);
+    font-size: 12px;          /* text-caption1 */
+    font-weight: 500;
+  }
+
+  .data-list-table th,
+  .data-list-table td {
+    padding: 8px 12px;        /* px-3 py-2 */
+    vertical-align: middle;
+    text-align: left;
+    white-space: nowrap;      /* 한 셀 한 줄 — 깨짐 방지 */
+  }
+
+  .data-list-table tbody tr {
+    border-top: 1px solid var(--color-separator-opaque);
+  }
+
+  .data-list-table tbody tr:hover {
+    background-color: var(--color-fill-quaternary);
+  }
+
+  .data-list-table tfoot {
+    background-color: var(--color-fill-quaternary);
+    font-weight: 600;
+  }
+
+  .data-list-table tfoot td {
+    padding: 10px 12px;       /* 푸터는 약간 넉넉 */
+  }
+
+  /* 셀 변형 — 숫자/코드 */
+  .data-list-table .num,
+  .data-list-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .data-list-table .code,
+  .data-list-code {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    letter-spacing: 0.01em;
+  }
+
+  /* 라인 번호 — 보조 정보 톤 */
+  .data-list-table .meta {
+    color: var(--color-label-tertiary);
+    font-size: 12px;
+  }
+}

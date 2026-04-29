@@ -50,15 +50,20 @@ export function Header() {
             <span className="text-[15px] font-bold tracking-tight">Frame Ops</span>
           </Link>
 
-          {/* 현재 지점명 — 세션 있을 때만 */}
-          {session && (
-            <span
-              className="hidden md:inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--color-fill-quaternary)] text-[12px] font-medium text-[var(--color-label-secondary)] truncate max-w-[10rem]"
-              title={`${session.store_name} (${session.store_code})`}
-            >
-              {session.store_name}
-            </span>
-          )}
+          {/* 현재 지점명 — 본사 계정은 전 매장 통합이므로 '전체 매장' 으로 표시 */}
+          {session && (() => {
+            const isHq = session.role_code.startsWith('hq_');
+            const label = isHq ? '전체 매장' : session.store_name;
+            const titleAttr = isHq ? '본사 계정 — 전체 매장 관리' : `${session.store_name} (${session.store_code})`;
+            return (
+              <span
+                className="hidden md:inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--color-fill-quaternary)] text-[12px] font-medium text-[var(--color-label-secondary)] truncate max-w-[10rem]"
+                title={titleAttr}
+              >
+                {label}
+              </span>
+            );
+          })()}
 
           {/* 데스크톱 네비게이션 — 모바일에서 숨김 */}
           <nav className="hidden md:flex items-center gap-1" aria-label="주 내비게이션">

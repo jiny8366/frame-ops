@@ -6,11 +6,13 @@
 
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import useSWR from 'swr';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { formatColor } from '@/lib/product-codes';
 import { PendingList } from './PendingList';
 
 interface Supplier {
@@ -32,6 +34,7 @@ interface ProductRow {
   cost_price: number | null;
   stock_quantity: number | null;
   brand_name: string;
+  category?: string | null;
 }
 
 interface InboundLine {
@@ -40,6 +43,7 @@ interface InboundLine {
   color_code: string;
   display_name: string;
   brand_name: string;
+  category: string;
   quantity: number;
   unit_cost: number;
 }
@@ -72,6 +76,8 @@ export default function InboundPage() {
   // 제품 검색
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 200);
+  // 검색 결과 유지 — 체크 시 항목 선택 후에도 검색어/결과 리스트를 닫지 않아 연속 추가 가능.
+  const [keepSearch, setKeepSearch] = useState(false);
 
   const { data: results = [], isValidating: searching } = useSWR<ProductRow[]>(
     debouncedQuery ? ['inbound-search', debouncedQuery] : null,
@@ -88,6 +94,7 @@ export default function InboundPage() {
   const supplierSelectRef = useRef<HTMLSelectElement>(null);
 
   // 라인 추가 (이미 있는 product 면 수량 +1) — 검색 모드용
+  // keepSearch 가 true 이면 검색어를 유지해 결과 리스트를 닫지 않음 (연속 선택).
   const handleAddProduct = useCallback((p: ProductRow) => {
     setLines((prev) => {
       const idx = prev.findIndex((l) => l.product_id === p.id);
@@ -104,13 +111,14 @@ export default function InboundPage() {
           color_code: p.color_code ?? '',
           display_name: p.display_name ?? '',
           brand_name: p.brand_name,
+          category: p.category ?? '',
           quantity: 1,
           unit_cost: p.cost_price ?? 0,
         },
       ];
     });
-    setQuery('');
-  }, []);
+    if (!keepSearch) setQuery('');
+  }, [keepSearch]);
 
   const handleQty = useCallback((idx: number, value: number) => {
     setLines((prev) => {
@@ -216,7 +224,15 @@ export default function InboundPage() {
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <form onSubmit={handleSubmit} className="max-w-[900px] mx-auto flex flex-col gap-4">
-        <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">매입 등록</h1>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">매입 등록</h1>
+          <Link
+            href="/admin/inbound/history"
+            className="pressable touch-target rounded-xl bg-[var(--color-fill-tertiary)] px-3 py-2 text-callout font-medium"
+          >
+            📋 매입 내역 조회
+          </Link>
+        </div>
 
         {/* 전표 정보 */}
         <div className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -289,20 +305,39 @@ export default function InboundPage() {
 
           {mode === 'search' ? (
             <>
-              <Field label="제품 검색 (스타일코드 / 제품명 / 색상)">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="inbound-search-input" className="text-caption1 text-[var(--color-label-secondary)]">
+                    제품 검색 (스타일코드 / 제품명 / 색상)
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none text-caption1 text-[var(--color-label-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={keepSearch}
+                      onChange={(e) => setKeepSearch(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--color-system-blue)]"
+                    />
+                    <span>검색항목 유지</span>
+                  </label>
+                </div>
                 <div className="relative">
                   <input
+                    id="inbound-search-input"
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="검색 후 결과 카드를 클릭해 추가"
+                    placeholder={
+                      keepSearch
+                        ? '연속 선택 모드 — 클릭마다 라인 추가 (수량 +1)'
+                        : '검색 후 결과 카드를 클릭해 추가'
+                    }
                     className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
                   />
                   {searching && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
                   )}
                 </div>
-              </Field>
+              </div>
 
               {debouncedQuery && results.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[260px] overflow-auto">
@@ -318,7 +353,7 @@ export default function InboundPage() {
                       </span>
                       <span className="text-callout font-semibold truncate w-full">
                         {r.style_code ?? '—'}
-                        {r.color_code ? ` / ${r.color_code}` : ''}
+                        {r.color_code ? ` / ${formatColor(r.color_code)}` : ''}
                       </span>
                       <span className="text-caption2 text-[var(--color-label-tertiary)] tabular-nums">
                         재고 {r.stock_quantity ?? 0} · 매입가 ₩
@@ -347,82 +382,77 @@ export default function InboundPage() {
               위 검색에서 제품을 추가하세요
             </p>
           ) : (
-            <table className="w-full text-callout">
-              <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)]">
-                <tr>
-                  <th className="text-left p-3">제품</th>
-                  <th className="text-right p-3 w-24">수량</th>
-                  <th className="text-right p-3 w-28">단가</th>
-                  <th className="text-right p-3 w-28 hidden sm:table-cell">금액</th>
-                  <th className="p-3 w-12"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((l, idx) => (
-                  <tr key={l.product_id} className="border-t border-[var(--color-separator-opaque)]">
-                    <td className="p-3">
-                      <div className="text-caption2 text-[var(--color-label-secondary)]">
-                        {l.brand_name}
-                      </div>
-                      <div className="font-semibold">
-                        {l.style_code}
-                        {l.color_code ? ` / ${l.color_code}` : ''}
-                      </div>
-                      {l.display_name && l.display_name !== l.style_code && (
-                        <div className="text-caption2 text-[var(--color-label-tertiary)] truncate">
-                          {l.display_name}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3 text-right">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        value={l.quantity}
-                        onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
-                        className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-right tabular-nums"
-                      />
-                    </td>
-                    <td className="p-3 text-right">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={100}
-                        value={l.unit_cost}
-                        onChange={(e) => handleCost(idx, Number(e.target.value) || 0)}
-                        className="w-24 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-right tabular-nums"
-                      />
-                    </td>
-                    <td className="p-3 text-right hidden sm:table-cell tabular-nums">
-                      ₩{(l.quantity * l.unit_cost).toLocaleString()}
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(idx)}
-                        className="pressable text-[var(--color-system-red)]"
-                        aria-label="삭제"
-                      >
-                        ✕
-                      </button>
-                    </td>
+            <div className="data-list-scroll">
+              <table className="data-list-table">
+                <thead>
+                  <tr>
+                    <th>카테고리</th>
+                    <th className="num">라인</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">수량</th>
+                    <th className="num">단가</th>
+                    <th className="num">합계</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-[var(--color-fill-quaternary)] text-callout">
-                <tr>
-                  <td className="p-3 font-semibold text-[var(--color-label-secondary)]">합계</td>
-                  <td className="p-3 text-right font-semibold tabular-nums">{totalQty}</td>
-                  <td className="p-3"></td>
-                  <td className="p-3 text-right font-semibold tabular-nums hidden sm:table-cell">
-                    ₩{totalCost.toLocaleString()}
-                  </td>
-                  <td className="p-3"></td>
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {lines.map((l, idx) => (
+                    <tr key={l.product_id}>
+                      <td>{l.category || '—'}</td>
+                      <td className="num meta">{idx + 1}</td>
+                      <td>{l.brand_name || '—'}</td>
+                      <td className="code">{l.style_code}</td>
+                      <td className="code">{formatColor(l.color_code)}</td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          value={l.quantity}
+                          onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
+                          className="w-16 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
+                        />
+                      </td>
+                      <td className="num">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={100}
+                          value={l.unit_cost}
+                          onChange={(e) => handleCost(idx, Number(e.target.value) || 0)}
+                          className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
+                        />
+                      </td>
+                      <td className="num" style={{ fontWeight: 600 }}>
+                        ₩{(l.quantity * l.unit_cost).toLocaleString()}
+                      </td>
+                      <td className="num">
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(idx)}
+                          className="pressable text-[var(--color-system-red)]"
+                          aria-label="삭제"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={5}>합계</td>
+                    <td className="num">{totalQty}</td>
+                    <td></td>
+                    <td className="num">₩{totalCost.toLocaleString()}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           )}
         </div>
         )}

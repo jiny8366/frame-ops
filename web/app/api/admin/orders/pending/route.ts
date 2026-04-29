@@ -34,7 +34,28 @@ export async function GET(request: Request) {
   }
 
   // 응답: { period, store, groups: [{supplier, items, totals}] }
-  const rows = data ?? [];
+  type PendingOrderRow = (typeof data extends Array<infer R> ? R : never) & {
+    product_line?: string | null;
+    category?: string | null;
+    current_stock?: number;
+  };
+  const rows = (data ?? []) as PendingOrderRow[];
+
+  // 라인/카테고리/현재고 — RPC 미반환 → fo_products 별도 조회로 보강
+  const productIds = Array.from(new Set(rows.map((r) => r.product_id)));
+  if (productIds.length > 0) {
+    const { data: meta } = await db
+      .from('fo_products')
+      .select('id, product_line, category, stock_quantity')
+      .in('id', productIds);
+    const metaMap = new Map((meta ?? []).map((m) => [m.id, m]));
+    for (const r of rows) {
+      const m = metaMap.get(r.product_id);
+      r.product_line = m?.product_line ?? null;
+      r.category = m?.category ?? null;
+      r.current_stock = m?.stock_quantity ?? 0;
+    }
+  }
   const groupsMap = new Map<
     string,
     {

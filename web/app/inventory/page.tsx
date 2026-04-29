@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { useSession } from '@/hooks/useSession';
 import { hasPermission } from '@/lib/auth/permissions';
+import { formatColor, LINE_LABELS } from '@/lib/product-codes';
 
 interface ProductRow {
   id: string;
@@ -150,23 +151,24 @@ export default function InventoryPage() {
               조건에 맞는 상품이 없습니다.
             </p>
           ) : (
-            <div className="overflow-auto max-h-[720px]">
-              <table className="w-full text-callout">
-                <thead className="bg-[var(--color-fill-quaternary)] text-caption1 text-[var(--color-label-secondary)] sticky top-0">
+            <div className="data-list-scroll" style={{ maxHeight: 720 }}>
+              <table className="data-list-table">
+                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr>
-                    <th className="text-left p-3">브랜드</th>
-                    <th className="text-left p-3">상품</th>
-                    <th className="text-left p-3 hidden sm:table-cell">분류</th>
-                    <th className="text-right p-3 w-16 hidden md:table-cell">매입</th>
-                    <th className="text-right p-3 w-16 hidden md:table-cell">판매</th>
-                    <th className="text-right p-3 w-20">현재고</th>
-                    <th className="text-right p-3 w-24 hidden lg:table-cell">매입가</th>
-                    <th className="text-right p-3 w-28">판매가</th>
+                    <th>라인</th>
+                    <th>카테고리</th>
+                    <th>브랜드</th>
+                    <th>제품번호</th>
+                    <th>컬러</th>
+                    <th className="num">매입</th>
+                    <th className="num">판매</th>
+                    <th className="num">현재고</th>
+                    <th className="num">매입가</th>
+                    <th className="num">판매가</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((p) => {
-                    // 거래 이력 기반 계산 재고 (매입 누계 - 판매 누계)
                     const stock = p.computed_stock;
                     const isNegative = stock < 0;
                     const isOut = stock === 0;
@@ -175,53 +177,37 @@ export default function InventoryPage() {
                       <tr
                         key={p.id}
                         onClick={canEditStock ? () => setEditing(p) : undefined}
-                        className={[
-                          'border-t border-[var(--color-separator-opaque)]',
-                          canEditStock
-                            ? 'cursor-pointer hover:bg-[var(--color-fill-quaternary)]'
-                            : '',
-                        ].join(' ')}
+                        style={canEditStock ? { cursor: 'pointer' } : undefined}
                         title={canEditStock ? '클릭 — 재고 수량 편집' : undefined}
                       >
-                        <td className="p-3 text-caption1">{p.brand_name ?? '—'}</td>
-                        <td className="p-3">
-                          <div className="font-semibold">
-                            {p.style_code ?? '—'}
-                            {p.color_code ? ` / ${p.color_code}` : ''}
-                          </div>
-                          {p.display_name && p.display_name !== p.style_code && (
-                            <div className="text-caption2 text-[var(--color-label-tertiary)] truncate max-w-[260px]">
-                              {p.display_name}
-                            </div>
-                          )}
+                        <td>
+                          {p.product_line
+                            ? LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line.toUpperCase()
+                            : '—'}
                         </td>
-                        <td className="p-3 text-caption1 text-[var(--color-label-secondary)] hidden sm:table-cell">
-                          {[p.category, p.product_line].filter(Boolean).join('/') || '—'}
-                        </td>
-                        <td className="p-3 text-right tabular-nums hidden md:table-cell text-[var(--color-label-secondary)]">
-                          {p.total_inbound}
-                        </td>
-                        <td className="p-3 text-right tabular-nums hidden md:table-cell text-[var(--color-label-secondary)]">
-                          {p.total_sold}
-                        </td>
-                        <td className="p-3 text-right tabular-nums font-semibold">
+                        <td>{p.category ?? '—'}</td>
+                        <td>{p.brand_name ?? '—'}</td>
+                        <td className="code">{p.style_code ?? '—'}</td>
+                        <td className="code">{formatColor(p.color_code)}</td>
+                        <td className="num">{p.total_inbound}</td>
+                        <td className="num">{p.total_sold}</td>
+                        <td className="num">
                           <span
                             className={[
-                              'inline-flex items-center px-2 py-0.5 rounded-full text-caption1',
+                              'inline-flex items-center px-2 py-0.5 rounded-full',
                               isNegative || isOut
                                 ? 'bg-[var(--color-system-red)]/15 text-[var(--color-system-red)]'
                                 : isLow
                                   ? 'bg-[var(--color-system-orange)]/15 text-[var(--color-system-orange)]'
                                   : '',
                             ].join(' ')}
+                            style={{ fontWeight: 600 }}
                           >
                             {stock}
                           </span>
                         </td>
-                        <td className="p-3 text-right tabular-nums hidden lg:table-cell">
-                          ₩{(p.cost_price ?? 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 text-right tabular-nums">
+                        <td className="num">₩{(p.cost_price ?? 0).toLocaleString()}</td>
+                        <td className="num" style={{ fontWeight: 600 }}>
                           ₩{(p.sale_price ?? 0).toLocaleString()}
                         </td>
                       </tr>
@@ -331,7 +317,7 @@ function StockEditDialog({
           </h3>
           <p className="text-caption1 text-[var(--color-label-secondary)] truncate">
             {item.brand?.name ?? '—'} · {item.style_code ?? '—'}
-            {item.color_code ? ` / ${item.color_code}` : ''}
+            {item.color_code ? ` / ${formatColor(item.color_code)}` : ''}
           </p>
         </header>
 

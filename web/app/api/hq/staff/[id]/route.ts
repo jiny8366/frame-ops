@@ -1,5 +1,7 @@
 // Frame Ops Web — /api/hq/staff/[id]
 // 본사용 단일 직원 PATCH (스코프 검증 없이 모든 매장 직원 편집 가능).
+// 단, role_code 변경은 본사 역할(hq_*) 또는 지점 매니저(store_manager) 로만 허용 —
+// 판매사/직원으로의 강등은 지점에서 처리하도록 분리.
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
@@ -8,6 +10,13 @@ import { hashPassword } from '@/lib/auth/password';
 import type { Database } from '@/types/database';
 
 type StaffUpdate = Database['public']['Tables']['fo_staff_profiles']['Update'];
+
+const HQ_ASSIGNABLE_ROLES = [
+  'hq_super',
+  'hq_purchase',
+  'hq_view',
+  'store_manager',
+] as const;
 
 interface PatchBody {
   display_name?: string;
@@ -35,6 +44,20 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = (await request.json()) as PatchBody;
+
+    if (
+      body.role_code !== undefined &&
+      !HQ_ASSIGNABLE_ROLES.includes(body.role_code as (typeof HQ_ASSIGNABLE_ROLES)[number])
+    ) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: '본사 화면에서는 본사 역할 또는 지점 매니저로만 변경할 수 있습니다. 판매사/직원 역할 변경은 지점에서 처리하세요.',
+        },
+        { status: 403 }
+      );
+    }
+
     const update: StaffUpdate = {};
     if (body.display_name !== undefined) update.display_name = body.display_name.trim();
     if (body.role_code !== undefined) update.role_code = body.role_code;
