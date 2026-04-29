@@ -19,6 +19,7 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   { key: 'inventory_pending',  label: '발주 대기',          group: '운영',     scope: 'store' },
   { key: 'orders_list',       label: '주문리스트',         group: '운영',     scope: 'store' },
   { key: 'inbound_register',  label: '매입 등록',          group: '운영',     scope: 'store' },
+  { key: 'interstore_transfer', label: '점간이동',         group: '운영',     scope: 'both'  },
   { key: 'settlement',        label: '정산',               group: '운영',     scope: 'store' },
 
   // 분석
@@ -78,6 +79,7 @@ export const ROLE_DEFAULTS: Record<string, string[]> = {
     'inventory_pending',
     'orders_list',
     'inbound_register',
+    'interstore_transfer',
     'settlement',
     'sales_stats',
     'sales_search',
