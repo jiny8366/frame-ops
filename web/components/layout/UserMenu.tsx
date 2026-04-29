@@ -84,6 +84,7 @@ export function UserMenu({ session }: UserMenuProps) {
     { divider: true, label: '', enabled: false },
 
     // ── 본사 전용 (hq_* 만) ────────────────────────────────────────
+    // 본사 관점: 모든 매장 간 점간이동 한 곳에서 조망/처리. 보내는 매장 자유 선택.
     ...(isHq
       ? ([
           { label: '대시보드', enabled: true, href: '/hq', perm: 'hq_dashboard' },
@@ -93,6 +94,7 @@ export function UserMenu({ session }: UserMenuProps) {
           { label: '본사 통합 통계', enabled: true, href: '/hq/stats', perm: 'hq_stats' },
           { label: '본사 판매내역', enabled: true, href: '/hq/sales-search', perm: 'hq_sales_search' },
           { label: '매장 비교', enabled: true, href: '/hq/comparison', perm: 'hq_comparison' },
+          { label: '점간이동 (전체)', enabled: true, href: '/admin/transfers', perm: 'interstore_transfer' },
           { divider: true, label: '', enabled: false },
         ] as MenuItem[])
       : []),
@@ -103,7 +105,6 @@ export function UserMenu({ session }: UserMenuProps) {
     { label: '정산', enabled: true, href: '/admin/settlement', perm: 'settlement' },
     { label: '주문리스트', enabled: true, href: '/admin/orders', perm: 'orders_list' },
     { label: '매입 등록', enabled: true, href: '/admin/inbound', perm: 'inbound_register' },
-    { label: '점간이동', enabled: true, href: '/admin/transfers', perm: 'interstore_transfer' },
     { label: '재고 조회', enabled: true, href: '/inventory', perm: 'inventory_view' },
     { label: '발주 대기', enabled: true, href: '/inventory/pending', perm: 'inventory_pending' },
     { divider: true, label: '', enabled: false },
@@ -123,10 +124,12 @@ export function UserMenu({ session }: UserMenuProps) {
     },
     // HQ 사용자는 '매장 관리' 에 매장 정보가 통합되어 있으므로 '매장 정보' 메뉴 회피
     // HQ 사용자는 본사 그룹의 '근태관리' 사용
+    // 점간이동: 지점 관점 — 보내는 매장은 본인 매장 자동 고정, 본인 매장 입고 전표 승인/반려
     ...(!isHq
       ? ([
           { label: '매장 정보', enabled: true, href: '/admin/store', perm: 'store_info_edit' },
           { label: '근태관리', enabled: true, href: '/admin/attendance', perm: 'attendance_view' },
+          { label: '점간이동', enabled: true, href: '/admin/transfers', perm: 'interstore_transfer' },
         ] as MenuItem[])
       : []),
   ];
