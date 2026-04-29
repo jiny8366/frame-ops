@@ -72,6 +72,8 @@ export default function InboundPage() {
   // 제품 검색
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 200);
+  // 검색 결과 유지 — 체크 시 항목 선택 후에도 검색어/결과 리스트를 닫지 않아 연속 추가 가능.
+  const [keepSearch, setKeepSearch] = useState(false);
 
   const { data: results = [], isValidating: searching } = useSWR<ProductRow[]>(
     debouncedQuery ? ['inbound-search', debouncedQuery] : null,
@@ -88,6 +90,7 @@ export default function InboundPage() {
   const supplierSelectRef = useRef<HTMLSelectElement>(null);
 
   // 라인 추가 (이미 있는 product 면 수량 +1) — 검색 모드용
+  // keepSearch 가 true 이면 검색어를 유지해 결과 리스트를 닫지 않음 (연속 선택).
   const handleAddProduct = useCallback((p: ProductRow) => {
     setLines((prev) => {
       const idx = prev.findIndex((l) => l.product_id === p.id);
@@ -109,8 +112,8 @@ export default function InboundPage() {
         },
       ];
     });
-    setQuery('');
-  }, []);
+    if (!keepSearch) setQuery('');
+  }, [keepSearch]);
 
   const handleQty = useCallback((idx: number, value: number) => {
     setLines((prev) => {
@@ -289,20 +292,39 @@ export default function InboundPage() {
 
           {mode === 'search' ? (
             <>
-              <Field label="제품 검색 (스타일코드 / 제품명 / 색상)">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="inbound-search-input" className="text-caption1 text-[var(--color-label-secondary)]">
+                    제품 검색 (스타일코드 / 제품명 / 색상)
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none text-caption1 text-[var(--color-label-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={keepSearch}
+                      onChange={(e) => setKeepSearch(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--color-system-blue)]"
+                    />
+                    <span>검색항목 유지</span>
+                  </label>
+                </div>
                 <div className="relative">
                   <input
+                    id="inbound-search-input"
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="검색 후 결과 카드를 클릭해 추가"
+                    placeholder={
+                      keepSearch
+                        ? '연속 선택 모드 — 클릭마다 라인 추가 (수량 +1)'
+                        : '검색 후 결과 카드를 클릭해 추가'
+                    }
                     className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
                   />
                   {searching && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-system-blue)] border-t-transparent" />
                   )}
                 </div>
-              </Field>
+              </div>
 
               {debouncedQuery && results.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[260px] overflow-auto">
