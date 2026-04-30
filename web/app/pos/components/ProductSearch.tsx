@@ -108,15 +108,19 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
       {/* 입력 (키보드 + 키패드 공용) — 두 입력 모두 같은 draft state 갱신 */}
       <div className="px-4 py-3 rounded-xl bg-[var(--color-fill-tertiary)] min-h-[60px] flex items-center gap-3">
         <input
-          type="text"
+          type="search"
           value={draft}
           onChange={handleInputChange}
-          inputMode="numeric"
+          /* 스마트폰에서 영문 QWERTY 키보드를 띄우기 위해 'text'.
+             태블릿/데스크톱은 시스템 키보드 그대로. T9 키패드는 sm 이상에서만 노출. */
+          inputMode="text"
+          enterKeyHint="search"
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="제품번호 또는 영문(T9) — 예: 7732 → SPE…"
-          aria-label="제품번호"
+          autoCapitalize="characters"
+          placeholder="제품번호 / 제품명 / 컬러 검색"
+          aria-label="제품 검색"
           className="flex-1 min-w-0 bg-transparent text-title1 font-semibold tabular-nums text-[var(--color-label-primary)] placeholder:text-[var(--color-label-tertiary)] placeholder:font-normal placeholder:text-callout focus:outline-none truncate"
         />
         <span className="text-caption1 text-[var(--color-label-secondary)] tabular-nums flex-none">
@@ -128,10 +132,11 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
         </span>
       </div>
 
-      {/* 본문: 좌측 키패드 + 우측 결과 리스트 */}
-      <div className="grid grid-cols-[auto_1fr] gap-3 flex-1 min-h-0">
-        {/* 키패드 — T9 (전화기 키패드) 영문 라벨 포함 */}
-        <div className="grid grid-cols-3 gap-2 content-start">
+      {/* 본문: (스마트폰) 결과만 / (태블릿·데스크톱) 좌측 T9 키패드 + 우측 결과 리스트.
+         스마트폰은 시스템 QWERTY 키보드만 사용 — T9 노출 시 화면 부족. */}
+      <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-3 flex-1 min-h-0">
+        {/* T9 키패드 — sm 이상에서만 표시 */}
+        <div className="hidden sm:grid grid-cols-3 gap-2 content-start">
           <DigitButton digit="1" letters="" onPress={handleAppend} />
           <DigitButton digit="2" letters="ABC" onPress={handleAppend} />
           <DigitButton digit="3" letters="DEF" onPress={handleAppend} />
@@ -149,7 +154,7 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
         {/* 결과 리스트 */}
         <div className="overflow-auto rounded-xl bg-[var(--color-bg-secondary)]">
           {!debouncedDraft.trim() ? (
-            <EmptyState message="숫자(제품번호) 또는 키패드 영문(T9) 입력 — 예: 7732 → SPECTER" />
+            <EmptyState message="제품번호 / 제품명 / 컬러로 검색" />
           ) : results.length === 0 ? (
             <EmptyState message={isValidating ? '검색 중…' : `"${debouncedDraft}" 결과 없음`} />
           ) : (
