@@ -5,6 +5,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 /**
  * 장바구니 라인 항목 — fo_sale_items DB shape 와 1:1 대응 (DB 저장 시 id 는 버려짐).
@@ -60,6 +61,15 @@ export function useCart(): UseCartReturn {
   const [items, setItems] = useState<CartItem[]>([]);
 
   const addItem = useCallback((product: CartProductSnapshot) => {
+    // 자동할인 적용 여부 사전 판정 — 토스트 알림용
+    const unitPrice = product.sale_price ?? 0;
+    // 재고 ≤1 (전시상품) — null(미관리)도 안전하게 자동 할인 적용
+    const isDisplayStock =
+      product.stock_quantity == null || product.stock_quantity <= 1;
+    const autoDiscount =
+      isDisplayStock && unitPrice > 0 ? calcDisplayStockDiscount(unitPrice) : 0;
+    let didAddNew = false;
+
     setItems((prev) => {
       // 동일 product_id 면 수량만 증가 (할인은 기존 라인 값 유지)
       const existing = prev.find((i) => i.product_id === product.id);
@@ -68,11 +78,7 @@ export function useCart(): UseCartReturn {
           i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      // 재고 ≤1 (전시상품) → 10% 자동 할인
-      const unitPrice = product.sale_price ?? 0;
-      const isDisplayStock =
-        product.stock_quantity != null && product.stock_quantity <= 1;
-      const autoDiscount = isDisplayStock ? calcDisplayStockDiscount(unitPrice) : 0;
+      didAddNew = true;
       return [
         ...prev,
         {
@@ -88,6 +94,13 @@ export function useCart(): UseCartReturn {
         },
       ];
     });
+
+    // 신규 라인 + 자동할인 적용 시 토스트 (사용자가 적용 사실 인지)
+    if (didAddNew && autoDiscount > 0) {
+      toast.success(`전시상품 10% 자동 할인 — ₩${autoDiscount.toLocaleString()} 할인 적용`, {
+        duration: 2500,
+      });
+    }
   }, []);
 
   const removeItem = useCallback((cartItemId: string) => {

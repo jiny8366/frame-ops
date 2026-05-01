@@ -67,19 +67,37 @@ export const CartItem = memo(function CartItem({
                 반품
               </span>
             )}
+            {item.discount_amount > 0 && !isReturn && (
+              <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-caption2 font-semibold bg-[var(--color-system-blue)] text-white">
+                전시 -10%
+              </span>
+            )}
             {titleText}
           </div>
-          {/* 데스크톱에서만: 단가·할인 캡션 */}
-          <div className="hidden sm:flex items-baseline gap-2 mt-0.5 text-caption1 text-[var(--color-label-secondary)]">
+          {/* 단가·할인 캡션 — 모바일·데스크톱 공통 */}
+          <div className="flex items-baseline gap-2 mt-0.5 text-caption1 text-[var(--color-label-secondary)] flex-wrap">
             <span>₩{item.unit_price.toLocaleString()}</span>
-            <span>·</span>
-            <button
-              type="button"
-              onClick={handleDiscount}
-              className="pressable underline-offset-2 hover:underline"
-            >
-              할인 ₩{item.discount_amount.toLocaleString()}
-            </button>
+            {item.discount_amount > 0 && (
+              <>
+                <span>·</span>
+                <button
+                  type="button"
+                  onClick={handleDiscount}
+                  className="pressable underline-offset-2 hover:underline text-[var(--color-system-blue)] font-semibold"
+                >
+                  −₩{item.discount_amount.toLocaleString()}
+                </button>
+              </>
+            )}
+            {item.discount_amount === 0 && (
+              <button
+                type="button"
+                onClick={handleDiscount}
+                className="pressable underline-offset-2 hover:underline hidden sm:inline"
+              >
+                할인
+              </button>
+            )}
           </div>
         </div>
         {/* 모바일 전용 삭제 버튼 (1행 우측) */}
