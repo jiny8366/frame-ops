@@ -78,19 +78,54 @@ export async function GET(request: Request) {
     .lte('returned_at', winEndIso);
   if (storeId) retQ = retQ.eq('store_id', storeId);
   const { data: retList } = await retQ;
-  let retAmount = 0;
-  let retQty = 0;
-  let retItems = 0;
+
+  // 환불 라인 — 제품·브랜드 정보까지 함께 조회 (top products 차감용)
+  interface RefundLine {
+    quantity: number;
+    unit_price: number;
+    return_id: string;
+    product_id: string;
+    product: {
+      style_code: string | null;
+      color_code: string | null;
+      brand: { name: string | null } | null;
+    } | null;
+  }
+  let retLines: RefundLine[] = [];
   if (retList && retList.length > 0) {
     const { data: rLines } = await db
       .from('fo_return_lines')
-      .select('quantity, unit_price, return_id')
+      .select(
+        `quantity, unit_price, return_id, product_id,
+         product:fo_products(style_code, color_code, brand:fo_brands(name))`
+      )
       .in('return_id', retList.map((r) => r.id));
-    for (const l of rLines ?? []) {
-      retItems += 1;
-      retQty += l.quantity;
-      retAmount += l.quantity * l.unit_price;
-    }
+    retLines = (rLines ?? []) as unknown as RefundLine[];
+  }
+
+  let retAmount = 0;
+  let retQty = 0;
+  let retItems = 0;
+  // 제품별 환불 집계 (top products 보정용)
+  const refundByProduct = new Map<
+    string,
+    { product_id: string; brand_name: string; style_code: string | null; color_code: string | null; quantity: number; revenue: number }
+  >();
+  for (const l of retLines) {
+    retItems += 1;
+    retQty += l.quantity;
+    retAmount += l.quantity * l.unit_price;
+    const e = refundByProduct.get(l.product_id) ?? {
+      product_id: l.product_id,
+      brand_name: l.product?.brand?.name ?? '',
+      style_code: l.product?.style_code ?? null,
+      color_code: l.product?.color_code ?? null,
+      quantity: 0,
+      revenue: 0,
+    };
+    e.quantity += l.quantity;
+    e.revenue += l.quantity * l.unit_price;
+    refundByProduct.set(l.product_id, e);
   }
   const returnsAdjusted = {
     count: retList?.length ?? 0,
@@ -114,6 +149,34 @@ export async function GET(request: Request) {
     item_count: baseSummary.item_count - returnsAdjusted.qty,
   };
 
+  // 판매 상품 리스트 — 기존 항목에서 환불 차감 + 환불만 있는 제품도 음수로 추가
+  const baseProducts = (result?.products ?? []) as ProductRow[];
+  const productMap = new Map<string, ProductRow>();
+  for (const p of baseProducts) {
+    productMap.set(p.product_id, { ...p });
+  }
+  for (const r of refundByProduct.values()) {
+    const exist = productMap.get(r.product_id);
+    if (exist) {
+      // 기존 판매 행에서 차감 (음수 가능)
+      exist.quantity = exist.quantity - r.quantity;
+      exist.revenue = exist.revenue - r.revenue;
+    } else {
+      // 환불만 있는 제품 — 음수로 신규 추가
+      productMap.set(r.product_id, {
+        product_id: r.product_id,
+        brand_name: r.brand_name,
+        style_code: r.style_code,
+        color_code: r.color_code,
+        quantity: -r.quantity,
+        revenue: -r.revenue,
+      });
+    }
+  }
+  const adjustedProducts = Array.from(productMap.values()).sort(
+    (a, b) => b.revenue - a.revenue
+  );
+
   return NextResponse.json({
     data: {
       store_id: storeId,
@@ -122,7 +185,7 @@ export async function GET(request: Request) {
       window_end: result?.window_end ?? null,
       summary: adjSummary,
       hourly: result?.hourly ?? [],
-      products: result?.products ?? [],
+      products: adjustedProducts,
       returns_summary: returnsAdjusted,
     },
     error: null,

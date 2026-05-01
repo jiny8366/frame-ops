@@ -297,26 +297,50 @@ function ProductsTable({ products }: { products: ProductRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr
-                key={p.product_id}
-                className="border-t border-[var(--color-separator-opaque)]"
-              >
-                <td className="p-3">
-                  <div className="text-caption2 text-[var(--color-label-secondary)]">
-                    {p.brand_name || '—'}
-                  </div>
-                  <div className="font-semibold">
-                    {p.style_code ?? '—'}
-                    {p.color_code ? ` / ${formatColor(p.color_code)}` : ''}
-                  </div>
-                </td>
-                <td className="p-3 text-right tabular-nums font-semibold">{p.quantity}</td>
-                <td className="p-3 text-right tabular-nums font-semibold">
-                  ₩{p.revenue.toLocaleString()}
-                </td>
-              </tr>
-            ))}
+            {products.map((p) => {
+              // 환불 우세(net 음수) → 빨강 강조 + 반품 뱃지
+              const isRefund = p.quantity < 0 || p.revenue < 0;
+              return (
+                <tr
+                  key={p.product_id}
+                  className={[
+                    'border-t border-[var(--color-separator-opaque)]',
+                    isRefund ? 'bg-[var(--color-system-red)]/5' : '',
+                  ].join(' ')}
+                >
+                  <td className="p-3">
+                    <div className="text-caption2 text-[var(--color-label-secondary)]">
+                      {p.brand_name || '—'}
+                    </div>
+                    <div className="font-semibold">
+                      {isRefund && (
+                        <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-caption2 font-semibold bg-[var(--color-system-red)] text-white">
+                          반품
+                        </span>
+                      )}
+                      {p.style_code ?? '—'}
+                      {p.color_code ? ` / ${formatColor(p.color_code)}` : ''}
+                    </div>
+                  </td>
+                  <td
+                    className={[
+                      'p-3 text-right tabular-nums font-semibold',
+                      isRefund ? 'text-[var(--color-system-red)]' : '',
+                    ].join(' ')}
+                  >
+                    {p.quantity}
+                  </td>
+                  <td
+                    className={[
+                      'p-3 text-right tabular-nums font-semibold',
+                      isRefund ? 'text-[var(--color-system-red)]' : '',
+                    ].join(' ')}
+                  >
+                    ₩{p.revenue.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
