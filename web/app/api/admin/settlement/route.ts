@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
+import { fetchReturnsTotals } from '@/lib/sales-returns';
 
 interface ExpenseLine {
   amount: number;
@@ -55,11 +56,38 @@ export async function GET(request: Request) {
     expenses = rows ?? [];
   }
 
+  // 환불 보정 — RPC 가 fo_returns 를 미반영하므로 클라이언트 측에서 차감 후 반환.
+  const returns = await fetchReturnsTotals(db, date, date, session.store_id);
+  const settlementAdjusted = settlement
+    ? {
+        ...settlement,
+        // 결제수단별 매출에서 환불액 차감
+        total_cash_sales: (settlement.total_cash_sales ?? 0) - returns.cashRefund,
+        total_card_sales: (settlement.total_card_sales ?? 0) - returns.cardRefund,
+        // 시재 기대값 = (현금매출 - 환불 현금) - 지출 + 시작 시재
+        cash_expected:
+          (settlement.cash_expected ?? 0) - returns.cashRefund,
+        variance:
+          settlement.cash_counted != null
+            ? settlement.cash_counted - ((settlement.cash_expected ?? 0) - returns.cashRefund)
+            : settlement.variance,
+      }
+    : null;
+
   return NextResponse.json({
     data: {
       business_date: date,
-      ...(settlement ?? null),
+      ...(settlementAdjusted ?? settlement ?? null),
       expenses,
+      // 환불 명세 (UI 에서 별도 표시 가능)
+      returns_summary: {
+        count: returns.count,
+        items: returns.itemsCount,
+        qty: returns.qty,
+        amount: returns.amount,
+        cash_refund: returns.cashRefund,
+        card_refund: returns.cardRefund,
+      },
     },
     error: null,
   });

@@ -122,6 +122,84 @@ export async function GET(request: Request) {
     };
   });
 
+  // 4-2) 환불 행 — fo_returns + fo_return_lines 를 라인 단위 음수 qty 로 머지.
+  // (DB 의 quantity > 0 CHECK 제약으로 fo_sale_items 에 음수 못 넣어 별도 테이블 사용)
+  const { data: returns } = await db
+    .from('fo_returns')
+    .select('id, returned_at, note, original_sale_id, store_id')
+    .eq('store_id', session.store_id)
+    .gte('returned_at', from)
+    .lte('returned_at', `${to}T23:59:59.999`)
+    .order('returned_at', { ascending: false })
+    .limit(limit);
+  const returnList = returns ?? [];
+  let returnLines: Array<{
+    id: string;
+    quantity: number;
+    unit_price: number;
+    return_id: string;
+    product: ProductRef | null;
+  }> = [];
+  if (returnList.length > 0) {
+    const { data } = await db
+      .from('fo_return_lines')
+      .select(
+        `id, quantity, unit_price, return_id,
+         product:fo_products(id, style_code, color_code, brand:fo_brands(name))`
+      )
+      .in('return_id', returnList.map((r) => r.id));
+    returnLines = (data ?? []) as unknown as typeof returnLines;
+  }
+  const returnMap = new Map(returnList.map((r) => [r.id, r]));
+
+  function parseReturnMeta(note: string | null): {
+    cash: number;
+    card: number;
+    seller: string | null;
+  } {
+    if (!note) return { cash: 0, card: 0, seller: null };
+    // note 끝의 마지막 JSON 블록(env 자유 구간) 파싱
+    const m = note.match(/\{[^{}]*\}\s*$/);
+    if (!m) return { cash: 0, card: 0, seller: null };
+    try {
+      const j = JSON.parse(m[0]);
+      return {
+        cash: Number(j.cash_amount ?? 0),
+        card: Number(j.card_amount ?? 0),
+        seller: j.seller_label ?? null,
+      };
+    } catch {
+      return { cash: 0, card: 0, seller: null };
+    }
+  }
+
+  for (const rl of returnLines) {
+    const ret = returnMap.get(rl.return_id);
+    const meta = parseReturnMeta(ret?.note ?? null);
+    const paymentMethod =
+      meta.cash > 0 && meta.card > 0
+        ? '혼합 환불'
+        : meta.cash > 0
+          ? '현금 환불'
+          : meta.card > 0
+            ? '카드 환불'
+            : '환불';
+    rowsRaw.push({
+      sale_id: `return-${rl.return_id}`,
+      item_id: rl.id,
+      sold_at: ret?.returned_at ?? '',
+      brand_name: rl.product?.brand?.name ?? null,
+      style_code: rl.product?.style_code ?? null,
+      color_code: rl.product?.color_code ?? null,
+      quantity: -rl.quantity,
+      unit_price: rl.unit_price,
+      discount_amount: 0,
+      line_total: -(rl.quantity * rl.unit_price),
+      seller_name: meta.seller,
+      payment_method: paymentMethod,
+    });
+  }
+
   // 5) 정렬 — sold_at desc, 같은 sale 내에서는 item_id 순
   rowsRaw.sort((a, b) => {
     if (b.sold_at !== a.sold_at) return b.sold_at < a.sold_at ? -1 : 1;
