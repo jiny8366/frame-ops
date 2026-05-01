@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatColor } from '@/lib/product-codes';
+import { useSession } from '@/hooks/useSession';
 import { EditReceiptDialog } from './EditReceiptDialog';
 
 interface Supplier {
@@ -65,6 +66,10 @@ function todayIso(): string {
 }
 
 export default function InboundHistoryPage() {
+  const { session } = useSession();
+  // 매입가/합계 컬럼 표시 — 본사(hq_*)만. 지점은 데이터 보유하나 화면 미노출.
+  const showCost = session?.role_code?.startsWith('hq_') ?? false;
+
   const { data: suppliers = [] } = useSWR<Supplier[]>('/api/admin/suppliers', supplierFetcher);
 
   const [supplierId, setSupplierId] = useState('');
@@ -127,8 +132,13 @@ export default function InboundHistoryPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-title2 font-bold text-[var(--color-label-primary)]">매입 내역</h1>
             <span className="text-caption1 text-[var(--color-label-tertiary)]">
-              {summary.receiptCount}건 · {summary.lineCount}라인 · {summary.qty}점 · ₩
-              {summary.cost.toLocaleString()}
+              {summary.receiptCount}건 · {summary.lineCount}라인 · {summary.qty}점
+              {showCost && (
+                <>
+                  {' · ₩'}
+                  {summary.cost.toLocaleString()}
+                </>
+              )}
             </span>
           </div>
           <Link
@@ -209,8 +219,8 @@ export default function InboundHistoryPage() {
                     <th>제품번호</th>
                     <th>컬러</th>
                     <th className="num">수량</th>
-                    <th className="num">단가</th>
-                    <th className="num">합계</th>
+                    {showCost && <th className="num">단가</th>}
+                    {showCost && <th className="num">합계</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -234,10 +244,12 @@ export default function InboundHistoryPage() {
                         <td className="code">{p?.style_code ?? '—'}</td>
                         <td className="code">{formatColor(p?.color_code)}</td>
                         <td className="num">{line.quantity}</td>
-                        <td className="num">₩{line.unit_cost.toLocaleString()}</td>
-                        <td className="num" style={{ fontWeight: 600 }}>
-                          ₩{subtotal.toLocaleString()}
-                        </td>
+                        {showCost && <td className="num">₩{line.unit_cost.toLocaleString()}</td>}
+                        {showCost && (
+                          <td className="num" style={{ fontWeight: 600 }}>
+                            ₩{subtotal.toLocaleString()}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -246,8 +258,8 @@ export default function InboundHistoryPage() {
                   <tr>
                     <td colSpan={7}>합계</td>
                     <td className="num">{summary.qty}</td>
-                    <td></td>
-                    <td className="num">₩{summary.cost.toLocaleString()}</td>
+                    {showCost && <td></td>}
+                    {showCost && <td className="num">₩{summary.cost.toLocaleString()}</td>}
                   </tr>
                 </tfoot>
               </table>
