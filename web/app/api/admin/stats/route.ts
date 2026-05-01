@@ -39,28 +39,39 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: null, error: topRes.error.message }, { status: 500 });
   }
 
-  // 환불 보정 — 기간 내 fo_returns 차감.
-  const returns = await fetchReturnsTotals(db, from, to, session.store_id);
+  // 환불 보정 — 기간 내 fo_returns 차감 (period_*) + 당월 환불 별도 조회로 month_* 차감.
+  const periodReturns = await fetchReturnsTotals(db, from, to, session.store_id);
+  // 당월 시작일 계산 (Asia/Seoul 기준)
+  const seoulNow = new Date(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date())
+  );
+  const monthStart = `${seoulNow.getFullYear()}-${String(seoulNow.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthReturns = await fetchReturnsTotals(db, monthStart, to, session.store_id);
+
   const baseSummary = statsRes.data?.[0] as
     | {
-        total_revenue?: number;
-        total_cash?: number;
-        total_card?: number;
-        sale_count?: number;
-        item_count?: number;
-        month_to_date_revenue?: number;
+        period_cash?: number;
+        period_card?: number;
+        period_revenue?: number;
+        period_count?: number;
+        month_cash?: number;
+        month_card?: number;
+        month_revenue?: number;
       }
     | null
     | undefined;
   const adjustedSummary = baseSummary
     ? {
         ...baseSummary,
-        total_revenue: (baseSummary.total_revenue ?? 0) - returns.amount,
-        total_cash: (baseSummary.total_cash ?? 0) - returns.cashRefund,
-        total_card: (baseSummary.total_card ?? 0) - returns.cardRefund,
-        item_count: (baseSummary.item_count ?? 0) - returns.qty,
+        period_revenue: (baseSummary.period_revenue ?? 0) - periodReturns.amount,
+        period_cash: (baseSummary.period_cash ?? 0) - periodReturns.cashRefund,
+        period_card: (baseSummary.period_card ?? 0) - periodReturns.cardRefund,
+        month_revenue: (baseSummary.month_revenue ?? 0) - monthReturns.amount,
+        month_cash: (baseSummary.month_cash ?? 0) - monthReturns.cashRefund,
+        month_card: (baseSummary.month_card ?? 0) - monthReturns.cardRefund,
       }
     : null;
+  const returns = periodReturns;
 
   return NextResponse.json({
     data: {
