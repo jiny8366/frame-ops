@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
+import { fetchReturnsTotals } from '@/lib/sales-returns';
 
 function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
@@ -43,8 +44,32 @@ export async function GET(request: Request) {
     .eq('active', true)
     .order('store_code', { ascending: true });
 
+  // 환불 보정 — RPC 결과의 매출 관련 필드에서 차감.
+  const returns = await fetchReturnsTotals(db, from, to, storeId);
+  const dataObj = (data ?? {}) as Record<string, unknown>;
+  // 매출 합계가 있는 필드 발견 시 차감 시도 (안전한 키만)
+  const tryDeduct = (key: string, sub: number) => {
+    const v = dataObj[key];
+    if (typeof v === 'number') dataObj[key] = v - sub;
+  };
+  tryDeduct('total_revenue', returns.amount);
+  tryDeduct('total_cash', returns.cashRefund);
+  tryDeduct('total_card', returns.cardRefund);
+  tryDeduct('item_count', returns.qty);
+
   return NextResponse.json({
-    data: { ...(data as Record<string, unknown>), stores: stores ?? [] },
+    data: {
+      ...dataObj,
+      stores: stores ?? [],
+      returns_summary: {
+        count: returns.count,
+        items: returns.itemsCount,
+        qty: returns.qty,
+        amount: returns.amount,
+        cash_refund: returns.cashRefund,
+        card_refund: returns.cardRefund,
+      },
+    },
     error: null,
   });
 }

@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
+import { fetchReturnsTotals } from '@/lib/sales-returns';
 
 interface DashboardSummary {
   revenue: number;
@@ -63,21 +64,53 @@ export async function GET(request: Request) {
     window_end: string;
   };
 
+  // 환불 보정 — 직전 12시간 윈도우의 fo_returns 를 차감.
+  // RPC 가 fo_returns 미반영 → 클라이언트(API) 측에서 차감 후 반환.
+  const winStart = result?.window_start ?? null;
+  const winEnd = result?.window_end ?? new Date().toISOString();
+  let returnsAdjusted: {
+    count: number;
+    items: number;
+    qty: number;
+    amount: number;
+  } = { count: 0, items: 0, qty: 0, amount: 0 };
+  if (winStart) {
+    // window_start/end 가 ISO timestamp 일 수 있음 → 날짜 부분만 추출하여 fetchReturnsTotals 사용
+    const fromDate = winStart.slice(0, 10);
+    const toDate = winEnd.slice(0, 10);
+    const r = await fetchReturnsTotals(db, fromDate, toDate, storeId);
+    returnsAdjusted = {
+      count: r.count,
+      items: r.itemsCount,
+      qty: r.qty,
+      amount: r.amount,
+    };
+  }
+  const baseSummary = result?.summary ?? {
+    revenue: 0,
+    cost: 0,
+    profit: 0,
+    sale_count: 0,
+    item_count: 0,
+  };
+  const adjSummary = {
+    revenue: baseSummary.revenue - returnsAdjusted.amount,
+    cost: baseSummary.cost,
+    profit: baseSummary.profit - returnsAdjusted.amount,
+    sale_count: baseSummary.sale_count,
+    item_count: baseSummary.item_count - returnsAdjusted.qty,
+  };
+
   return NextResponse.json({
     data: {
       store_id: storeId,
       stores: stores ?? [],
       window_start: result?.window_start ?? null,
       window_end: result?.window_end ?? null,
-      summary: result?.summary ?? {
-        revenue: 0,
-        cost: 0,
-        profit: 0,
-        sale_count: 0,
-        item_count: 0,
-      },
+      summary: adjSummary,
       hourly: result?.hourly ?? [],
       products: result?.products ?? [],
+      returns_summary: returnsAdjusted,
     },
     error: null,
   });

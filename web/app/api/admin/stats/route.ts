@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
+import { fetchReturnsTotals } from '@/lib/sales-returns';
 
 function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
@@ -38,11 +39,42 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: null, error: topRes.error.message }, { status: 500 });
   }
 
+  // 환불 보정 — 기간 내 fo_returns 차감.
+  const returns = await fetchReturnsTotals(db, from, to, session.store_id);
+  const baseSummary = statsRes.data?.[0] as
+    | {
+        total_revenue?: number;
+        total_cash?: number;
+        total_card?: number;
+        sale_count?: number;
+        item_count?: number;
+        month_to_date_revenue?: number;
+      }
+    | null
+    | undefined;
+  const adjustedSummary = baseSummary
+    ? {
+        ...baseSummary,
+        total_revenue: (baseSummary.total_revenue ?? 0) - returns.amount,
+        total_cash: (baseSummary.total_cash ?? 0) - returns.cashRefund,
+        total_card: (baseSummary.total_card ?? 0) - returns.cardRefund,
+        item_count: (baseSummary.item_count ?? 0) - returns.qty,
+      }
+    : null;
+
   return NextResponse.json({
     data: {
       period: { from, to },
-      summary: statsRes.data?.[0] ?? null,
+      summary: adjustedSummary,
       top_products: topRes.data ?? [],
+      returns_summary: {
+        count: returns.count,
+        items: returns.itemsCount,
+        qty: returns.qty,
+        amount: returns.amount,
+        cash_refund: returns.cashRefund,
+        card_refund: returns.cardRefund,
+      },
     },
     error: null,
   });

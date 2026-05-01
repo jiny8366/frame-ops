@@ -149,6 +149,86 @@ export async function GET(request: Request) {
     };
   });
 
+  // 5-2) 환불 행 머지 — fo_returns + fo_return_lines (음수 qty 로 표시)
+  let returnsQuery = db
+    .from('fo_returns')
+    .select('id, returned_at, note, store_id, original_sale_id')
+    .gte('returned_at', from)
+    .lte('returned_at', `${to}T23:59:59.999`)
+    .order('returned_at', { ascending: false })
+    .limit(limit);
+  if (storeId) returnsQuery = returnsQuery.eq('store_id', storeId);
+  const { data: returnsRaw } = await returnsQuery;
+  const returnList = returnsRaw ?? [];
+  if (returnList.length > 0) {
+    const { data: rLinesRaw } = await db
+      .from('fo_return_lines')
+      .select(
+        `id, quantity, unit_price, return_id,
+         product:fo_products(id, style_code, color_code, brand:fo_brands(name))`
+      )
+      .in('return_id', returnList.map((r) => r.id));
+    const rLines = (rLinesRaw ?? []) as unknown as Array<{
+      id: string;
+      quantity: number;
+      unit_price: number;
+      return_id: string;
+      product: ProductRef | null;
+    }>;
+    const returnMap = new Map(returnList.map((r) => [r.id, r]));
+
+    function parseReturnMeta(note: string | null): {
+      cash: number;
+      card: number;
+      seller: string | null;
+    } {
+      if (!note) return { cash: 0, card: 0, seller: null };
+      const m = note.match(/\{[^{}]*\}\s*$/);
+      if (!m) return { cash: 0, card: 0, seller: null };
+      try {
+        const j = JSON.parse(m[0]);
+        return {
+          cash: Number(j.cash_amount ?? 0),
+          card: Number(j.card_amount ?? 0),
+          seller: j.seller_label ?? null,
+        };
+      } catch {
+        return { cash: 0, card: 0, seller: null };
+      }
+    }
+
+    for (const rl of rLines) {
+      const ret = returnMap.get(rl.return_id);
+      const store = ret ? storeMap.get(ret.store_id) : null;
+      const meta = parseReturnMeta(ret?.note ?? null);
+      const paymentMethod =
+        meta.cash > 0 && meta.card > 0
+          ? '혼합 환불'
+          : meta.cash > 0
+            ? '현금 환불'
+            : meta.card > 0
+              ? '카드 환불'
+              : '환불';
+      rowsRaw.push({
+        sale_id: `return-${rl.return_id}`,
+        item_id: rl.id,
+        sold_at: ret?.returned_at ?? '',
+        store_id: ret?.store_id ?? '',
+        store_code: store?.store_code ?? '',
+        store_name: store?.name ?? '',
+        brand_name: rl.product?.brand?.name ?? null,
+        style_code: rl.product?.style_code ?? null,
+        color_code: rl.product?.color_code ?? null,
+        quantity: -rl.quantity,
+        unit_price: rl.unit_price,
+        discount_amount: 0,
+        line_total: -(rl.quantity * rl.unit_price),
+        seller_name: meta.seller,
+        payment_method: paymentMethod,
+      });
+    }
+  }
+
   // 6) 정렬
   rowsRaw.sort((a, b) => {
     if (b.sold_at !== a.sold_at) return b.sold_at < a.sold_at ? -1 : 1;
