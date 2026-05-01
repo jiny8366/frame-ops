@@ -15,6 +15,7 @@ interface ExpenseLine {
   amount: number;
   memo: string;
   sort_order: number;
+  type: 'cash' | 'card';
 }
 
 interface SummaryResponse {
@@ -24,6 +25,8 @@ interface SummaryResponse {
   total_cash_sales: number;
   total_card_sales: number;
   total_expense: number;
+  total_cash_expense?: number;
+  total_card_expense?: number;
   cash_counted: number | null;
   cash_expected: number | null;
   variance: number | null;
@@ -41,6 +44,8 @@ interface MonthlyDay {
   card_amount: number;
   sales_count: number;
   expense: number;
+  cash_expense?: number;
+  card_expense?: number;
 }
 
 interface MonthlyResponse {
@@ -104,35 +109,42 @@ export default function SettlementPage() {
 
   useEffect(() => {
     if (!data) return;
-    setCashCounted(data.cash_counted ?? data.total_cash_sales + data.starting_cash - data.total_expense);
+    setCashCounted(data.cash_counted ?? data.total_cash_sales + data.starting_cash - (data.total_cash_expense ?? data.total_expense));
     setDeposit(data.deposit ?? 0);
     setNote(data.note ?? '');
     setExpenses(
       data.expenses && data.expenses.length > 0
-        ? data.expenses.map((e) => ({ ...e, memo: e.memo ?? '' }))
+        ? data.expenses.map((e) => ({ ...e, memo: e.memo ?? '', type: e.type ?? 'cash' }))
         : []
     );
   }, [data]);
 
-  const localExpenseTotal = useMemo(
-    () => expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0),
+  // 카드/현금 분리 합계
+  const localCashExpenseTotal = useMemo(
+    () => expenses.filter((e) => e.type === 'cash').reduce((s, e) => s + (Number(e.amount) || 0), 0),
     [expenses]
   );
+  const localCardExpenseTotal = useMemo(
+    () => expenses.filter((e) => e.type === 'card').reduce((s, e) => s + (Number(e.amount) || 0), 0),
+    [expenses]
+  );
+  const localExpenseTotal = localCashExpenseTotal + localCardExpenseTotal;
 
+  // 시재(예상 현금)는 현금 지출만 차감 — 카드 지출은 시재에 영향 없음
   const expectedCash = useMemo(() => {
     if (!data) return 0;
-    return data.starting_cash + data.total_cash_sales - localExpenseTotal - (deposit || 0);
-  }, [data, localExpenseTotal, deposit]);
+    return data.starting_cash + data.total_cash_sales - localCashExpenseTotal - (deposit || 0);
+  }, [data, localCashExpenseTotal, deposit]);
 
   const variance = useMemo(() => cashCounted - expectedCash, [cashCounted, expectedCash]);
 
   const isClosed = !!data?.is_closed;
   const isLocked = isClosed && !canUnlock;
 
-  const handleAddExpense = useCallback(() => {
+  const handleAddExpense = useCallback((type: 'cash' | 'card') => {
     setExpenses((prev) => [
       ...prev,
-      { amount: 0, memo: '', sort_order: prev.length },
+      { amount: 0, memo: '', sort_order: prev.length, type },
     ]);
   }, []);
 
@@ -140,6 +152,14 @@ export default function SettlementPage() {
     setExpenses((prev) => {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  }, []);
+
+  const handleExpenseTypeToggle = useCallback((idx: number) => {
+    setExpenses((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], type: next[idx].type === 'card' ? 'cash' : 'card' };
       return next;
     });
   }, []);
@@ -164,7 +184,7 @@ export default function SettlementPage() {
             note: note || null,
             expenses: expenses
               .filter((e) => e.amount > 0)
-              .map((e, i) => ({ amount: e.amount, memo: e.memo || null, sort_order: i })),
+              .map((e, i) => ({ amount: e.amount, memo: e.memo || null, sort_order: i, type: e.type })),
           }),
         });
         const json = (await res.json()) as { data: unknown; error: string | null };
@@ -231,70 +251,34 @@ export default function SettlementPage() {
                 />
               </Card>
 
-              <Card
-                title="지출 내역"
-                right={
-                  !isLocked && (
-                    <button
-                      type="button"
-                      onClick={handleAddExpense}
-                      className="pressable text-caption1 text-[var(--color-system-blue)] font-medium"
-                    >
-                      + 지출 추가
-                    </button>
-                  )
-                }
-              >
-                {expenses.length === 0 ? (
-                  <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-3">
-                    지출 항목이 없습니다.
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {expenses.map((e, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={e.memo}
-                          onChange={(ev) => handleExpenseChange(idx, 'memo', ev.target.value)}
-                          placeholder="비고 (예: 공과금, 식대)"
-                          disabled={isLocked}
-                          readOnly={isLocked}
-                          className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
-                        />
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          step={1000}
-                          value={e.amount || ''}
-                          onChange={(ev) => handleExpenseChange(idx, 'amount', Number(ev.target.value) || 0)}
-                          placeholder="0"
-                          disabled={isLocked}
-                          readOnly={isLocked}
-                          className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums disabled:opacity-60"
-                        />
-                        {!isLocked && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExpense(idx)}
-                            aria-label="삭제"
-                            className="pressable text-[var(--color-system-red)]"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <Row label="지출 합계" value={localExpenseTotal} bold />
-                  </div>
-                )}
-              </Card>
+              <ExpenseSection
+                title="지출 내역 (현금) — 시재 차감"
+                type="cash"
+                expenses={expenses}
+                isLocked={isLocked}
+                onAdd={() => handleAddExpense('cash')}
+                onChange={handleExpenseChange}
+                onTypeToggle={handleExpenseTypeToggle}
+                onRemove={handleRemoveExpense}
+                total={localCashExpenseTotal}
+              />
+
+              <ExpenseSection
+                title="지출 내역 (카드) — 시재 무관, 정산 합계만 반영"
+                type="card"
+                expenses={expenses}
+                isLocked={isLocked}
+                onAdd={() => handleAddExpense('card')}
+                onChange={handleExpenseChange}
+                onTypeToggle={handleExpenseTypeToggle}
+                onRemove={handleRemoveExpense}
+                total={localCardExpenseTotal}
+              />
 
               <Card title="현금 마감">
                 <Row label="시작 시재 (전일 잔액)" value={data.starting_cash} sub />
                 <Row label="+ 현금 매출" value={data.total_cash_sales} sub />
-                <Row label="− 지출" value={localExpenseTotal} sub negative />
+                <Row label="− 현금 지출" value={localCashExpenseTotal} sub negative />
                 <div className="flex items-center justify-between py-1.5">
                   <span className="text-callout text-[var(--color-label-secondary)]">− 본사 입금</span>
                   <input
@@ -384,20 +368,27 @@ function MonthlyPanel({
     let cashAcc = 0;
     let cardAcc = 0;
     let countAcc = 0;
-    let expenseAcc = 0;
+    let cashExpenseAcc = 0;
+    let cardExpenseAcc = 0;
     const rows = days.map((d) => {
+      const cashExp = d.cash_expense ?? d.expense;
+      const cardExp = d.card_expense ?? 0;
       salesAcc += d.sales_amount;
       cashAcc += d.cash_amount;
       cardAcc += d.card_amount;
       countAcc += d.sales_count;
-      expenseAcc += d.expense;
+      cashExpenseAcc += cashExp;
+      cardExpenseAcc += cardExp;
       return {
         ...d,
+        cash_expense_value: cashExp,
+        card_expense_value: cardExp,
         sales_acc: salesAcc,
         cash_acc: cashAcc,
         card_acc: cardAcc,
         count_acc: countAcc,
-        expense_acc: expenseAcc,
+        cash_expense_acc: cashExpenseAcc,
+        card_expense_acc: cardExpenseAcc,
       };
     });
     return {
@@ -407,7 +398,8 @@ function MonthlyPanel({
         cash: cashAcc,
         card: cardAcc,
         count: countAcc,
-        expense: expenseAcc,
+        cashExpense: cashExpenseAcc,
+        cardExpense: cardExpenseAcc,
       },
     };
   }, [monthly]);
@@ -424,12 +416,13 @@ function MonthlyPanel({
       </header>
 
       {/* 당월 합계 */}
-      <section className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <section className="rounded-xl bg-[var(--color-bg-secondary)] p-4 grid grid-cols-2 sm:grid-cols-6 gap-3">
         <Stat label="매출누계" value={totals.sales} />
         <Stat label="현금누계" value={totals.cash} />
         <Stat label="카드누계" value={totals.card} />
         <Stat label="건수누계" value={totals.count} suffix="건" />
-        <Stat label="지출누계" value={totals.expense} />
+        <Stat label="지출(현금)누계" value={totals.cashExpense} />
+        <Stat label="지출(카드)누계" value={totals.cardExpense} />
       </section>
 
       {/* 일자별 리스트 */}
@@ -451,8 +444,10 @@ function MonthlyPanel({
                   <th className="text-right p-2 whitespace-nowrap">카드누계</th>
                   <th className="text-right p-2 whitespace-nowrap">카드</th>
                   <th className="text-right p-2 whitespace-nowrap">건수</th>
-                  <th className="text-right p-2 whitespace-nowrap">지출누계</th>
-                  <th className="text-right p-2 whitespace-nowrap">지출</th>
+                  <th className="text-right p-2 whitespace-nowrap">지출(현금)누계</th>
+                  <th className="text-right p-2 whitespace-nowrap">지출(현금)</th>
+                  <th className="text-right p-2 whitespace-nowrap">지출(카드)누계</th>
+                  <th className="text-right p-2 whitespace-nowrap">지출(카드)</th>
                 </tr>
               </thead>
               <tbody>
@@ -477,8 +472,10 @@ function MonthlyPanel({
                     <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.card_acc.toLocaleString()}</td>
                     <td className="p-2 text-right">{r.card_amount.toLocaleString()}</td>
                     <td className="p-2 text-right">{r.sales_count.toLocaleString()}</td>
-                    <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.expense_acc.toLocaleString()}</td>
-                    <td className="p-2 text-right">{r.expense.toLocaleString()}</td>
+                    <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.cash_expense_acc.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.cash_expense_value.toLocaleString()}</td>
+                    <td className="p-2 text-right text-[var(--color-label-secondary)]">{r.card_expense_acc.toLocaleString()}</td>
+                    <td className="p-2 text-right">{r.card_expense_value.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -499,6 +496,104 @@ function Stat({ label, value, suffix }: { label: string; value: number; suffix?:
         {suffix ? <span className="ml-0.5 text-caption1 text-[var(--color-label-secondary)] font-normal">{suffix}</span> : null}
       </span>
     </div>
+  );
+}
+
+function ExpenseSection({
+  title,
+  type,
+  expenses,
+  isLocked,
+  onAdd,
+  onChange,
+  onTypeToggle,
+  onRemove,
+  total,
+}: {
+  title: string;
+  type: 'cash' | 'card';
+  expenses: ExpenseLine[];
+  isLocked: boolean;
+  onAdd: () => void;
+  onChange: (idx: number, field: 'amount' | 'memo', value: string | number) => void;
+  onTypeToggle: (idx: number) => void;
+  onRemove: (idx: number) => void;
+  total: number;
+}) {
+  // 해당 type 의 항목만 표시 (다른 type 은 다른 섹션에서 표시)
+  const visibleIndexed = expenses
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e.type === type);
+  return (
+    <Card
+      title={title}
+      right={
+        !isLocked && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="pressable text-caption1 text-[var(--color-system-blue)] font-medium"
+          >
+            + 추가
+          </button>
+        )
+      }
+    >
+      {visibleIndexed.length === 0 ? (
+        <p className="text-caption1 text-[var(--color-label-tertiary)] text-center py-3">
+          {type === 'cash' ? '현금 지출 항목이 없습니다.' : '카드 지출 항목이 없습니다.'}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {visibleIndexed.map(({ e, i: idx }) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={e.memo}
+                onChange={(ev) => onChange(idx, 'memo', ev.target.value)}
+                placeholder={type === 'cash' ? '비고 (예: 식대, 공과금)' : '비고 (예: 매장카드 결제)'}
+                disabled={isLocked}
+                readOnly={isLocked}
+                className="flex-1 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout disabled:opacity-60"
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1000}
+                value={e.amount || ''}
+                onChange={(ev) => onChange(idx, 'amount', Number(ev.target.value) || 0)}
+                placeholder="0"
+                disabled={isLocked}
+                readOnly={isLocked}
+                className="w-32 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout text-right tabular-nums disabled:opacity-60"
+              />
+              {!isLocked && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onTypeToggle(idx)}
+                    title={type === 'cash' ? '카드 지출로 전환' : '현금 지출로 전환'}
+                    className="pressable rounded-lg px-2 py-1 text-caption2 bg-[var(--color-fill-tertiary)] text-[var(--color-label-secondary)]"
+                  >
+                    ⇄
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(idx)}
+                    aria-label="삭제"
+                    className="pressable text-[var(--color-system-red)]"
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+          <Row label={type === 'cash' ? '현금 지출 합계' : '카드 지출 합계'} value={total} bold />
+        </div>
+      )}
+    </Card>
   );
 }
 

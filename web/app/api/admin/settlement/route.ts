@@ -11,6 +11,8 @@ interface ExpenseLine {
   amount: number;
   memo?: string | null;
   sort_order?: number;
+  /** 'cash' (기본) | 'card' — fo_settlement_expenses.memo 접두 [CARD] 로 인코딩 */
+  type?: 'cash' | 'card';
 }
 
 interface CloseBody {
@@ -19,6 +21,24 @@ interface CloseBody {
   deposit?: number;
   note?: string | null;
   expenses?: ExpenseLine[];
+}
+
+// 카드 지출 마커 — fo_settlement_expenses.memo 의 접두 (DB 스키마 변경 없이 구분).
+const CARD_EXPENSE_PREFIX = '[CARD] ';
+
+function isCardExpense(memo: string | null | undefined): boolean {
+  return typeof memo === 'string' && memo.startsWith(CARD_EXPENSE_PREFIX);
+}
+
+function stripCardPrefix(memo: string | null | undefined): string {
+  if (!memo) return '';
+  return memo.startsWith(CARD_EXPENSE_PREFIX) ? memo.slice(CARD_EXPENSE_PREFIX.length) : memo;
+}
+
+function encodeExpenseMemo(memo: string | null | undefined, type: 'cash' | 'card' | undefined): string | null {
+  const m = (memo ?? '').trim();
+  if (type === 'card') return CARD_EXPENSE_PREFIX + m;
+  return m || null;
 }
 
 // 서버 기준 한국 영업일자 — RPC 일자 버킷팅(Asia/Seoul)과 일치.
@@ -45,7 +65,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: null, error: error.message }, { status: 500 });
   }
 
-  let expenses: Array<{ id: string; amount: number; memo: string | null; sort_order: number }> = [];
+  let expensesRaw: Array<{ id: string; amount: number; memo: string | null; sort_order: number }> = [];
   const settlement = summary?.[0];
   if (settlement?.settlement_id) {
     const { data: rows } = await db
@@ -53,10 +73,25 @@ export async function GET(request: Request) {
       .select('id, amount, memo, sort_order')
       .eq('settlement_id', settlement.settlement_id)
       .order('sort_order', { ascending: true });
-    expenses = rows ?? [];
+    expensesRaw = rows ?? [];
   }
+  // 지출 분리 — memo 접두로 카드/현금 판단. 화면용 memo 는 접두 제거.
+  const expenses = expensesRaw.map((e) => ({
+    id: e.id,
+    amount: e.amount,
+    memo: stripCardPrefix(e.memo),
+    sort_order: e.sort_order,
+    type: isCardExpense(e.memo) ? ('card' as const) : ('cash' as const),
+  }));
+  const totalCashExpense = expenses
+    .filter((e) => e.type === 'cash')
+    .reduce((s, e) => s + e.amount, 0);
+  const totalCardExpense = expenses
+    .filter((e) => e.type === 'card')
+    .reduce((s, e) => s + e.amount, 0);
 
   // 환불 보정 — RPC 가 fo_returns 를 미반영하므로 클라이언트 측에서 차감 후 반환.
+  // + RPC 의 cash_expected 는 모든 지출을 차감 → 카드 지출은 시재에 영향 없으므로 다시 가산.
   const returns = await fetchReturnsTotals(db, date, date, session.store_id);
   const settlementAdjusted = settlement
     ? {
@@ -64,12 +99,15 @@ export async function GET(request: Request) {
         // 결제수단별 매출에서 환불액 차감
         total_cash_sales: (settlement.total_cash_sales ?? 0) - returns.cashRefund,
         total_card_sales: (settlement.total_card_sales ?? 0) - returns.cardRefund,
-        // 시재 기대값 = (현금매출 - 환불 현금) - 지출 + 시작 시재
+        // 시재 기대값 = (현금매출 - 환불 현금) - (현금 지출만) - 본사입금 + 시작 시재
+        // RPC 결과는 cash_expected = cash_sales - all_expenses - deposit + starting_cash 라 가정
+        // → 카드 지출은 시재에서 제외해야 하므로 다시 더함
         cash_expected:
-          (settlement.cash_expected ?? 0) - returns.cashRefund,
+          (settlement.cash_expected ?? 0) - returns.cashRefund + totalCardExpense,
         variance:
           settlement.cash_counted != null
-            ? settlement.cash_counted - ((settlement.cash_expected ?? 0) - returns.cashRefund)
+            ? settlement.cash_counted -
+              ((settlement.cash_expected ?? 0) - returns.cashRefund + totalCardExpense)
             : settlement.variance,
       }
     : null;
@@ -79,6 +117,8 @@ export async function GET(request: Request) {
       business_date: date,
       ...(settlementAdjusted ?? settlement ?? null),
       expenses,
+      total_cash_expense: totalCashExpense,
+      total_card_expense: totalCardExpense,
       // 환불 명세 (UI 에서 별도 표시 가능)
       returns_summary: {
         count: returns.count,
@@ -135,13 +175,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // 카드 지출은 memo 에 [CARD] 접두를 붙여서 RPC 에 전달 (DB 스키마 변경 없이 구분).
+    const encodedExpenses = (body.expenses ?? []).map((e, i) => ({
+      amount: e.amount,
+      memo: encodeExpenseMemo(e.memo, e.type),
+      sort_order: e.sort_order ?? i,
+    }));
+
     const { data, error } = await db.rpc('close_daily_settlement', {
       p_store_id: session.store_id,
       p_business_date: body.business_date,
       p_cash_counted: Math.round(body.cash_counted),
       p_deposit: Math.round(body.deposit ?? 0),
       p_note: body.note ?? null,
-      p_expenses: (body.expenses ?? []) as unknown as never,
+      p_expenses: encodedExpenses as unknown as never,
     });
 
     if (error) {
