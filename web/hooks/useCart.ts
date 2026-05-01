@@ -30,6 +30,17 @@ export interface CartProductSnapshot {
   color_code: string | null;
   display_name: string | null;
   sale_price: number | null;
+  /** 재고. ≤1 이면 전시상품으로 보고 10% 자동 할인 적용. null/undefined 는 미관리(자동할인 적용 X). */
+  stock_quantity?: number | null;
+}
+
+/** 재고가 1 이하인 전시상품에 적용되는 자동 할인 비율 (10%). */
+const DISPLAY_STOCK_DISCOUNT_RATE = 0.1;
+
+/** 단가 × 10% 를 100원 단위 내림하여 깔끔한 할인액 산출. */
+function calcDisplayStockDiscount(unitPrice: number): number {
+  if (unitPrice <= 0) return 0;
+  return Math.floor((unitPrice * DISPLAY_STOCK_DISCOUNT_RATE) / 100) * 100;
 }
 
 export interface UseCartReturn {
@@ -50,13 +61,18 @@ export function useCart(): UseCartReturn {
 
   const addItem = useCallback((product: CartProductSnapshot) => {
     setItems((prev) => {
-      // 동일 product_id 면 수량만 증가
+      // 동일 product_id 면 수량만 증가 (할인은 기존 라인 값 유지)
       const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
         return prev.map((i) =>
           i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
+      // 재고 ≤1 (전시상품) → 10% 자동 할인
+      const unitPrice = product.sale_price ?? 0;
+      const isDisplayStock =
+        product.stock_quantity != null && product.stock_quantity <= 1;
+      const autoDiscount = isDisplayStock ? calcDisplayStockDiscount(unitPrice) : 0;
       return [
         ...prev,
         {
@@ -66,9 +82,9 @@ export function useCart(): UseCartReturn {
           style_code: product.style_code ?? '',
           color_code: product.color_code ?? '',
           display_name: product.display_name ?? product.style_code ?? '',
-          unit_price: product.sale_price ?? 0,
+          unit_price: unitPrice,
           quantity: 1,
-          discount_amount: 0,
+          discount_amount: autoDiscount,
         },
       ];
     });

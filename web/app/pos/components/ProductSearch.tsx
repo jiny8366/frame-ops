@@ -75,6 +75,8 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
         color_code: row.color_code,
         display_name: row.display_name,
         sale_price: row.sale_price,
+        // 재고 ≤1 인 전시상품은 useCart 내부에서 10% 자동 할인 적용
+        stock_quantity: row.stock_quantity,
       });
       setDraft('');
     },
@@ -190,6 +192,11 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
                 <p className="mt-1 text-callout text-[var(--color-label-secondary)]">
                   매장에 진열된 상품인지 확인 후 판매를 진행해 주세요.
                 </p>
+                {pending.stock_quantity !== null && pending.stock_quantity <= 1 && pending.sale_price !== null && (
+                  <p className="mt-1 text-caption1 font-semibold text-[var(--color-system-blue)]">
+                    ✓ 카트 추가 시 10% 자동 할인 적용
+                  </p>
+                )}
               </div>
             </div>
 
