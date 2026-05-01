@@ -6,7 +6,8 @@ import { SESSION_COOKIE, verifySession } from '@/lib/auth/session';
 import { isHqRole } from '@/lib/auth/permissions';
 
 const PUBLIC_PATHS = ['/login'];
-const PUBLIC_API_PREFIXES = ['/api/auth/'];
+// 인증 불필요 — /api/auth/* (로그인 흐름) + /api/health (cold-start 방지 워머)
+const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/health'];
 const HQ_PREFIXES = ['/hq', '/api/hq/'];
 
 function isPublic(pathname: string): boolean {
