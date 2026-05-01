@@ -38,6 +38,8 @@ export interface UseCartReturn {
   removeItem: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   updateItemDiscount: (cartItemId: string, discount: number) => void;
+  /** 라인의 부호를 뒤집음 — 반품 처리 (양수 → 음수, 음수 → 양수). */
+  toggleReturn: (cartItemId: string) => void;
   clear: () => void;
   subtotal: number;
   itemDiscounts: number;
@@ -77,12 +79,21 @@ export function useCart(): UseCartReturn {
   }, []);
 
   const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
-    if (quantity <= 0) {
+    // 정확히 0 일 때만 자동 제거. 음수는 반품 라인이므로 유지.
+    if (quantity === 0) {
       setItems((prev) => prev.filter((i) => i.id !== cartItemId));
       return;
     }
     setItems((prev) =>
       prev.map((i) => (i.id === cartItemId ? { ...i, quantity } : i))
+    );
+  }, []);
+
+  const toggleReturn = useCallback((cartItemId: string) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === cartItemId ? { ...i, quantity: -i.quantity } : i
+      )
     );
   }, []);
 
@@ -108,6 +119,7 @@ export function useCart(): UseCartReturn {
     removeItem,
     updateQuantity,
     updateItemDiscount,
+    toggleReturn,
     clear,
     ...totals,
   };

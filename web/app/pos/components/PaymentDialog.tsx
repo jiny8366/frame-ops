@@ -35,23 +35,27 @@ export const PaymentDialog = memo(function PaymentDialog({
   onCancel,
 }: PaymentDialogProps) {
   const [step, setStep] = useState<Step>('choose');
+  // 환불(반품) 시 total 이 음수. 내부 cash/card 는 항상 절대값으로 보관, onConfirm 시 부호 부여.
+  const isRefund = total < 0;
+  const absTotal = Math.abs(total);
+  const sign = isRefund ? -1 : 1;
   const [cash, setCash] = useState(0);
   const [card, setCard] = useState(0);
   const [verifying, setVerifying] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
 
-  const remaining = useMemo(() => Math.max(0, total - cash - card), [total, cash, card]);
-  const canConfirm = cash + card === total && total > 0;
+  const remaining = useMemo(() => Math.max(0, absTotal - cash - card), [absTotal, cash, card]);
+  const canConfirm = cash + card === absTotal && absTotal > 0;
 
   const handleAllCash = useCallback(() => {
-    setCash(total);
+    setCash(absTotal);
     setCard(0);
-  }, [total]);
+  }, [absTotal]);
 
   const handleAllCard = useCallback(() => {
-    setCard(total);
+    setCard(absTotal);
     setCash(0);
-  }, [total]);
+  }, [absTotal]);
 
   const handleEditCash = useCallback(() => setStep('cash'), []);
   const handleEditCard = useCallback(() => setStep('card'), []);
@@ -59,22 +63,22 @@ export const PaymentDialog = memo(function PaymentDialog({
 
   const handleSetCash = useCallback(
     (v: number) => {
-      const clamped = Math.min(v, total);
+      const clamped = Math.min(v, absTotal);
       setCash(clamped);
-      setCard(Math.max(0, total - clamped));
+      setCard(Math.max(0, absTotal - clamped));
       setStep('choose');
     },
-    [total]
+    [absTotal]
   );
 
   const handleSetCard = useCallback(
     (v: number) => {
-      const clamped = Math.min(v, total);
+      const clamped = Math.min(v, absTotal);
       setCard(clamped);
-      setCash(Math.max(0, total - clamped));
+      setCash(Math.max(0, absTotal - clamped));
       setStep('choose');
     },
-    [total]
+    [absTotal]
   );
 
   // "결제 확정" → 담당자 패스워드 단계로 전환
@@ -102,8 +106,9 @@ export const PaymentDialog = memo(function PaymentDialog({
           return;
         }
         onConfirm({
-          cash,
-          card,
+          // 반품(환불) 시 음수 부호 부여 — fo_sales 의 cash/card 컬럼은 부호 보존
+          cash: cash * sign,
+          card: card * sign,
           seller_user_id: json.data.staff_user_id,
           seller_label: json.data.display_name ?? '',
         });
@@ -112,7 +117,7 @@ export const PaymentDialog = memo(function PaymentDialog({
         setVerifying(false);
       }
     },
-    [cash, card, onConfirm]
+    [cash, card, sign, onConfirm]
   );
 
   const handlePasswordCancel = useCallback(() => {
@@ -139,8 +144,24 @@ export const PaymentDialog = memo(function PaymentDialog({
         {step === 'choose' && (
           <div className="flex flex-col gap-4 p-5 flex-1">
             <div className="flex items-baseline justify-between">
-              <span className="text-headline text-[var(--color-label-primary)]">결제</span>
-              <span className="text-title2 font-bold tabular-nums">
+              <span className="text-headline text-[var(--color-label-primary)]">
+                {isRefund ? (
+                  <>
+                    환불
+                    <span className="ml-2 text-caption1 px-1.5 py-0.5 rounded bg-[var(--color-system-red)] text-white align-middle">
+                      반품
+                    </span>
+                  </>
+                ) : (
+                  '결제'
+                )}
+              </span>
+              <span
+                className={[
+                  'text-title2 font-bold tabular-nums',
+                  isRefund ? 'text-[var(--color-system-red)]' : '',
+                ].join(' ')}
+              >
                 ₩{total.toLocaleString()}
               </span>
             </div>
@@ -152,27 +173,29 @@ export const PaymentDialog = memo(function PaymentDialog({
                 onClick={handleAllCash}
                 className="pressable touch-target-lg rounded-xl bg-[var(--color-fill-secondary)] py-3 text-callout font-medium"
               >
-                전액 현금
+                {isRefund ? '전액 현금 환불' : '전액 현금'}
               </button>
               <button
                 type="button"
                 onClick={handleAllCard}
                 className="pressable touch-target-lg rounded-xl bg-[var(--color-fill-secondary)] py-3 text-callout font-medium"
               >
-                전액 카드
+                {isRefund ? '전액 카드 환불' : '전액 카드'}
               </button>
             </div>
 
-            {/* 분할 표시 + 편집 */}
+            {/* 분할 표시 + 편집 (환불 시 ▾ 부호 시각화) */}
             <div className="rounded-xl bg-[var(--color-bg-secondary)]">
               <button
                 type="button"
                 onClick={handleEditCash}
                 className="pressable w-full flex items-baseline justify-between p-3 border-b border-[var(--color-separator-opaque)] text-left"
               >
-                <span className="text-callout text-[var(--color-label-secondary)]">현금</span>
+                <span className="text-callout text-[var(--color-label-secondary)]">
+                  {isRefund ? '현금 환불' : '현금'}
+                </span>
                 <span className="text-callout font-semibold tabular-nums">
-                  ₩{cash.toLocaleString()}
+                  {isRefund && cash > 0 ? '−' : ''}₩{cash.toLocaleString()}
                 </span>
               </button>
               <button
@@ -180,9 +203,11 @@ export const PaymentDialog = memo(function PaymentDialog({
                 onClick={handleEditCard}
                 className="pressable w-full flex items-baseline justify-between p-3 text-left"
               >
-                <span className="text-callout text-[var(--color-label-secondary)]">카드</span>
+                <span className="text-callout text-[var(--color-label-secondary)]">
+                  {isRefund ? '카드 환불' : '카드'}
+                </span>
                 <span className="text-callout font-semibold tabular-nums">
-                  ₩{card.toLocaleString()}
+                  {isRefund && card > 0 ? '−' : ''}₩{card.toLocaleString()}
                 </span>
               </button>
             </div>
@@ -192,22 +217,20 @@ export const PaymentDialog = memo(function PaymentDialog({
               className={`text-caption1 text-center min-h-[1.25rem] ${
                 remaining > 0
                   ? 'text-[var(--color-system-orange)]'
-                  : cash + card > total
+                  : cash + card > absTotal
                     ? 'text-[var(--color-system-red)]'
                     : 'invisible'
               }`}
             >
               {remaining > 0
                 ? `남은 금액 ₩${remaining.toLocaleString()} 만큼 더 분할해주세요`
-                : cash + card > total
-                  ? `합계가 ₩${(cash + card - total).toLocaleString()} 만큼 초과됐습니다`
+                : cash + card > absTotal
+                  ? `합계가 ₩${(cash + card - absTotal).toLocaleString()} 만큼 초과됐습니다`
                   : '·'}
             </p>
 
-            {/* 여백 (남은 공간을 액션 버튼 위로 밀어냄) */}
             <div className="flex-1" />
 
-            {/* 취소 / 결제 확정 — touch-target-lg 통일 */}
             <div className="grid grid-cols-2 gap-2 mt-1">
               <button
                 type="button"
@@ -220,9 +243,12 @@ export const PaymentDialog = memo(function PaymentDialog({
                 type="button"
                 onClick={handleGoToPassword}
                 disabled={!canConfirm}
-                className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
+                className={[
+                  'pressable touch-target-lg rounded-xl px-4 py-3 text-white font-semibold disabled:opacity-40',
+                  isRefund ? 'bg-[var(--color-system-red)]' : 'bg-[var(--color-system-blue)]',
+                ].join(' ')}
               >
-                결제 확정
+                {isRefund ? '환불 확정' : '결제 확정'}
               </button>
             </div>
           </div>
@@ -231,8 +257,8 @@ export const PaymentDialog = memo(function PaymentDialog({
         {step === 'cash' && (
           <NumberKeypad
             initialValue={cash}
-            label="현금 금액"
-            maxValue={total}
+            label={isRefund ? '현금 환불 금액' : '현금 금액'}
+            maxValue={absTotal}
             onConfirm={handleSetCash}
             onCancel={handleBackToChoose}
           />
@@ -241,8 +267,8 @@ export const PaymentDialog = memo(function PaymentDialog({
         {step === 'card' && (
           <NumberKeypad
             initialValue={card}
-            label="카드 금액"
-            maxValue={total}
+            label={isRefund ? '카드 환불 금액' : '카드 금액'}
+            maxValue={absTotal}
             onConfirm={handleSetCard}
             onCancel={handleBackToChoose}
           />

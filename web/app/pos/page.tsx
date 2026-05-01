@@ -73,10 +73,14 @@ export default function PosPage() {
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [saleDate, setSaleDate] = useState<string>(todayIso());
 
+  // 반품 라인이 있으면 total 이 음수일 수 있음. 부호 유지 필요 (Math.max 제거).
   const total = useMemo(
-    () => Math.max(0, cart.subtotal - cart.itemDiscounts - globalDiscount),
+    () => cart.subtotal - cart.itemDiscounts - globalDiscount,
     [cart.subtotal, cart.itemDiscounts, globalDiscount]
   );
+
+  // 환불(전부 반품) 여부 — UI 안내·결제 다이얼로그 처리 분기
+  const isRefund = total < 0;
 
   // ── 장바구니 핸들러 ──────────────────────────────────────────────────────
   const handleAddProduct = useCallback(
@@ -91,6 +95,11 @@ export default function PosPage() {
 
   const handleDecrease = useCallback(
     (cartItemId: string, currentQty: number) => cart.updateQuantity(cartItemId, currentQty - 1),
+    [cart]
+  );
+
+  const handleToggleReturn = useCallback(
+    (cartItemId: string) => cart.toggleReturn(cartItemId),
     [cart]
   );
 
@@ -248,6 +257,7 @@ export default function PosPage() {
             onIncrease={handleIncrease}
             onDecrease={handleDecrease}
             onEditDiscount={handleEditItemDiscount}
+            onToggleReturn={handleToggleReturn}
           />
 
           <PriceSummary
@@ -268,10 +278,15 @@ export default function PosPage() {
             <button
               type="button"
               onClick={handleOpenPayment}
-              disabled={cart.items.length === 0 || total <= 0 || !storeId}
-              className="pressable touch-target-lg rounded-xl px-4 py-3 bg-[var(--color-system-blue)] text-white font-semibold disabled:opacity-40"
+              disabled={cart.items.length === 0 || total === 0 || !storeId}
+              className={[
+                'pressable touch-target-lg rounded-xl px-4 py-3 font-semibold disabled:opacity-40',
+                isRefund
+                  ? 'bg-[var(--color-system-red)] text-white'
+                  : 'bg-[var(--color-system-blue)] text-white',
+              ].join(' ')}
             >
-              결제 ({total.toLocaleString()}원)
+              {isRefund ? '환불' : '결제'} ({total.toLocaleString()}원)
             </button>
           </div>
         </section>
