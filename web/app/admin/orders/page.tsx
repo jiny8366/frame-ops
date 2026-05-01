@@ -9,6 +9,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { formatColor, LINE_LABELS } from '@/lib/product-codes';
+import { useSession } from '@/hooks/useSession';
 
 interface OrderItem {
   supplier_id: string;
@@ -85,6 +86,10 @@ function saveOverrides(map: Record<string, number>) {
 }
 
 export default function OrdersPage() {
+  const { session } = useSession();
+  // 매입가/합계 컬럼 표시 — 본사(hq_*)만. 지점은 데이터 보유하나 화면 미노출.
+  const showCost = session?.role_code?.startsWith('hq_') ?? false;
+
   const [from, setFrom] = useState<string>(todayDate());
   const [to, setTo] = useState<string>(todayDate());
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
@@ -356,6 +361,7 @@ export default function OrdersPage() {
             onPrint={handlePrint}
             getQty={effectiveQty}
             onEditItem={setEditing}
+            showCost={showCost}
           />
         )}
       </div>
@@ -397,6 +403,7 @@ function SupplierContent({
   onPrint,
   getQty,
   onEditItem,
+  showCost,
 }: {
   group: SupplierGroup;
   busy: boolean;
@@ -408,6 +415,7 @@ function SupplierContent({
   onPrint: () => void;
   getQty: (it: OrderItem) => number;
   onEditItem: (it: OrderItem) => void;
+  showCost: boolean;
 }) {
   // 합계는 override 적용 후 재계산
   const itemsQty = group.items.reduce((s, it) => s + getQty(it), 0);
@@ -425,8 +433,13 @@ function SupplierContent({
             )}
           </h2>
           <p className="text-caption1 text-[var(--color-label-secondary)]">
-            {group.items.length}품목 / 수량 {itemsQty} / 원가 ₩
-            {itemsCost.toLocaleString()}
+            {group.items.length}품목 / 수량 {itemsQty}
+            {showCost && (
+              <>
+                {' / 원가 ₩'}
+                {itemsCost.toLocaleString()}
+              </>
+            )}
           </p>
         </div>
 
@@ -493,8 +506,8 @@ function SupplierContent({
               <th>제품번호</th>
               <th>컬러</th>
               <th className="num">수량</th>
-              <th className="num">원가</th>
-              <th className="num">합계</th>
+              {showCost && <th className="num">원가</th>}
+              {showCost && <th className="num">합계</th>}
             </tr>
           </thead>
           <tbody>
@@ -531,10 +544,12 @@ function SupplierContent({
                       <span className="ml-1 text-caption2 text-[var(--color-system-orange)]">*</span>
                     )}
                   </td>
-                  <td className="num">₩{it.cost_price.toLocaleString()}</td>
-                  <td className="num" style={{ fontWeight: 600 }}>
-                    ₩{(qty * it.cost_price).toLocaleString()}
-                  </td>
+                  {showCost && <td className="num">₩{it.cost_price.toLocaleString()}</td>}
+                  {showCost && (
+                    <td className="num" style={{ fontWeight: 600 }}>
+                      ₩{(qty * it.cost_price).toLocaleString()}
+                    </td>
+                  )}
                 </tr>
               );
             })}
