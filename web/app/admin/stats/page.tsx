@@ -173,25 +173,46 @@ export default function StatsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((p) => (
-                      <tr
-                        key={p.product_id}
-                        className="border-t border-[var(--color-separator-opaque)]"
-                      >
-                        <td className="p-3 font-semibold">
-                          {joinParts([p.brand_name, p.style_code, p.color_code ? formatColor(p.color_code) : null]) || '—'}
-                        </td>
-                        <td className="p-3 text-caption1 text-[var(--color-label-secondary)]">
-                          {joinParts([p.category, p.product_line]) || '—'}
-                        </td>
-                        <td className="p-3 text-right tabular-nums font-semibold">
-                          {p.total_quantity}
-                        </td>
-                        <td className="p-3 text-right tabular-nums font-semibold">
-                          ₩{(p.total_revenue ?? 0).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {products.map((p) => {
+                      const isRefund = p.total_quantity < 0 || p.total_revenue < 0;
+                      return (
+                        <tr
+                          key={p.product_id}
+                          className={[
+                            'border-t border-[var(--color-separator-opaque)]',
+                            isRefund ? 'bg-[var(--color-system-red)]/5' : '',
+                          ].join(' ')}
+                        >
+                          <td className="p-3 font-semibold">
+                            {isRefund && (
+                              <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-caption2 font-semibold bg-[var(--color-system-red)] text-white">
+                                반품
+                              </span>
+                            )}
+                            {joinParts([p.brand_name, p.style_code, p.color_code ? formatColor(p.color_code) : null]) || '—'}
+                          </td>
+                          <td className="p-3 text-caption1 text-[var(--color-label-secondary)]">
+                            {joinParts([p.category, p.product_line]) || '—'}
+                          </td>
+                          <td
+                            className={[
+                              'p-3 text-right tabular-nums font-semibold',
+                              isRefund ? 'text-[var(--color-system-red)]' : '',
+                            ].join(' ')}
+                          >
+                            {p.total_quantity}
+                          </td>
+                          <td
+                            className={[
+                              'p-3 text-right tabular-nums font-semibold',
+                              isRefund ? 'text-[var(--color-system-red)]' : '',
+                            ].join(' ')}
+                          >
+                            ₩{(p.total_revenue ?? 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
