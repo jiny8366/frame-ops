@@ -149,6 +149,27 @@ export async function GET(request: Request) {
     item_count: baseSummary.item_count - returnsAdjusted.qty,
   };
 
+  // 시간대별(hourly) 차트 보정 — 환불을 시간(hour) 단위로 집계 후 매출/수량 차감
+  const baseHourly = (result?.hourly ?? []) as HourlyPoint[];
+  const refundByHour = new Map<number, { revenue: number; qty: number }>();
+  if (retList && retList.length > 0) {
+    const retById = new Map(retList.map((r) => [r.id, r.returned_at]));
+    for (const l of retLines) {
+      const at = retById.get(l.return_id);
+      if (!at) continue;
+      const h = new Date(at).getHours();
+      const e = refundByHour.get(h) ?? { revenue: 0, qty: 0 };
+      e.revenue += l.quantity * l.unit_price;
+      e.qty += l.quantity;
+      refundByHour.set(h, e);
+    }
+  }
+  const adjustedHourly = baseHourly.map((p) => {
+    const r = refundByHour.get(p.hour);
+    if (!r) return p;
+    return { ...p, revenue: p.revenue - r.revenue, qty: p.qty - r.qty };
+  });
+
   // 판매 상품 리스트 — 기존 항목에서 환불 차감 + 환불만 있는 제품도 음수로 추가
   const baseProducts = (result?.products ?? []) as ProductRow[];
   const productMap = new Map<string, ProductRow>();
@@ -184,7 +205,7 @@ export async function GET(request: Request) {
       window_start: result?.window_start ?? null,
       window_end: result?.window_end ?? null,
       summary: adjSummary,
-      hourly: result?.hourly ?? [],
+      hourly: adjustedHourly,
       products: adjustedProducts,
       returns_summary: returnsAdjusted,
     },
