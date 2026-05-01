@@ -44,6 +44,61 @@ async function postSaleWithTimeout(payload: SaleInput): Promise<CreateSaleApiRes
   }
 }
 
+// 환불 — fo_sale_items 의 CHECK quantity > 0 제약 때문에 sale 테이블에 음수 qty 를 못 넣어
+// /api/sales/refund 로 라우팅 (절대값 변환).
+async function postRefundWithTimeout(payload: SaleInput): Promise<CreateSaleApiResp> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const refundPayload = {
+      store_id: payload.store_id,
+      items: payload.items.map((it) => ({
+        product_id: it.product_id,
+        quantity: Math.abs(it.quantity),
+        unit_price: it.unit_price,
+      })),
+      // PaymentDialog 가 환불 시 cash/card 에 음수를 넣어 보냄 → 절대값으로 변환
+      cash_amount: Math.abs(payload.cash_amount ?? 0),
+      card_amount: Math.abs(payload.card_amount ?? 0),
+      discount_total: Math.abs(payload.discount_total ?? 0),
+      seller_user_id: payload.seller_user_id,
+      seller_label: payload.seller_label,
+      idempotency_key: payload.idempotency_key,
+      returned_at: payload.sold_at ?? null,
+    };
+    const res = await fetch('/api/sales/refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(refundPayload),
+      signal: controller.signal,
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      data: { return_id: string; returned_at: string; items_returned: number; total_refund: number } | null;
+      error: string | null;
+    };
+    if (!res.ok) {
+      return { data: null, error: json.error ?? `HTTP ${res.status}` };
+    }
+    if (!json.data) return { data: null, error: '환불 응답 없음' };
+    // CreateSaleApiResp 형태로 정규화 (sale_id 자리에 return_id, total_amount 자리에 total_refund)
+    return {
+      data: {
+        sale_id: json.data.return_id,
+        sold_at: json.data.returned_at,
+        total_amount: -Math.abs(json.data.total_refund),
+        items_created: json.data.items_returned,
+      },
+      error: null,
+    };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function isRefundPayload(payload: SaleInput): boolean {
+  return payload.items.some((it) => it.quantity < 0);
+}
+
 export interface UseCheckoutReturn {
   /** 성공이면 true, 실패(폴백 큐 보관 포함) 면 false. POS 페이지가 카트 비울지 결정. */
   submit: (saleData: SaleInput) => Promise<boolean>;
@@ -92,15 +147,18 @@ export function useCheckout(): UseCheckoutReturn {
       return false;
     }
 
-    // 2) 온라인 — 10초 타임아웃 fetch
+    // 2) 온라인 — 환불 vs 판매 라우팅
+    const isRefund = isRefundPayload(stamped);
     try {
-      const { data, error } = await postSaleWithTimeout(stamped);
+      const { data, error } = isRefund
+        ? await postRefundWithTimeout(stamped)
+        : await postSaleWithTimeout(stamped);
 
       if (error) {
         console.error('[useCheckout] API error:', error);
         await queueOffline(stamped);
         toast.warning(
-          `판매 등록 보류 — ${error}. 자동 재시도 중 (우하단 배지).`,
+          `${isRefund ? '환불' : '판매'} 등록 보류 — ${error}. 자동 재시도 중 (우하단 배지).`,
           { duration: 6000 }
         );
         return false;
@@ -114,7 +172,7 @@ export function useCheckout(): UseCheckoutReturn {
         return false;
       }
 
-      toast.success('판매 완료', { duration: 2000 });
+      toast.success(isRefund ? '환불 완료' : '판매 완료', { duration: 2000 });
       return true;
     } catch (err) {
       // 타임아웃 / 네트워크 예외 — 큐로 보관
