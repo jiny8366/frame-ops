@@ -146,14 +146,14 @@ function NewTransferForm({ isHq, sessionStoreId }: { isHq: boolean; sessionStore
   const [lines, setLines] = useState<TransferLine[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // 보내는 매장 — HQ는 선택, 비-HQ는 본인 매장 고정
+  // 보내는 매장 — HQ는 사용자가 직접 선택 (자동 선택 안 함), 비-HQ는 본인 매장 고정
   useEffect(() => {
     if (isHq) {
-      if (!fromStoreId && stores.length > 0) setFromStoreId(stores[0].id);
-    } else {
-      setFromStoreId(sessionStoreId);
+      // 자동 선택 X — '선택' 옵션이 기본값으로 보이도록 빈 문자열 유지
+      return;
     }
-  }, [isHq, sessionStoreId, stores, fromStoreId]);
+    setFromStoreId(sessionStoreId);
+  }, [isHq, sessionStoreId]);
 
   // 제품 검색
   const [query, setQuery] = useState('');
@@ -284,8 +284,15 @@ function NewTransferForm({ isHq, sessionStoreId }: { isHq: boolean; sessionStore
             <select
               value={fromStoreId}
               onChange={(e) => setFromStoreId(e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+              required
+              className={[
+                'w-full rounded-xl border bg-[var(--color-bg-primary)] px-3 py-2 text-callout',
+                fromStoreId
+                  ? 'border-[var(--color-separator-opaque)]'
+                  : 'border-[var(--color-system-orange)]',
+              ].join(' ')}
             >
+              <option value="">선택</option>
               {stores.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} ({s.store_code})
