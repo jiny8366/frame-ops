@@ -64,28 +64,41 @@ export async function GET(request: Request) {
     window_end: string;
   };
 
-  // 환불 보정 — 직전 12시간 윈도우의 fo_returns 를 차감.
-  // RPC 가 fo_returns 미반영 → 클라이언트(API) 측에서 차감 후 반환.
-  const winStart = result?.window_start ?? null;
-  const winEnd = result?.window_end ?? new Date().toISOString();
-  let returnsAdjusted: {
-    count: number;
-    items: number;
-    qty: number;
-    amount: number;
-  } = { count: 0, items: 0, qty: 0, amount: 0 };
-  if (winStart) {
-    // window_start/end 가 ISO timestamp 일 수 있음 → 날짜 부분만 추출하여 fetchReturnsTotals 사용
-    const fromDate = winStart.slice(0, 10);
-    const toDate = winEnd.slice(0, 10);
-    const r = await fetchReturnsTotals(db, fromDate, toDate, storeId);
-    returnsAdjusted = {
-      count: r.count,
-      items: r.itemsCount,
-      qty: r.qty,
-      amount: r.amount,
-    };
+  // 환불 보정 — 직전 12시간 윈도우의 fo_returns 차감.
+  // window_start 가 RPC 결과에 없을 수 있으므로 fallback: 현재 시각 기준 -12h.
+  const nowMs = Date.now();
+  const winStartIso = result?.window_start ?? new Date(nowMs - 12 * 60 * 60 * 1000).toISOString();
+  const winEndIso = result?.window_end ?? new Date(nowMs).toISOString();
+
+  // returned_at 정확한 시간 비교를 위해 직접 supabase 쿼리 (날짜 단위 fetchReturnsTotals 대신 시각 단위)
+  let retQ = db
+    .from('fo_returns')
+    .select('id, note, store_id, returned_at')
+    .gte('returned_at', winStartIso)
+    .lte('returned_at', winEndIso);
+  if (storeId) retQ = retQ.eq('store_id', storeId);
+  const { data: retList } = await retQ;
+  let retAmount = 0;
+  let retQty = 0;
+  let retItems = 0;
+  if (retList && retList.length > 0) {
+    const { data: rLines } = await db
+      .from('fo_return_lines')
+      .select('quantity, unit_price, return_id')
+      .in('return_id', retList.map((r) => r.id));
+    for (const l of rLines ?? []) {
+      retItems += 1;
+      retQty += l.quantity;
+      retAmount += l.quantity * l.unit_price;
+    }
   }
+  const returnsAdjusted = {
+    count: retList?.length ?? 0,
+    items: retItems,
+    qty: retQty,
+    amount: retAmount,
+  };
+
   const baseSummary = result?.summary ?? {
     revenue: 0,
     cost: 0,

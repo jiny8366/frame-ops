@@ -44,30 +44,57 @@ export async function GET(request: Request) {
     .eq('active', true)
     .order('store_code', { ascending: true });
 
-  // 환불 보정 — RPC 결과의 매출 관련 필드에서 차감.
-  const returns = await fetchReturnsTotals(db, from, to, storeId);
+  // 환불 보정 — 기간 내 + 당월 환불 차감.
+  // RPC 반환 구조: { summary: {cash, card, revenue, count, quantity}, month: {cash, card, revenue, count}, by_store: [...] }
+  const periodReturns = await fetchReturnsTotals(db, from, to, storeId);
+  const seoulNow = new Date(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date())
+  );
+  const monthStart = `${seoulNow.getFullYear()}-${String(seoulNow.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthReturns = await fetchReturnsTotals(db, monthStart, to, storeId);
+
   const dataObj = (data ?? {}) as Record<string, unknown>;
-  // 매출 합계가 있는 필드 발견 시 차감 시도 (안전한 키만)
-  const tryDeduct = (key: string, sub: number) => {
-    const v = dataObj[key];
-    if (typeof v === 'number') dataObj[key] = v - sub;
-  };
-  tryDeduct('total_revenue', returns.amount);
-  tryDeduct('total_cash', returns.cashRefund);
-  tryDeduct('total_card', returns.cardRefund);
-  tryDeduct('item_count', returns.qty);
+  // summary (기간) 차감
+  if (dataObj.summary && typeof dataObj.summary === 'object') {
+    const s = dataObj.summary as Record<string, unknown>;
+    if (typeof s.revenue === 'number') s.revenue = s.revenue - periodReturns.amount;
+    if (typeof s.cash === 'number') s.cash = s.cash - periodReturns.cashRefund;
+    if (typeof s.card === 'number') s.card = s.card - periodReturns.cardRefund;
+    if (typeof s.quantity === 'number') s.quantity = s.quantity - periodReturns.qty;
+  }
+  // month (당월 누적) 차감
+  if (dataObj.month && typeof dataObj.month === 'object') {
+    const m = dataObj.month as Record<string, unknown>;
+    if (typeof m.revenue === 'number') m.revenue = m.revenue - monthReturns.amount;
+    if (typeof m.cash === 'number') m.cash = m.cash - monthReturns.cashRefund;
+    if (typeof m.card === 'number') m.card = m.card - monthReturns.cardRefund;
+  }
+  // by_store 행 — 매장별 매출에서 차감 (기간 환불을 매장별로 분배 — fetchReturnsTotals 는 storeId 인자에 따라 이미 필터됨)
+  // storeId 가 null(전 매장)이면 by_store 항목별로 별도 조회 필요
+  if (Array.isArray(dataObj.by_store) && !storeId) {
+    const byStore = dataObj.by_store as Array<Record<string, unknown>>;
+    for (const row of byStore) {
+      const sid = row.store_id as string | undefined;
+      if (!sid) continue;
+      const sr = await fetchReturnsTotals(db, from, to, sid);
+      if (typeof row.revenue === 'number') row.revenue = row.revenue - sr.amount;
+      if (typeof row.cash === 'number') row.cash = row.cash - sr.cashRefund;
+      if (typeof row.card === 'number') row.card = row.card - sr.cardRefund;
+      if (typeof row.quantity === 'number') row.quantity = row.quantity - sr.qty;
+    }
+  }
 
   return NextResponse.json({
     data: {
       ...dataObj,
       stores: stores ?? [],
       returns_summary: {
-        count: returns.count,
-        items: returns.itemsCount,
-        qty: returns.qty,
-        amount: returns.amount,
-        cash_refund: returns.cashRefund,
-        card_refund: returns.cardRefund,
+        count: periodReturns.count,
+        items: periodReturns.itemsCount,
+        qty: periodReturns.qty,
+        amount: periodReturns.amount,
+        cash_refund: periodReturns.cashRefund,
+        card_refund: periodReturns.cardRefund,
       },
     },
     error: null,
