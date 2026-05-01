@@ -1,9 +1,10 @@
 // Frame Ops Phase 2 — 비밀번호 입력 숫자 키패드 (state 격리)
 // 자리수 제한 없음. 입력은 마스킹(●). onConfirm 시 평문 password 문자열 전달.
+// 데스크톱: 하드웨어 키보드 입력도 지원 (0-9, A-Z, Backspace, Enter, Escape).
 
 'use client';
 
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 
 export interface PasswordKeypadProps {
   label?: string;
@@ -36,6 +37,45 @@ export const PasswordKeypad = memo(function PasswordKeypad({
     if (!value) return;
     onConfirm(value);
   }, [value, onConfirm]);
+
+  // 데스크톱 하드웨어 키보드 입력 지원 — modal 떠 있는 동안 keydown 캡처.
+  // 허용: 0-9, A-Z (대소문자 모두), Backspace, Enter (확인), Escape (취소)
+  // 차단: 그 외 키 (조합키 포함). 입력 폼이 따로 없어 IME 우려 없음.
+  // 의존 최소화 — 매 키 입력마다 리스너 재등록 방지를 위해 함수형 setState 로 현재값 접근.
+  useEffect(() => {
+    if (busy) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // 현재 값을 함수형으로 읽고 변경 없이 onConfirm 트리거
+        setValue((current) => {
+          if (current.length > 0) onConfirm(current);
+          return current;
+        });
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        setValue((prev) => prev.slice(0, -1));
+        return;
+      }
+      if (e.key.length !== 1) return;
+      if (/^[0-9a-zA-Z]$/.test(e.key)) {
+        e.preventDefault();
+        setValue((prev) => (prev.length >= 32 ? prev : prev + e.key.toUpperCase()));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [busy, onConfirm, onCancel]);
 
   const masked = '●'.repeat(value.length) || ' ';
 
