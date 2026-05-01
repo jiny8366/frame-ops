@@ -211,8 +211,34 @@ const TABLE_TO_ENDPOINT: Record<string, string> = {
 async function applyViaApi(
   item: SyncQueueItem | Omit<SyncQueueItem, 'id'>
 ): Promise<{ success: boolean; error?: string }> {
-  const endpoint = TABLE_TO_ENDPOINT[item.table];
+  let endpoint = TABLE_TO_ENDPOINT[item.table];
   if (!endpoint) return { success: false, error: `알 수 없는 테이블: ${item.table}` };
+
+  // 환불 라우팅 — 'sales' 테이블 큐 항목 중 음수 qty 가 있으면 /api/sales/refund 로 보냄.
+  // payload 도 절대값 변환 + 환불 전용 형태로 변형.
+  let payload = item.payload as Record<string, unknown>;
+  if (item.table === 'sales' && Array.isArray(payload.items)) {
+    const items = payload.items as Array<{ product_id: string; quantity: number; unit_price: number; discount_amount?: number }>;
+    const isRefund = items.some((it) => it.quantity < 0);
+    if (isRefund) {
+      endpoint = '/api/sales/refund';
+      payload = {
+        store_id: payload.store_id,
+        items: items.map((it) => ({
+          product_id: it.product_id,
+          quantity: Math.abs(it.quantity),
+          unit_price: it.unit_price,
+        })),
+        cash_amount: Math.abs((payload.cash_amount as number) ?? 0),
+        card_amount: Math.abs((payload.card_amount as number) ?? 0),
+        discount_total: Math.abs((payload.discount_total as number) ?? 0),
+        seller_user_id: payload.seller_user_id ?? null,
+        seller_label: payload.seller_label ?? null,
+        idempotency_key: payload.idempotency_key,
+        returned_at: payload.sold_at ?? null,
+      };
+    }
+  }
 
   // 재시도도 10초 타임아웃 — 멈춤 방지.
   const controller = new AbortController();
@@ -225,12 +251,12 @@ async function applyViaApi(
 
     const res = await fetch(
       method === 'DELETE'
-        ? `${endpoint}/${(item.payload as Record<string, unknown>).id}`
+        ? `${endpoint}/${(payload as Record<string, unknown>).id}`
         : endpoint,
       {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: method !== 'DELETE' ? JSON.stringify(item.payload) : undefined,
+        body: method !== 'DELETE' ? JSON.stringify(payload) : undefined,
         signal: controller.signal,
       }
     );
