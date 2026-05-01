@@ -111,15 +111,17 @@ export const ProductSearch = memo(function ProductSearch({ onSelect }: ProductSe
           type="search"
           value={draft}
           onChange={handleInputChange}
-          /* 스마트폰에서 영문 QWERTY 키보드를 띄우기 위해 'text'.
-             태블릿/데스크톱은 시스템 키보드 그대로. T9 키패드는 sm 이상에서만 노출. */
+          /* 모든 디바이스(스마트폰·태블릿·데스크톱)에서 자판 입력 가능.
+             스마트폰: 시스템 영문 QWERTY (T9 미표시).
+             태블릿/데스크톱: 시스템 키보드 + T9 키패드 (둘 다 사용 가능). */
           inputMode="text"
           enterKeyHint="search"
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
           autoCapitalize="characters"
-          placeholder="제품번호 / 제품명 / 컬러 검색"
+          autoFocus
+          placeholder="제품번호 / 제품명 / 컬러 — 자판 또는 키패드 입력"
           aria-label="제품 검색"
           className="flex-1 min-w-0 bg-transparent text-title1 font-semibold tabular-nums text-[var(--color-label-primary)] placeholder:text-[var(--color-label-tertiary)] placeholder:font-normal placeholder:text-callout focus:outline-none truncate"
         />
