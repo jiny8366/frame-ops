@@ -1,0 +1,32 @@
+name: keep-warm
+
+# 5분 주기로 /api/health 를 호출하여 Vercel 함수 + Supabase 커넥션 cold-start 방지.
+# - GitHub Actions 무료 한도 내 (월 2000분 — 5분 주기 호출은 회당 ~5초 → 월 ~50분 사용)
+# - GitHub cron 은 부하 시 수 분 지연될 수 있음. 정확성 필요 시 UptimeRobot 병행 권장.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # 매 5분
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping production /api/health
+        run: |
+          set -e
+          URL="https://frame-ops.vercel.app/api/health"
+          for i in 1 2 3; do
+            HTTP=$(curl -s -o /tmp/health.json -w "%{http_code}" -m 15 "$URL" || echo "000")
+            if [ "$HTTP" = "200" ]; then
+              echo "OK ($HTTP) on attempt $i"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Attempt $i failed: HTTP $HTTP"
+            sleep 5
+          done
+          echo "All attempts failed"
+          exit 1
