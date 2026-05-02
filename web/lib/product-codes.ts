@@ -15,16 +15,27 @@ import type { Database } from '@/types/database';
 
 export const LINE_FRM = 'FRM';
 export const LINE_SUN = 'SUN';
+export const LINE_RLS = 'RLS'; // Rim Less (무테)
+export const LINE_GGL = 'GGL'; // Goggles (고글)
 export const LINE_LABELS: Record<string, string> = {
   [LINE_FRM]: '안경테',
   [LINE_SUN]: '선글라스',
+  [LINE_RLS]: '무테',
+  [LINE_GGL]: '고글',
 };
 
-export type ProductLine = typeof LINE_FRM | typeof LINE_SUN;
+export type ProductLine =
+  | typeof LINE_FRM
+  | typeof LINE_SUN
+  | typeof LINE_RLS
+  | typeof LINE_GGL;
+
+const ALL_LINES: ProductLine[] = [LINE_FRM, LINE_SUN, LINE_RLS, LINE_GGL];
 
 export function normalizeProductLine(line: string | null | undefined): ProductLine {
   const x = (line ?? '').trim().toUpperCase();
-  return x === LINE_SUN ? LINE_SUN : LINE_FRM;
+  if ((ALL_LINES as string[]).includes(x)) return x as ProductLine;
+  return LINE_FRM;
 }
 
 /** 영문3자 약자 정규화: 영숫자만, 대문자, 3자. 부족하면 'X' 패딩, 넘치면 잘라냄. */
