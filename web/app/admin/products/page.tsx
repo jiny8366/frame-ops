@@ -8,7 +8,7 @@ import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { ProductFormDialog, type ProductRow } from './ProductFormDialog';
 import { useDebounce } from '@/hooks/useDebounce';
-import { LINE_FRM, LINE_LABELS, LINE_SUN, formatColor } from '@/lib/product-codes';
+import { LINE_FRM, LINE_LABELS, LINE_SUN, LINE_RLS, LINE_GGL, formatColor } from '@/lib/product-codes';
 
 const productsFetcher = async (url: string): Promise<ProductRow[]> => {
   const res = await fetch(url);
@@ -105,6 +105,8 @@ export default function ProductsAdminPage() {
               <option value="">전체</option>
               <option value={LINE_FRM}>{LINE_LABELS[LINE_FRM]} (FRM)</option>
               <option value={LINE_SUN}>{LINE_LABELS[LINE_SUN]} (SUN)</option>
+              <option value={LINE_RLS}>{LINE_LABELS[LINE_RLS]} (RLS)</option>
+              <option value={LINE_GGL}>{LINE_LABELS[LINE_GGL]} (GGL)</option>
             </select>
           </Field>
         </div>

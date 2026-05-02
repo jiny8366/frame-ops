@@ -14,6 +14,8 @@ import {
   LINE_FRM,
   LINE_LABELS,
   LINE_SUN,
+  LINE_RLS,
+  LINE_GGL,
   normalizeColorCode,
   normalizeProductLine,
   normalizeShortCode,
@@ -406,6 +408,8 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
             >
               <option value={LINE_FRM}>{LINE_LABELS[LINE_FRM]} (FRM)</option>
               <option value={LINE_SUN}>{LINE_LABELS[LINE_SUN]} (SUN)</option>
+              <option value={LINE_RLS}>{LINE_LABELS[LINE_RLS]} (RLS)</option>
+              <option value={LINE_GGL}>{LINE_LABELS[LINE_GGL]} (GGL)</option>
             </select>
           </Field>
           <Field label="카테고리(소재)">
