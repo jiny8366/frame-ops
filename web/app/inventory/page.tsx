@@ -280,19 +280,21 @@ function StockEditDialog({
 
   useEffect(() => {
     userEditedRef.current = false;
-    setDraft(String(displayQty(item)));
+    setDraft(String(serverQty));
     freshRef.current = true;
+    // 상품 행 교체만 (id 변경). 같은 줄의 serverQty는 이 시점의 렌더 값을 사용.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 의도적으로 id 만 추적
   }, [item.id]);
 
   useEffect(() => {
     if (userEditedRef.current || submitting) return;
-    const nextStr = String(displayQty(item));
+    const nextStr = String(serverQty);
     setDraft((prev) => {
       if (prev === nextStr) return prev;
       freshRef.current = true;
       return nextStr;
     });
-  }, [item.id, item.stock_quantity, submitting]);
+  }, [serverQty, submitting]);
 
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
