@@ -1,6 +1,7 @@
 // Frame Ops Web — 재고 조회
 // 목록 현재고 = API stock_quantity (매장별 fo_stock 우선, 없으면 fo_products.stock_quantity).
-// 매입/판매 열은 전표 라인 집계(참고). 참고 재고식(매입−판매)=computed_stock 는 API에 유지됨.
+// 수동 재고 저장 후에는 전체 리스트를 다시 받지 않고 해당 행만 패치 + 스크롤 유지(SWR revalidate: false).
+// 매입/판매 열은 전표 라인 집계(참고). computed_stock 은 API 참고값.
 
 'use client';
 
@@ -67,6 +68,7 @@ export default function InventoryPage() {
   const [showAll, setShowAll] = useState(false);
   /** 행 객체를 보관하면 SWR 재검증 후에도 과거 스냅샷이 남아 목록 숫자와 다이얼로그만 어긋난 것처럼 보일 수 있음 → id 로만 두고 매번 최신 items 에서 해석 */
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const listScrollRef = useRef<HTMLDivElement>(null);
 
   // 페이지 진입 시 자동 fetch 안 함. 검색어 입력 또는 '전체 보기' 클릭 시에만.
   const shouldFetch = query.trim().length > 0 || showAll;
@@ -178,7 +180,7 @@ export default function InventoryPage() {
               조건에 맞는 상품이 없습니다.
             </p>
           ) : (
-            <div className="data-list-scroll" style={{ maxHeight: 720 }}>
+            <div ref={listScrollRef} className="data-list-scroll" style={{ maxHeight: 720 }}>
               <table className="data-list-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr>
@@ -251,8 +253,23 @@ export default function InventoryPage() {
         <StockEditDialog
           item={editingRow}
           onClose={() => setEditingProductId(null)}
-          onSaved={async () => {
-            await mutate(undefined, { revalidate: true });
+          onSaved={async (productId, newQty) => {
+            const el = listScrollRef.current;
+            const scrollTop = el?.scrollTop ?? 0;
+            await mutate(
+              (prev) => {
+                if (!prev) return prev;
+                return prev.map((row) =>
+                  row.id === productId ? { ...row, stock_quantity: newQty } : row
+                );
+              },
+              { revalidate: false }
+            );
+            requestAnimationFrame(() => {
+              if (listScrollRef.current) {
+                listScrollRef.current.scrollTop = scrollTop;
+              }
+            });
             setEditingProductId(null);
           }}
         />
@@ -269,7 +286,8 @@ function StockEditDialog({
 }: {
   item: ProductRow;
   onClose: () => void;
-  onSaved: () => void;
+  /** 저장 성공 시 — 서버 재조회 없이 부모가 해당 행만 갱신 */
+  onSaved: (productId: string, newQuantity: number) => void | Promise<void>;
 }) {
   const serverQty = displayQty(item);
   const [draft, setDraft] = useState<string>(String(serverQty));
@@ -345,7 +363,8 @@ function StockEditDialog({
         return;
       }
       toast.success(`재고 ${qtyNum} 으로 갱신`);
-      onSaved();
+      await Promise.resolve(onSaved(item.id, qtyNum));
+      setSubmitting(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '네트워크 오류');
       setSubmitting(false);
