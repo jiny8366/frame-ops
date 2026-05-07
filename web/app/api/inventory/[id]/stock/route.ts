@@ -1,5 +1,5 @@
 // Frame Ops Web — /api/inventory/[id]/stock
-// PATCH: 단일 상품의 stock_quantity 수정. inventory_edit_stock 권한 필요.
+// PATCH: 매장 fo_stock.quantity + fo_products.stock_quantity(하위 호환·POS 검색) 동기화.
 
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
@@ -37,6 +37,20 @@ export async function PATCH(
     const qty = Math.round(body.stock_quantity);
 
     const db = getDB();
+    const storeId = session.store_id;
+
+    const { error: upsertErr } = await db.from('fo_stock').upsert(
+      {
+        store_id: storeId,
+        product_id: id,
+        quantity: qty,
+      },
+      { onConflict: 'store_id,product_id' }
+    );
+    if (upsertErr) {
+      return NextResponse.json({ data: null, error: upsertErr.message }, { status: 500 });
+    }
+
     const { data, error } = await db
       .from('fo_products')
       .update({ stock_quantity: qty })

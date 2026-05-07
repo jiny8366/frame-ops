@@ -1,5 +1,6 @@
 // Frame Ops Web — 재고 조회
-// fo_products 의 활성 상품을 stock_quantity 기준으로 정렬·검색·필터.
+// 목록 현재고 = API stock_quantity (매장별 fo_stock 우선, 없으면 fo_products.stock_quantity).
+// 매입/판매 열은 전표 라인 집계(참고). 참고 재고식(매입−판매)=computed_stock 는 API에 유지됨.
 
 'use client';
 
@@ -20,13 +21,13 @@ interface ProductRow {
   product_line: string | null;
   cost_price: number | null;
   sale_price: number | null;
-  /** fo_products.stock_quantity (수동 편집 가능) */
+  /** 매장별 fo_stock 우선, 없으면 fo_products.stock_quantity (수동 편집·동기화) */
   stock_quantity: number | null;
   /** 거래 이력 합산: 매입 누계 */
   total_inbound: number;
   /** 거래 이력 합산: 판매 누계 */
   total_sold: number;
-  /** total_inbound - total_sold (현재고) */
+  /** total_inbound - total_sold (이력 기준 참고값; 화면 현재고는 stock_quantity) */
   computed_stock: number;
   brand_id: string | null;
   brand_name: string | null;
@@ -36,8 +37,18 @@ interface ProductRow {
 
 interface Resp { data: ProductRow[] | null; error: string | null }
 
+/** 목록·요약과 편집 다이얼로그 동일 원장(API stock_quantity). */
+function displayQty(p: ProductRow): number {
+  const v = p.stock_quantity;
+  if (v == null || Number.isNaN(Number(v))) return 0;
+  return Number(v);
+}
+
 const fetcher = async (url: string): Promise<ProductRow[]> => {
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    cache: 'no-store',
+    headers: { Pragma: 'no-cache' },
+  });
   const json = (await res.json()) as Resp;
   if (json.error) throw new Error(json.error);
   // brand 호환 필드 채움 (기존 코드 일부가 p.brand?.name 사용)
@@ -54,15 +65,31 @@ export default function InventoryPage() {
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState<'low' | 'style' | 'recent'>('style');
   const [showAll, setShowAll] = useState(false);
-  const [editing, setEditing] = useState<ProductRow | null>(null);
+  /** 행 객체를 보관하면 SWR 재검증 후에도 과거 스냅샷이 남아 목록 숫자와 다이얼로그만 어긋난 것처럼 보일 수 있음 → id 로만 두고 매번 최신 items 에서 해석 */
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   // 페이지 진입 시 자동 fetch 안 함. 검색어 입력 또는 '전체 보기' 클릭 시에만.
   const shouldFetch = query.trim().length > 0 || showAll;
   const { data: items = [], isLoading, mutate } = useSWR<ProductRow[]>(
     shouldFetch ? '/api/inventory?limit=500' : null,
     fetcher,
-    { refreshInterval: shouldFetch ? 60_000 : 0 }
+    {
+      refreshInterval: shouldFetch ? 60_000 : 0,
+      revalidateOnFocus: true,
+      dedupingInterval: 0,
+    }
   );
+
+  const editingRow = useMemo(
+    () => (editingProductId ? items.find((p) => p.id === editingProductId) ?? null : null),
+    [editingProductId, items],
+  );
+
+  useEffect(() => {
+    if (editingProductId && !editingRow) {
+      setEditingProductId(null);
+    }
+  }, [editingProductId, editingRow]);
 
   const filtered = useMemo(() => {
     let arr = items;
@@ -77,15 +104,15 @@ export default function InventoryPage() {
     }
     arr = [...arr];
     if (sortMode === 'low') {
-      arr.sort((a, b) => a.computed_stock - b.computed_stock);
+      arr.sort((a, b) => displayQty(a) - displayQty(b));
     } else if (sortMode === 'style') {
       arr.sort((a, b) => (a.style_code ?? '').localeCompare(b.style_code ?? ''));
     }
     return arr;
   }, [items, query, sortMode]);
 
-  const lowCount = items.filter((p) => p.computed_stock <= 1).length;
-  const totalQty = items.reduce((s, p) => s + p.computed_stock, 0);
+  const lowCount = items.filter((p) => displayQty(p) <= 1).length;
+  const totalQty = items.reduce((s, p) => s + displayQty(p), 0);
 
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
@@ -169,14 +196,14 @@ export default function InventoryPage() {
                 </thead>
                 <tbody>
                   {filtered.map((p) => {
-                    const stock = p.computed_stock;
+                    const stock = displayQty(p);
                     const isNegative = stock < 0;
                     const isOut = stock === 0;
                     const isLow = stock === 1;
                     return (
                       <tr
                         key={p.id}
-                        onClick={canEditStock ? () => setEditing(p) : undefined}
+                        onClick={canEditStock ? () => setEditingProductId(p.id) : undefined}
                         style={canEditStock ? { cursor: 'pointer' } : undefined}
                         title={canEditStock ? '클릭 — 재고 수량 편집' : undefined}
                       >
@@ -220,13 +247,13 @@ export default function InventoryPage() {
         </section>
       </div>
 
-      {editing && (
+      {editingRow && (
         <StockEditDialog
-          item={editing}
-          onClose={() => setEditing(null)}
+          item={editingRow}
+          onClose={() => setEditingProductId(null)}
           onSaved={async () => {
-            await mutate();
-            setEditing(null);
+            await mutate(undefined, { revalidate: true });
+            setEditingProductId(null);
           }}
         />
       )}
@@ -244,11 +271,28 @@ function StockEditDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const initial = item.stock_quantity ?? 0;
-  const [draft, setDraft] = useState<string>(String(initial));
+  const serverQty = displayQty(item);
+  const [draft, setDraft] = useState<string>(String(serverQty));
   const [submitting, setSubmitting] = useState(false);
   // 첫 키 입력은 기존 값 대체. 이후엔 append.
   const freshRef = useRef(true);
+  const userEditedRef = useRef(false);
+
+  useEffect(() => {
+    userEditedRef.current = false;
+    setDraft(String(displayQty(item)));
+    freshRef.current = true;
+  }, [item.id]);
+
+  useEffect(() => {
+    if (userEditedRef.current || submitting) return;
+    const nextStr = String(displayQty(item));
+    setDraft((prev) => {
+      if (prev === nextStr) return prev;
+      freshRef.current = true;
+      return nextStr;
+    });
+  }, [item.id, item.stock_quantity, submitting]);
 
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
@@ -259,6 +303,7 @@ function StockEditDialog({
   }, [onClose]);
 
   const append = useCallback((d: string) => {
+    userEditedRef.current = true;
     setDraft((prev) => {
       if (freshRef.current) {
         freshRef.current = false;
@@ -269,16 +314,18 @@ function StockEditDialog({
     });
   }, []);
   const backspace = useCallback(() => {
+    userEditedRef.current = true;
     freshRef.current = false;
     setDraft((prev) => (prev.length <= 1 ? '0' : prev.slice(0, -1)));
   }, []);
   const clear = useCallback(() => {
+    userEditedRef.current = true;
     freshRef.current = false;
     setDraft('0');
   }, []);
 
   const qtyNum = Number(draft) || 0;
-  const dirty = qtyNum !== initial;
+  const dirty = qtyNum !== serverQty;
 
   const handleSave = useCallback(async () => {
     if (!dirty || submitting) return;
@@ -328,7 +375,7 @@ function StockEditDialog({
           </div>
           {dirty && (
             <div className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
-              현재 {initial}
+              현재 {serverQty}
             </div>
           )}
         </div>
