@@ -688,9 +688,7 @@ export function ProductFormDialog({ mode, initial, onClose, onSaved }: ProductFo
                 <tbody>
                   {pending.map((p, idx) => (
                     <tr key={`${p.brand_id}-${p.style_code}-${p.color_code}`}>
-                      <td>
-                        {LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line?.toUpperCase() ?? '—'}
-                      </td>
+                      <td>{p.product_line?.toUpperCase() ?? '—'}</td>
                       <td>{p.category}</td>
                       <td>{p.brand_name || '—'}</td>
                       <td className="code">{p.style_code}</td>

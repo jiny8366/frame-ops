@@ -8,7 +8,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { useSession } from '@/hooks/useSession';
 import { hasPermission } from '@/lib/auth/permissions';
-import { formatColor, LINE_LABELS } from '@/lib/product-codes';
+import { formatColor } from '@/lib/product-codes';
 
 interface ProductRow {
   id: string;
@@ -182,7 +182,7 @@ export default function InventoryPage() {
                       >
                         <td>
                           {p.product_line
-                            ? LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line.toUpperCase()
+                            ? p.product_line.toUpperCase()
                             : '—'}
                         </td>
                         <td>{p.category ?? '—'}</td>

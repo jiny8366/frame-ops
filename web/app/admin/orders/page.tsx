@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { formatColor, LINE_LABELS } from '@/lib/product-codes';
+import { formatColor } from '@/lib/product-codes';
 import { useSession } from '@/hooks/useSession';
 
 interface OrderItem {
@@ -188,9 +188,7 @@ export default function OrdersPage() {
         ['No.', '라인', '카테고리', '브랜드', '제품번호', '컬러', '수량', '매입가(₩)', '합계(₩)'],
         ...items.map((it, idx) => [
           idx + 1,
-          it.product_line
-            ? LINE_LABELS[it.product_line as keyof typeof LINE_LABELS] ?? it.product_line.toUpperCase()
-            : '',
+          it.product_line ? it.product_line.toUpperCase() : '',
           it.category ?? '',
           it.brand_name,
           it.style_code ?? '',
@@ -522,11 +520,7 @@ function SupplierContent({
                   style={{ cursor: 'pointer' }}
                   title="클릭 — 수량 편집"
                 >
-                  <td>
-                    {it.product_line
-                      ? LINE_LABELS[it.product_line as keyof typeof LINE_LABELS] ?? it.product_line.toUpperCase()
-                      : '—'}
-                  </td>
+                  <td>{it.product_line ? it.product_line.toUpperCase() : '—'}</td>
                   <td>{it.category ?? '—'}</td>
                   <td>{it.brand_name}</td>
                   <td className="code" style={lowStock ? { color: 'var(--color-system-red)', fontWeight: 700 } : undefined}>

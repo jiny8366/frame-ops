@@ -6,7 +6,7 @@
 
 import useSWR from 'swr';
 import { inventoryApi, type PendingStockItem } from '@/lib/api-client';
-import { formatColor, LINE_LABELS } from '@/lib/product-codes';
+import { formatColor } from '@/lib/product-codes';
 
 export default function PendingStockPage() {
   const { data: items = [], isLoading, error } = useSWR<PendingStockItem[]>(
@@ -77,7 +77,7 @@ export default function PendingStockPage() {
                     <tr key={item.id}>
                       <td>
                         {item.product_line
-                          ? LINE_LABELS[item.product_line as keyof typeof LINE_LABELS] ?? item.product_line.toUpperCase()
+                          ? item.product_line.toUpperCase()
                           : '—'}
                       </td>
                       <td>{item.category ?? '—'}</td>

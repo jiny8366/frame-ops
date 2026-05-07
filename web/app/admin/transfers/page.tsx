@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSession } from '@/hooks/useSession';
-import { formatColor, LINE_LABELS } from '@/lib/product-codes';
+import { formatColor } from '@/lib/product-codes';
 
 interface AccessibleStore {
   id: string;
@@ -434,7 +434,7 @@ function NewTransferForm({ isHq, sessionStoreId }: { isHq: boolean; sessionStore
                   <tr key={l.product_id}>
                     <td>
                       {l.product_line
-                        ? LINE_LABELS[l.product_line as keyof typeof LINE_LABELS] ?? l.product_line.toUpperCase()
+                        ? l.product_line.toUpperCase()
                         : '—'}
                     </td>
                     <td>{l.category || '—'}</td>

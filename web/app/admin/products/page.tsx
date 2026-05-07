@@ -140,11 +140,7 @@ export default function ProductsAdminPage() {
                 <tbody>
                   {products.map((p) => (
                     <tr key={p.id}>
-                      <td>
-                        {p.product_line
-                          ? LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line.toUpperCase()
-                          : '—'}
-                      </td>
+                      <td>{p.product_line ? p.product_line.toUpperCase() : '—'}</td>
                       <td>{p.category}</td>
                       <td>{p.brand_name ?? '—'}</td>
                       <td className="code">{p.style_code ?? '—'}</td>
