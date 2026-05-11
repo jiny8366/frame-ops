@@ -8,9 +8,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { useSession } from '@/hooks/useSession';
 import { hasPermission } from '@/lib/auth/permissions';
-import { formatColor } from '@/lib/product-codes';
+import { formatColor, LINE_LABELS } from '@/lib/product-codes';
 
 interface ProductRow {
   id: string;
@@ -116,6 +117,40 @@ export default function InventoryPage() {
   const lowCount = items.filter((p) => displayQty(p) <= 1).length;
   const totalQty = items.reduce((s, p) => s + displayQty(p), 0);
 
+  // 엑셀 다운로드 — 현재 필터/정렬 적용된 결과를 라인/카테고리/브랜드/제품번호/컬러/현재고 컬럼으로 저장.
+  const handleExportXlsx = useCallback(() => {
+    if (filtered.length === 0) {
+      toast.error('내려받을 상품이 없습니다.');
+      return;
+    }
+    const aoa: (string | number)[][] = [
+      ['NO.', '라인', '카테고리', '브랜드', '제품번호', '컬러번호', '현재고'],
+      ...filtered.map((p, idx) => [
+        idx + 1,
+        p.product_line
+          ? LINE_LABELS[p.product_line as keyof typeof LINE_LABELS] ?? p.product_line.toUpperCase()
+          : '',
+        p.category ?? '',
+        p.brand_name ?? '',
+        p.style_code ?? '',
+        formatColor(p.color_code),
+        displayQty(p),
+      ]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 10 }, { wch: 14 }, { wch: 16 },
+      { wch: 14 }, { wch: 10 }, { wch: 8 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '재고');
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
+      .format(new Date())
+      .replace(/-/g, '');
+    XLSX.writeFile(wb, `재고_상품코드_${today}.xlsx`);
+    toast.success(`Excel 다운로드 — ${filtered.length}건`);
+  }, [filtered]);
+
   return (
     <main className="min-h-screen bg-[var(--color-bg-primary)] safe-padding p-4 lg:p-6">
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
@@ -147,21 +182,32 @@ export default function InventoryPage() {
               <SortBtn label="스타일순" active={sortMode === 'style'} onClick={() => setSortMode('style')} />
               <SortBtn label="재고 적은순" active={sortMode === 'low'} onClick={() => setSortMode('low')} />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setShowAll((v) => !v);
-                if (!showAll) setQuery('');
-              }}
-              className={[
-                'pressable touch-target rounded-lg px-3 py-2 text-caption1 font-medium border',
-                showAll
-                  ? 'bg-[var(--color-system-blue)] text-white border-transparent'
-                  : 'bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]',
-              ].join(' ')}
-            >
-              {showAll ? '전체 보기 (해제)' : '전체 보기'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleExportXlsx}
+                disabled={!shouldFetch || filtered.length === 0}
+                title="라인 / 카테고리 / 브랜드 / 제품번호 / 컬러번호 / 현재고 컬럼으로 Excel 저장"
+                className="pressable touch-target rounded-lg px-3 py-2 text-caption1 font-medium border bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)] disabled:opacity-40"
+              >
+                📥 Excel 다운로드
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAll((v) => !v);
+                  if (!showAll) setQuery('');
+                }}
+                className={[
+                  'pressable touch-target rounded-lg px-3 py-2 text-caption1 font-medium border',
+                  showAll
+                    ? 'bg-[var(--color-system-blue)] text-white border-transparent'
+                    : 'bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]',
+                ].join(' ')}
+              >
+                {showAll ? '전체 보기 (해제)' : '전체 보기'}
+              </button>
+            </div>
           </div>
         </div>
 
