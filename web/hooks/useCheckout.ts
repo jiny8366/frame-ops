@@ -2,8 +2,11 @@
 // 정책 (강화):
 //   - 어떤 실패(네트워크/서버/검증) 든 sync_queue 에 보관 후 자동 재시도에 위임.
 //   - 결제 fetch 는 10초 타임아웃 — 멈춰있지 않고 빠르게 큐로 위임.
-//   - 큐는 30초 주기 자동 flush + 우하단 배지로 항상 가시화 (PendingSyncBadge).
+//   - 큐는 5초 주기 자동 flush + visibility/focus 트리거 + 우하단 배지로 가시화 (PendingSyncBadge).
 //   - 영구 dead-letter 폐기 — 어떤 판매도 잃어버리지 않도록 무한 재시도.
+//   - NEW: 첫 실패 시 1초 대기 후 인라인 재시도 1회 (idempotency_key 동일).
+//     일시적 5xx/네트워크 블립을 큐 진입 전에 즉시 회수 → "미동기화" 발생 빈도 최소화.
+//   - NEW: idempotency_key 가 누락된 경우 클라이언트에서 자동 부여 (방어적).
 
 'use client';
 
@@ -13,6 +16,7 @@ import { enqueueSync } from '@/lib/db/indexeddb';
 import type { SaleInput } from '@/types';
 
 const REQUEST_TIMEOUT_MS = 10_000;
+const INLINE_RETRY_DELAY_MS = 1_000;
 
 interface CreateSaleApiResp {
   data: {
@@ -22,6 +26,8 @@ interface CreateSaleApiResp {
     items_created: number;
   } | null;
   error: string | null;
+  /** HTTP 상태 — 인라인 재시도/큐잉 분기에 사용. 클라이언트 예외(네트워크/타임아웃) 면 0. */
+  status?: number;
 }
 
 async function postSaleWithTimeout(payload: SaleInput): Promise<CreateSaleApiResp> {
@@ -36,9 +42,9 @@ async function postSaleWithTimeout(payload: SaleInput): Promise<CreateSaleApiRes
     });
     const json = (await res.json().catch(() => ({}))) as CreateSaleApiResp;
     if (!res.ok) {
-      return { data: null, error: json.error ?? `HTTP ${res.status}` };
+      return { data: null, error: json.error ?? `HTTP ${res.status}`, status: res.status };
     }
-    return json;
+    return { ...json, status: res.status };
   } finally {
     clearTimeout(t);
   }
@@ -77,9 +83,9 @@ async function postRefundWithTimeout(payload: SaleInput): Promise<CreateSaleApiR
       error: string | null;
     };
     if (!res.ok) {
-      return { data: null, error: json.error ?? `HTTP ${res.status}` };
+      return { data: null, error: json.error ?? `HTTP ${res.status}`, status: res.status };
     }
-    if (!json.data) return { data: null, error: '환불 응답 없음' };
+    if (!json.data) return { data: null, error: '환불 응답 없음', status: res.status };
     // CreateSaleApiResp 형태로 정규화 (sale_id 자리에 return_id, total_amount 자리에 total_refund)
     return {
       data: {
@@ -89,6 +95,7 @@ async function postRefundWithTimeout(payload: SaleInput): Promise<CreateSaleApiR
         items_created: json.data.items_returned,
       },
       error: null,
+      status: res.status,
     };
   } finally {
     clearTimeout(t);
@@ -97,6 +104,15 @@ async function postRefundWithTimeout(payload: SaleInput): Promise<CreateSaleApiR
 
 function isRefundPayload(payload: SaleInput): boolean {
   return payload.items.some((it) => it.quantity < 0);
+}
+
+/** 4xx 는 인라인 재시도 의미 없음 (validation/auth) → 즉시 큐잉. */
+function isTransientStatus(status: number | undefined): boolean {
+  if (status === undefined || status === 0) return true; // 네트워크 예외 — transient
+  if (status >= 500) return true;
+  if (status === 408 || status === 429) return true;     // 타임아웃/스로틀
+  if (status === 401) return true;                        // 세션 만료 가능 — 새로고침/재로그인 후 재시도 의미 있음
+  return false;
 }
 
 export interface UseCheckoutReturn {
@@ -125,6 +141,14 @@ async function queueOffline(saleData: SaleInput): Promise<void> {
   }
 }
 
+function ensureIdempotencyKey(payload: SaleInput): SaleInput {
+  if (payload.idempotency_key && payload.idempotency_key.length > 0) return payload;
+  return {
+    ...payload,
+    idempotency_key: `sale-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+  };
+}
+
 export function useCheckout(): UseCheckoutReturn {
   const submit = useCallback(async (saleData: SaleInput): Promise<boolean> => {
     if (!saleData.store_id) {
@@ -135,10 +159,11 @@ export function useCheckout(): UseCheckoutReturn {
     // 클라이언트 타임스탬프(밀리초) 항상 부여 — 큐 보관 후 늦게 업로드돼도
     // 실제 판매 시점이 보존됨 (서버 now() 사용 시 통계 시간이 어긋남).
     // 사용자가 미리 sold_at 을 지정한 경우(과거 일자 보정 등) 그대로 유지.
-    const stamped: SaleInput = {
+    // idempotency_key 도 방어적으로 부여 — 서버는 동일 키 재요청을 멱등 처리.
+    const stamped: SaleInput = ensureIdempotencyKey({
       ...saleData,
       sold_at: saleData.sold_at ?? new Date().toISOString(),
-    };
+    });
 
     // 1) 오프라인이면 즉시 큐잉 (재시도 위임)
     if (!isOnline()) {
@@ -149,47 +174,71 @@ export function useCheckout(): UseCheckoutReturn {
 
     // 2) 온라인 — 환불 vs 판매 라우팅
     const isRefund = isRefundPayload(stamped);
+    const callApi = () =>
+      isRefund ? postRefundWithTimeout(stamped) : postSaleWithTimeout(stamped);
+
+    let lastError: string | undefined;
+    let lastStatus: number | undefined;
+
+    // 2-A) 1차 시도
     try {
-      const { data, error } = isRefund
-        ? await postRefundWithTimeout(stamped)
-        : await postSaleWithTimeout(stamped);
-
-      if (error) {
-        console.error('[useCheckout] API error:', error);
-        await queueOffline(stamped);
-        toast.warning(
-          `${isRefund ? '환불' : '판매'} 등록 보류 — ${error}. 자동 재시도 중 (우하단 배지).`,
-          { duration: 6000 }
-        );
-        return false;
+      const { data, error, status } = await callApi();
+      if (!error && data) {
+        toast.success(isRefund ? '환불 완료' : '판매 완료', { duration: 2000 });
+        return true;
       }
-      if (!data) {
-        console.error('[useCheckout] empty response — 큐로 보관');
-        await queueOffline(stamped);
-        toast.warning('응답이 비어있어 큐로 보관 — 자동 재시도 중 (우하단 배지).', {
-          duration: 6000,
-        });
-        return false;
-      }
-
-      toast.success(isRefund ? '환불 완료' : '판매 완료', { duration: 2000 });
-      return true;
+      lastError = error ?? '응답 없음';
+      lastStatus = status;
     } catch (err) {
-      // 타임아웃 / 네트워크 예외 — 큐로 보관
-      console.error('[useCheckout] fetch exception:', err);
+      // 타임아웃 / 네트워크 예외
       const isTimeout = err instanceof Error && err.name === 'AbortError';
-      const msg = isTimeout
+      lastError = isTimeout
         ? `응답 지연(${REQUEST_TIMEOUT_MS / 1000}초 초과)`
         : err instanceof Error
           ? err.message
           : String(err);
-      await queueOffline(stamped);
-      toast.warning(
-        `판매 등록 보류 — ${msg}. 자동 재시도 중 (우하단 배지).`,
-        { duration: 6000 }
-      );
-      return false;
+      lastStatus = 0;
     }
+
+    // 2-B) 일시적 오류(5xx/네트워크/타임아웃/429/408/401) → 1초 대기 후 인라인 재시도 1회.
+    //      동일 idempotency_key 로 안전 (서버가 중복 처리 방지).
+    if (isTransientStatus(lastStatus)) {
+      console.warn(
+        `[useCheckout] 1차 실패 (status=${lastStatus ?? 'exception'}) — 1초 후 자동 재시도:`,
+        lastError
+      );
+      await new Promise((r) => setTimeout(r, INLINE_RETRY_DELAY_MS));
+      try {
+        const { data, error, status } = await callApi();
+        if (!error && data) {
+          toast.success(isRefund ? '환불 완료' : '판매 완료', { duration: 2000 });
+          return true;
+        }
+        lastError = error ?? '응답 없음';
+        lastStatus = status;
+      } catch (err) {
+        const isTimeout = err instanceof Error && err.name === 'AbortError';
+        lastError = isTimeout
+          ? `응답 지연(${REQUEST_TIMEOUT_MS / 1000}초 초과)`
+          : err instanceof Error
+            ? err.message
+            : String(err);
+        lastStatus = 0;
+      }
+    }
+
+    // 2-C) 여전히 실패 — 큐로 위임. 사용자에겐 자동 재시도 진행 중임을 안내.
+    console.error(`[useCheckout] 큐 위임 (status=${lastStatus ?? 'exception'}):`, lastError);
+    await queueOffline(stamped);
+    toast.warning(
+      `${isRefund ? '환불' : '판매'} 자동 재시도 중 — ${lastError ?? '서버 응답 지연'}`,
+      {
+        description: '네트워크가 복구되면 자동으로 등록됩니다. (우하단 배지 확인)',
+        duration: 5000,
+      }
+    );
+    // 큐잉됐어도 사용자 흐름을 막지 않도록 false 반환 — POS 페이지는 카트 유지하여 사용자 결정에 맡김
+    return false;
   }, []);
 
   return { submit };
