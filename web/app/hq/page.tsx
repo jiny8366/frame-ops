@@ -70,11 +70,21 @@ const fetcher = async (url: string): Promise<DashboardResponse> => {
 
 function fmtRange(start: string | null, end: string | null): string {
   if (!start || !end) return '';
-  const s = new Date(start);
-  const e = new Date(end);
-  const fmt = (d: Date) =>
-    `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  return `${fmt(s)} ~ ${fmt(e)}`;
+  // KST(Asia/Seoul) 고정 — 사용자 브라우저 timezone 과 무관하게 한국 시각으로 표시
+  const fmt = (iso: string) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date(iso));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return `${get('month')}.${get('day')} ${get('hour')}:${get('minute')}`;
+  };
+  return `${fmt(start)} ~ ${fmt(end)} (KST)`;
 }
 
 export default function HqDashboardPage() {

@@ -149,15 +149,25 @@ export async function GET(request: Request) {
     item_count: baseSummary.item_count - returnsAdjusted.qty,
   };
 
-  // 시간대별(hourly) 차트 보정 — 환불을 시간(hour) 단위로 집계 후 매출/수량 차감
-  const baseHourly = (result?.hourly ?? []) as HourlyPoint[];
+  // 시간대별(hourly) — RPC 가 UTC hour 기준으로 반환 → KST(+9)로 변환.
+  // 또한 환불도 KST hour 로 집계 후 매출/수량 차감.
+  const utcToKstHour = (utc: number) => (utc + 9 + 24) % 24;
+  const kstHourFromIso = (iso: string) => {
+    const d = new Date(iso);
+    return (d.getUTCHours() + 9 + 24) % 24;
+  };
+  const baseHourly = ((result?.hourly ?? []) as HourlyPoint[]).map((p) => {
+    const k = utcToKstHour(p.hour);
+    return { ...p, hour: k, label: `${String(k).padStart(2, '0')}시` };
+  });
+
   const refundByHour = new Map<number, { revenue: number; qty: number }>();
   if (retList && retList.length > 0) {
     const retById = new Map(retList.map((r) => [r.id, r.returned_at]));
     for (const l of retLines) {
       const at = retById.get(l.return_id);
       if (!at) continue;
-      const h = new Date(at).getHours();
+      const h = kstHourFromIso(at);
       const e = refundByHour.get(h) ?? { revenue: 0, qty: 0 };
       e.revenue += l.quantity * l.unit_price;
       e.qty += l.quantity;
