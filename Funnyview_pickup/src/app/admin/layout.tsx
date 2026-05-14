@@ -6,8 +6,9 @@ import { getCurrentUser } from '@/lib/auth/current-user';
 export const dynamic = 'force-dynamic';
 
 const NAV = [
+  { href: '/admin/dashboard', label: '대시보드' },
   { href: '/admin/home', label: '홈 섹션' },
-  { href: '/admin/home/analytics', label: '분석' },
+  { href: '/admin/home/analytics', label: '섹션 분석' },
 ];
 
 export default async function AdminLayout({

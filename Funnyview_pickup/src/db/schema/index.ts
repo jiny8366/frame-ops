@@ -15,4 +15,5 @@ export * from './notifications';
 export * from './oauth';
 export * from './home';
 export * from './push';
+export * from './referral';
 export * from './relations';

@@ -11,6 +11,10 @@ import {
   users,
 } from '@/db/schema';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import {
+  accrueReferralRewardOnComplete,
+  voidReferralRewardOnCancel,
+} from '@/lib/referral/accrue';
 import type { OrderStatus } from '@/types/order';
 
 export class TransitionError extends Error {
@@ -232,6 +236,7 @@ export async function markCompleted(orderId: string, byUserId: string) {
     completedAt: new Date(),
     isPaid: 1,
   });
+  await accrueReferralRewardOnComplete(orderId).catch(() => {});
   try {
     const summary = await orderSummary(orderId);
     if (summary) {
@@ -308,6 +313,7 @@ export async function cancelOrder(orderId: string, byUserId: string | null, reas
       note: reason,
     });
   });
+  await voidReferralRewardOnCancel(orderId).catch(() => {});
 }
 
 /**

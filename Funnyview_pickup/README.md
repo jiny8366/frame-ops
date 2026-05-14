@@ -186,9 +186,14 @@ npm run dev
 - [x] **Phase 7** — 시드 데이터 + 빌드 검증
 - [x] **Phase 8** — 소셜 로그인 (Naver / Kakao / Google) + 전화번호 온보딩
 - [x] **Phase 9** — 홈화면 CMS (6 섹션 유형 + 분석 + 관리자 콘솔)
-- [ ] **Phase 10** — 결제 PG 실연동(Toss/Nice/PortOne), SMS/카카오 알림
-- [ ] **Phase 11** — 운영 대시보드, 매출 리포트, 정산
-- [ ] **Phase 12** — PWA 설치, 푸시 알림, 모바일 최적화
+- [x] **Phase 10** — 알림 채널 (SMS/카카오 알림톡 Solapi 어댑터 + 통합 dispatcher)
+- [x] **Phase 11** — CMS 비주얼 편집기 (kind별 폼 위젯 + JSON 고급 토글)
+- [x] **Phase 12** — 자동 큐레이션 고도화 (best/trending/new/manual + Redis 캐시)
+- [x] **Phase 13** — 이미지 업로드 (StorageAdapter + ImagePicker + 로컬 FS)
+- [x] **Phase 14** — PWA + 웹 푸시 (manifest/SW/VAPID/구독 토글)
+- [x] **Phase 15** — 운영 대시보드 (KPI/매출 차트/가맹점 정산/추천인 리워드)
+- [ ] **Phase 16** — 결제 PG 실연동 (Toss / Nice / PortOne)
+- [ ] **Phase 17** — 모바일 최적화 + i18n + SEO 강화
 
 ## 홈화면 CMS (Phase 9)
 
