@@ -1,84 +1,9 @@
 import Link from 'next/link';
-import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
-import { db } from '@/db/client';
-import {
-  homeSections,
-  inventory,
-  lensVariants,
-  lenses,
-} from '@/db/schema';
 import { SectionRenderer } from '@/components/home/section-renderer';
 import { getCurrentUser } from '@/lib/auth/current-user';
+import { loadActiveSections } from '@/lib/home/load-sections';
 
 export const dynamic = 'force-dynamic';
-
-async function loadActiveSections() {
-  const now = new Date();
-
-  const sections = await db
-    .select()
-    .from(homeSections)
-    .where(
-      and(
-        eq(homeSections.isActive, true),
-        isNull(homeSections.deletedAt),
-        or(isNull(homeSections.startsAt), sql`${homeSections.startsAt} <= ${now}`),
-        or(isNull(homeSections.endsAt), sql`${homeSections.endsAt} >= ${now}`),
-      ),
-    )
-    .orderBy(asc(homeSections.sortOrder), asc(homeSections.createdAt));
-
-  const hydrated = await Promise.all(
-    sections.map(async (s) => {
-      if (s.kind !== 'product_grid') return s;
-      const cfg = s.config as {
-        mode?: 'manual' | 'best' | 'new' | 'trending';
-        lensIds?: string[];
-        limit?: number;
-      };
-      const limit = Math.min(cfg.limit ?? 4, 12);
-      let lensRows: Array<Record<string, unknown>> = [];
-
-      if (cfg.mode === 'manual' && cfg.lensIds && cfg.lensIds.length > 0) {
-        lensRows = await db
-          .select({
-            id: lenses.id,
-            brand: lenses.brand,
-            name: lenses.name,
-            price: lenses.price,
-            imageUrl: lenses.imageUrl,
-          })
-          .from(lenses)
-          .where(
-            and(eq(lenses.isActive, true), sql`${lenses.id} = ANY(${cfg.lensIds})`),
-          )
-          .limit(limit);
-      } else {
-        lensRows = await db
-          .select({
-            id: lenses.id,
-            brand: lenses.brand,
-            name: lenses.name,
-            price: lenses.price,
-            imageUrl: lenses.imageUrl,
-          })
-          .from(lenses)
-          .leftJoin(lensVariants, eq(lensVariants.lensId, lenses.id))
-          .leftJoin(inventory, eq(inventory.variantId, lensVariants.id))
-          .where(eq(lenses.isActive, true))
-          .groupBy(lenses.id)
-          .orderBy(
-            cfg.mode === 'new'
-              ? sql`${lenses.createdAt} DESC`
-              : sql`COALESCE(SUM(${inventory.quantityOnHand} - ${inventory.quantityReserved}), 0) DESC`,
-          )
-          .limit(limit);
-      }
-      return { ...s, lenses: lensRows };
-    }),
-  );
-  return hydrated;
-}
 
 export default async function Home() {
   const [sections, user] = await Promise.all([

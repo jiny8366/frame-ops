@@ -10,6 +10,7 @@ import {
   orders,
   users,
 } from '@/db/schema';
+import { invalidateCurationCache } from '@/lib/home/curation';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { formatOrderNumber, todayKst } from '@/lib/utils/order-number';
 
@@ -168,6 +169,9 @@ export async function createOrder(input: CreateOrderInput) {
 
     return createdOrder;
   });
+
+  // 큐레이션 캐시 무효화 (trending/best 변동)
+  await invalidateCurationCache().catch(() => {});
 
   // warehouse 직원들에게 알림 (인앱+외부 채널 통합)
   try {
