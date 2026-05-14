@@ -5,13 +5,12 @@ import {
   inventoryMovements,
   lensVariants,
   lenses,
-  notifications,
   orderItems,
   orderStatusHistory,
   orders,
   users,
 } from '@/db/schema';
-import { notifyMany } from '@/lib/notifications/publish';
+import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { formatOrderNumber, todayKst } from '@/lib/utils/order-number';
 
 export interface CreateOrderLine {
@@ -41,13 +40,6 @@ export class OrderCreationError extends Error {
   }
 }
 
-/**
- * 주문 생성.
- * - 재고 예약(quantity_reserved 증가)을 같은 트랜잭션에서 처리
- * - inventory_movements 에 'reserve' 이력 누적
- * - order_status_history 에 pending 상태 기록
- * - warehouse_staff 들에게 order_received 알림 큐잉 (앱 인앱)
- */
 export async function createOrder(input: CreateOrderInput) {
   if (!input.lines || input.lines.length === 0) {
     throw new OrderCreationError('NO_LINES', '주문할 상품이 없습니다');
@@ -58,7 +50,6 @@ export async function createOrder(input: CreateOrderInput) {
     }
   }
 
-  // 1) 변형/렌즈/재고 조회
   const variantIds = input.lines.map((l) => l.variantId);
   const variantRows = await db
     .select({
@@ -88,9 +79,7 @@ export async function createOrder(input: CreateOrderInput) {
     }
   }
 
-  // 2) 트랜잭션
   const order = await db.transaction(async (tx) => {
-    // 일일 시퀀스 — 단순화 (UUID 기반 6자리). 동시성 시 충돌 가능성은 매우 낮음.
     const today = todayKst();
     const seq = Math.floor(Math.random() * 1_000_000);
     const orderNumber = formatOrderNumber(today, seq);
@@ -101,12 +90,7 @@ export async function createOrder(input: CreateOrderInput) {
       const unitPrice = v.priceOverride ?? v.lensPrice;
       const lineTotal = unitPrice * line.quantity;
       subtotal += lineTotal;
-      return {
-        line,
-        v,
-        unitPrice,
-        lineTotal,
-      };
+      return { line, v, unitPrice, lineTotal };
     });
 
     const [createdOrder] = await tx
@@ -141,7 +125,6 @@ export async function createOrder(input: CreateOrderInput) {
         unitCost: v.lensCost,
       });
 
-      // 재고 예약 (available = on_hand - reserved 가 0 미만이 되지 않도록 조건부)
       const updated = await tx
         .update(inventory)
         .set({
@@ -186,34 +169,23 @@ export async function createOrder(input: CreateOrderInput) {
     return createdOrder;
   });
 
-  // 3) warehouse 사용자들에게 알림 (트랜잭션 외부 — 실패해도 주문은 유효)
+  // warehouse 직원들에게 알림 (인앱+외부 채널 통합)
   try {
     const warehouseUsers = await db
-      .select({ id: users.id })
+      .select({ id: users.id, phone: users.phone })
       .from(users)
       .where(eq(users.role, 'warehouse_staff'));
     if (warehouseUsers.length > 0) {
-      await db.insert(notifications).values(
-        warehouseUsers.map((u) => ({
-          recipientUserId: u.id,
-          notificationType: 'order_received' as const,
-          channel: 'app' as const,
-          title: '신규 주문',
-          body: `주문번호 ${order.orderNumber}`,
-          referenceType: 'order',
-          referenceId: order.id,
+      await dispatchNotification({
+        kind: 'order_received',
+        recipients: warehouseUsers.map((u) => ({
+          userId: u.id,
+          phone: u.phone,
         })),
-      );
-      await notifyMany(
-        warehouseUsers.map((u) => u.id),
-        {
-          type: 'order_received',
-          title: '신규 주문',
-          body: `주문번호 ${order.orderNumber}`,
-          orderId: order.id,
-          ts: Date.now(),
-        },
-      );
+        context: { orderNumber: order.orderNumber },
+        referenceType: 'order',
+        referenceId: order.id,
+      });
     }
   } catch {
     // 알림 실패는 무시

@@ -1,15 +1,16 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import {
+  customers,
   inventory,
   inventoryMovements,
-  notifications,
   orderItems,
   orderStatusHistory,
   orders,
+  stores,
   users,
 } from '@/db/schema';
-import { notifyMany, notifyUser } from '@/lib/notifications/publish';
+import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import type { OrderStatus } from '@/types/order';
 
 export class TransitionError extends Error {
@@ -76,6 +77,27 @@ async function transition(
   return result;
 }
 
+async function orderSummary(orderId: string) {
+  const rows = await db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      customerUserId: users.id,
+      customerName: customers.name,
+      customerPhone: customers.phone,
+      storeId: stores.id,
+      storeName: stores.name,
+      storeAddress: stores.addressLine1,
+    })
+    .from(orders)
+    .innerJoin(customers, eq(customers.id, orders.customerId))
+    .innerJoin(users, eq(users.id, customers.userId))
+    .innerJoin(stores, eq(stores.id, orders.pickupStoreId))
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function markPaid(orderId: string, byUserId: string | null) {
   await transition(orderId, 'paid', byUserId, {
     paidAt: new Date(),
@@ -91,21 +113,15 @@ export async function markPicking(orderId: string, byUserId: string) {
   await transition(orderId, 'picking', byUserId, { pickingAt: new Date() });
 }
 
-/**
- * 출고 처리: 재고 reserved -> on_hand 차감 + inventory_movements 'outbound' 기록.
- * 고객/가맹점 화면에 '배송 중' 으로 노출.
- */
 export async function markShipped(orderId: string, byUserId: string) {
   await db.transaction(async (tx) => {
     const row = await tx
-      .select({ status: orders.status, storeId: orders.pickupStoreId })
+      .select({ status: orders.status })
       .from(orders)
       .where(eq(orders.id, orderId))
       .limit(1);
     const current = row[0];
-    if (!current) {
-      throw new TransitionError('ORDER_NOT_FOUND', '주문을 찾을 수 없습니다');
-    }
+    if (!current) throw new TransitionError('ORDER_NOT_FOUND', '주문 없음');
     if (current.status !== 'picking') {
       throw new TransitionError(
         'INVALID_TRANSITION',
@@ -114,10 +130,7 @@ export async function markShipped(orderId: string, byUserId: string) {
     }
 
     const items = await tx
-      .select({
-        variantId: orderItems.variantId,
-        quantity: orderItems.quantity,
-      })
+      .select({ variantId: orderItems.variantId, quantity: orderItems.quantity })
       .from(orderItems)
       .where(eq(orderItems.orderId, orderId));
 
@@ -130,7 +143,6 @@ export async function markShipped(orderId: string, byUserId: string) {
           updatedAt: new Date(),
         })
         .where(eq(inventory.variantId, it.variantId));
-
       await tx.insert(inventoryMovements).values({
         variantId: it.variantId,
         movementType: 'outbound',
@@ -145,7 +157,6 @@ export async function markShipped(orderId: string, byUserId: string) {
       .update(orders)
       .set({ status: 'shipped', shippedAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, orderId));
-
     await tx.insert(orderStatusHistory).values({
       orderId,
       fromStatus: 'picking',
@@ -154,58 +165,28 @@ export async function markShipped(orderId: string, byUserId: string) {
     });
   });
 
-  // 고객 + 가맹점 직원에 알림 (out-of-tx)
+  // 고객 + 가맹점 직원에 'order_shipped' 알림
   try {
-    const ord = await db
-      .select({
-        id: orders.id,
-        orderNumber: orders.orderNumber,
-        customerId: orders.customerId,
-        pickupStoreId: orders.pickupStoreId,
-      })
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
-    if (ord[0]) {
-      const recipients: string[] = [];
-      // 고객 user
-      const customerUser = await db
-        .select({ id: users.id })
-        .from(users)
-        .innerJoin(sql`customers`, sql`customers.user_id = ${users.id}`)
-        .where(sql`customers.id = ${ord[0].customerId}`)
-        .limit(1);
-      if (customerUser[0]) recipients.push(customerUser[0].id);
-
-      // 가맹점 직원들
+    const summary = await orderSummary(orderId);
+    if (summary) {
       const staff = await db
-        .select({ id: users.id })
+        .select({ id: users.id, phone: users.phone })
         .from(users)
-        .where(
-          and(eq(users.role, 'store_staff'), eq(users.storeId, ord[0].pickupStoreId)),
-        );
-      for (const s of staff) recipients.push(s.id);
-
-      if (recipients.length > 0) {
-        await db.insert(notifications).values(
-          recipients.map((uid) => ({
-            recipientUserId: uid,
-            notificationType: 'order_shipped' as const,
-            channel: 'app' as const,
-            title: '배송 시작',
-            body: `주문 ${ord[0].orderNumber} 배송 중`,
-            referenceType: 'order',
-            referenceId: ord[0].id,
-          })),
-        );
-        await notifyMany(recipients, {
-          type: 'order_shipped',
-          title: '배송 시작',
-          body: `주문 ${ord[0].orderNumber} 배송 중`,
-          orderId: ord[0].id,
-          ts: Date.now(),
-        });
-      }
+        .where(and(eq(users.role, 'store_staff'), eq(users.storeId, summary.storeId)));
+      await dispatchNotification({
+        kind: 'order_shipped',
+        recipients: [
+          { userId: summary.customerUserId, phone: summary.customerPhone, preferKakao: true },
+          ...staff.map((s) => ({ userId: s.id, phone: s.phone })),
+        ],
+        context: {
+          orderNumber: summary.orderNumber,
+          customerName: summary.customerName,
+          storeName: summary.storeName,
+        },
+        referenceType: 'order',
+        referenceId: orderId,
+      });
     }
   } catch {
     // ignore
@@ -219,42 +200,27 @@ export async function markArrived(orderId: string, byUserId: string) {
 export async function markReady(orderId: string, byUserId: string) {
   await transition(orderId, 'ready', byUserId, { readyAt: new Date() });
 
-  // 고객에게 픽업 가능 알림
   try {
-    const ord = await db
-      .select({
-        id: orders.id,
-        orderNumber: orders.orderNumber,
-        customerId: orders.customerId,
-      })
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
-    if (ord[0]) {
-      const customerUser = await db
-        .select({ id: users.id })
-        .from(users)
-        .innerJoin(sql`customers`, sql`customers.user_id = ${users.id}`)
-        .where(sql`customers.id = ${ord[0].customerId}`)
-        .limit(1);
-      if (customerUser[0]) {
-        await db.insert(notifications).values({
-          recipientUserId: customerUser[0].id,
-          notificationType: 'pickup_ready',
-          channel: 'app',
-          title: '픽업 가능',
-          body: `주문 ${ord[0].orderNumber} 가 가맹점에 도착했습니다`,
-          referenceType: 'order',
-          referenceId: ord[0].id,
-        });
-        await notifyUser(customerUser[0].id, {
-          type: 'pickup_ready',
-          title: '픽업 가능',
-          body: `주문 ${ord[0].orderNumber} 가 가맹점에 도착했습니다`,
-          orderId: ord[0].id,
-          ts: Date.now(),
-        });
-      }
+    const summary = await orderSummary(orderId);
+    if (summary) {
+      await dispatchNotification({
+        kind: 'pickup_ready',
+        recipients: [
+          {
+            userId: summary.customerUserId,
+            phone: summary.customerPhone,
+            preferKakao: true,
+          },
+        ],
+        context: {
+          orderNumber: summary.orderNumber,
+          customerName: summary.customerName,
+          storeName: summary.storeName,
+          storeAddress: summary.storeAddress ?? undefined,
+        },
+        referenceType: 'order',
+        referenceId: orderId,
+      });
     }
   } catch {
     // ignore
@@ -266,10 +232,32 @@ export async function markCompleted(orderId: string, byUserId: string) {
     completedAt: new Date(),
     isPaid: 1,
   });
+  try {
+    const summary = await orderSummary(orderId);
+    if (summary) {
+      await dispatchNotification({
+        kind: 'pickup_completed',
+        recipients: [
+          {
+            userId: summary.customerUserId,
+            phone: summary.customerPhone,
+            preferKakao: true,
+          },
+        ],
+        context: {
+          orderNumber: summary.orderNumber,
+          customerName: summary.customerName,
+        },
+        referenceType: 'order',
+        referenceId: orderId,
+      });
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export async function cancelOrder(orderId: string, byUserId: string | null, reason: string) {
-  // 재고 예약 해제 (pending/paid/accepted/picking 단계에서만)
   await db.transaction(async (tx) => {
     const row = await tx
       .select({ status: orders.status })
@@ -312,7 +300,6 @@ export async function cancelOrder(orderId: string, byUserId: string | null, reas
       .update(orders)
       .set({ status: 'cancelled', cancelledAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, orderId));
-
     await tx.insert(orderStatusHistory).values({
       orderId,
       fromStatus: current.status as OrderStatus,
@@ -321,4 +308,34 @@ export async function cancelOrder(orderId: string, byUserId: string | null, reas
       note: reason,
     });
   });
+}
+
+/**
+ * 저재고 알림 (warehouse 직원 대상).
+ * inventory 변경 후 안전재고 미만이면 호출.
+ */
+export async function dispatchLowStockAlert(args: {
+  variantLabel: string;
+  availableQty: number;
+  variantId: string;
+}) {
+  try {
+    const warehouseUsers = await db
+      .select({ id: users.id, phone: users.phone })
+      .from(users)
+      .where(eq(users.role, 'warehouse_staff'));
+    if (warehouseUsers.length === 0) return;
+    await dispatchNotification({
+      kind: 'low_stock',
+      recipients: warehouseUsers.map((u) => ({ userId: u.id, phone: u.phone })),
+      context: {
+        variantLabel: args.variantLabel,
+        availableQty: args.availableQty,
+      },
+      referenceType: 'inventory',
+      referenceId: args.variantId,
+    });
+  } catch {
+    // ignore
+  }
 }
