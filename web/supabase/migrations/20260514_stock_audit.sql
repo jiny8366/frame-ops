@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS fo_stock_audits (
   store_id      UUID NOT NULL REFERENCES fo_stores(id) ON DELETE CASCADE,
   audit_date    DATE NOT NULL,                   -- 실재고조사 시점(영업 종료 기준 KST)
   uploaded_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  uploaded_by   UUID REFERENCES fo_users(id),    -- 작성자
+  uploaded_by   UUID REFERENCES fo_staff_profiles(user_id),  -- 작성자 (fo_staff_profiles.user_id)
   note          TEXT,
   status        TEXT NOT NULL DEFAULT 'draft'    -- 'draft' | 'applied' | 'cancelled'
                   CHECK (status IN ('draft', 'applied', 'cancelled')),
