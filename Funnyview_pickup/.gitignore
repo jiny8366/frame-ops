@@ -43,3 +43,7 @@ next-env.d.ts
 # editor
 .idea/
 .vscode/
+
+# uploaded files (개발 로컬 — 프로덕션은 S3/CDN 사용 권장)
+/public/uploads/*
+!/public/uploads/.gitkeep

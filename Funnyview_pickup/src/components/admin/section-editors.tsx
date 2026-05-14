@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ImagePicker } from '@/components/admin/image-picker';
 import { Input } from '@/components/ui/input';
 import type { SectionKind } from '@/lib/home/section-config';
 
@@ -170,14 +171,16 @@ function HeroEditor({ config, onChange }: SectionEditorProps) {
       <Field label="서브라인">
         <TextField value={c.subline ?? ''} onChange={(v) => patch('subline', v)} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="이미지 URL" hint="비디오와 둘 다 있으면 비디오 우선">
-          <TextField value={c.imageUrl ?? ''} onChange={(v) => patch('imageUrl', v)} />
-        </Field>
-        <Field label="비디오 URL">
-          <TextField value={c.videoUrl ?? ''} onChange={(v) => patch('videoUrl', v)} />
-        </Field>
-      </div>
+      <Field label="이미지" hint="업로드 또는 URL 직접 입력 — 비디오와 둘 다 있으면 비디오 우선">
+        <ImagePicker
+          value={c.imageUrl ?? ''}
+          onChange={(v) => patch('imageUrl', v)}
+          folder="home-hero"
+        />
+      </Field>
+      <Field label="비디오 URL (선택)">
+        <TextField value={c.videoUrl ?? ''} onChange={(v) => patch('videoUrl', v)} />
+      </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="배경 색상">
           <ColorField value={c.bgColor ?? '#2563eb'} onChange={(v) => patch('bgColor', v)} />
@@ -459,8 +462,12 @@ function BrandStoryEditor({ config, onChange }: SectionEditorProps) {
       <Field label="본문">
         <TextArea value={c.body ?? ''} onChange={(v) => patch('body', v)} rows={3} />
       </Field>
-      <Field label="이미지 URL">
-        <TextField value={c.imageUrl ?? ''} onChange={(v) => patch('imageUrl', v)} />
+      <Field label="이미지">
+        <ImagePicker
+          value={c.imageUrl ?? ''}
+          onChange={(v) => patch('imageUrl', v)}
+          folder="brand-story"
+        />
       </Field>
       <Field label="레이아웃">
         <SelectField
