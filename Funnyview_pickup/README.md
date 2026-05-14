@@ -55,14 +55,93 @@ src/
 │   ├── layout/             # RoleHeader 등 공용 레이아웃
 │   └── ui/                 # 버튼/카드 등 UI primitives
 ├── db/
-│   ├── client.ts           # Drizzle + postgres.js
-│   └── schema/             # 테이블 스키마
+│   ├── client.ts           # Drizzle + postgres.js (schema 주입)
+│   └── schema/             # 테이블 스키마 (도메인별 분리)
+│       ├── enums.ts
+│       ├── users.ts
+│       ├── customers.ts
+│       ├── stores.ts
+│       ├── lenses.ts
+│       ├── inventory.ts
+│       ├── orders.ts
+│       ├── payments.ts
+│       ├── notifications.ts
+│       ├── relations.ts
+│       └── index.ts
 ├── lib/
 │   ├── auth/               # JWT, 세션
 │   ├── redis/              # Redis 클라이언트 + Pub/Sub 채널
-│   └── utils/              # cn() 등 공용 유틸
+│   └── utils/              # cn, sku, order-number, map-url
 ├── types/
 └── styles/
+
+drizzle/
+├── 0000_0000_initial.sql   # 초기 테이블 마이그레이션 (drizzle-kit 자동 생성)
+├── 0001_sales_views.sql    # 매출/영업이익/안전재고 뷰 (수동)
+└── meta/                   # 스냅샷
+```
+
+## DB 스키마 (Phase 1)
+
+### 테이블 목록 (14개)
+
+| 테이블 | 역할 |
+| --- | --- |
+| `users` | 인증 통합 사용자 (customer/warehouse/store/admin) |
+| `customers` | 고객 정보 (이름·성별·생년월일·연락처·주소·추천인) |
+| `customer_prescriptions` | 고객 도수 이력 (재주문 편의용) |
+| `stores` | 픽업가맹점 (가맹점명·전화·주소·카카오/네이버/T맵 URL·수수료율) |
+| `lenses` | 콘택트렌즈 마스터 (브랜드·제품군·BC·DIA·도수범위·가격·원가) |
+| `lens_variants` | 도수별 SKU (sphere·cylinder·axis·add_power) |
+| `lens_barcodes` | 바코드 (SKU 1:N — 제조사/유통 분리) |
+| `inventory` | 중앙 창고 SKU별 현재고 (on_hand·reserved·safety·reorder) |
+| `inventory_movements` | 입출고 이력 (append-only) |
+| `orders` | 주문 마스터 (상태·금액·전이 타임스탬프) |
+| `order_items` | 주문 라인 (좌/우/양안 별, 스냅샷 보존) |
+| `order_status_history` | 상태 전이 감사 로그 |
+| `payments` | 결제 (온라인/매장, 부분 환불 지원) |
+| `notifications` | 알림 (도착알림·배송시작·안전재고 부족) |
+
+### 주문 상태 전이
+
+```
+pending(주문완료/결제전) → paid(결제완료)
+  → accepted(접수)        ── warehouse 수락
+  → picking(패킹 중)      ── 픽리스트 출력
+  → shipped(출고/배송 중) ── 고객·가맹점 화면 "배송 중"
+  → arrived(가맹점 입고)  ── 가맹점에서 입고 확인
+  → ready(픽업 준비)      ── 고객에게 도착알림 발송
+  → completed(처리완료)   ── 픽업 + 매장 결제 완료
+[cancelled] 어느 단계에서든 가능
+```
+
+### 핵심 설계 결정
+
+- **SKU 결정성**: `lens_variants.sku` 는 `(productCode, sphere, cylinder, axis, addPower)` 에서 결정적으로 생성 (`src/lib/utils/sku.ts`) → 중복 자동 방지
+- **금액**: 정수(원) 저장 (소수점 회피)
+- **상태 이력**: `orders.{paid_at,shipped_at,...}` 컬럼으로 빠른 조회, `order_status_history` 로 감사
+- **재고 무결성**: `CHECK quantity_on_hand >= 0` + `inventory_movements` append-only
+- **결제 무결성**: 1 주문 N 결제 (부분 환불·복합 결제 대응)
+- **알림 통합**: 도착알림·배송시작·안전재고 부족 모두 `notifications` 1테이블
+- **삭제 정책**: 마스터 데이터(`users`, `customers`, `stores`, `lenses`)는 soft delete
+
+### SQL 뷰 (`0001_sales_views.sql`)
+
+| 뷰 | 용도 |
+| --- | --- |
+| `v_sales_daily` | 일별·가맹점별 매출·영업이익 |
+| `v_sales_monthly` | 월별·가맹점별 매출·영업이익 |
+| `v_store_settlement` | 픽업가맹점 정산 (수수료율 적용) |
+| `v_low_stock_alerts` | 안전재고/발주점 미달 SKU |
+
+### 마이그레이션 적용
+
+```bash
+# 1. Drizzle 자동 생성분
+npm run db:migrate
+
+# 2. 매출 뷰 (수동)
+psql $DATABASE_URL -f drizzle/0001_sales_views.sql
 ```
 
 ## 로컬 개발
@@ -98,7 +177,7 @@ npm run dev
 ## 개발 로드맵
 
 - [x] **Phase 0** — 프로젝트 셋업, 역할별 라우팅 골격
-- [ ] **Phase 1** — DB 스키마 (users, stores, lenses, orders…)
+- [x] **Phase 1** — DB 스키마 (14 테이블 + 4 뷰)
 - [ ] **Phase 2** — 인증 (3-role JWT)
 - [ ] **Phase 3** — 고객 주문 플로우 (렌즈 선택 → 가맹점 선택 → 결제)
 - [ ] **Phase 4** — 픽업서비스 업체 워크플로우 (주문 접수 → 픽리스트 → 출고)

@@ -35,8 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# drizzle
-/drizzle/meta
+# drizzle (meta/ 스냅샷은 마이그레이션 누적 추적용으로 커밋함)
 
 # logs
 *.log
