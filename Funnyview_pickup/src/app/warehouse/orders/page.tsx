@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
@@ -21,6 +21,14 @@ interface OrderRow {
 }
 
 export default function WarehouseOrdersPage() {
+  return (
+    <Suspense fallback={null}>
+      <WarehouseOrdersInner />
+    </Suspense>
+  );
+}
+
+function WarehouseOrdersInner() {
   const params = useSearchParams();
   const statusFilter = params.get('status');
   const [orders, setOrders] = useState<OrderRow[] | null>(null);

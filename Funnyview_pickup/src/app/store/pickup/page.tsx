@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,14 @@ interface OrderRow {
 }
 
 export default function StorePickupPage() {
+  return (
+    <Suspense fallback={null}>
+      <StorePickupInner />
+    </Suspense>
+  );
+}
+
+function StorePickupInner() {
   const params = useSearchParams();
   const statusParam = params.get('status') ?? 'ready';
   const [rows, setRows] = useState<OrderRow[] | null>(null);

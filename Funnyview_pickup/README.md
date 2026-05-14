@@ -178,13 +178,48 @@ npm run dev
 
 - [x] **Phase 0** — 프로젝트 셋업, 역할별 라우팅 골격
 - [x] **Phase 1** — DB 스키마 (14 테이블 + 4 뷰)
-- [ ] **Phase 2** — 인증 (3-role JWT)
-- [ ] **Phase 3** — 고객 주문 플로우 (렌즈 선택 → 가맹점 선택 → 결제)
-- [ ] **Phase 4** — 픽업서비스 업체 워크플로우 (주문 접수 → 픽리스트 → 출고)
-- [ ] **Phase 5** — 픽업가맹점 워크플로우 (입고 → 픽업 → 결제 → 처리완료)
-- [ ] **Phase 6** — 실시간 알림 (Redis Pub/Sub + SSE)
-- [ ] **Phase 7** — 결제 PG 연동, SMS/카카오 알림
-- [ ] **Phase 8** — 운영 대시보드, 통계
+- [x] **Phase 2** — 인증 (3-role JWT, 미들웨어, 로그인/회원가입 페이지)
+- [x] **Phase 3** — 고객 주문 플로우 (4단계 + 5초 폴링 상세)
+- [x] **Phase 4** — 픽업서비스 업체 (대시보드, 일괄 처리, 픽리스트, 재고)
+- [x] **Phase 5** — 픽업가맹점 (입고, 도착알림, 결제 다이얼로그, 처리완료)
+- [x] **Phase 6** — 실시간 알림 (SSE + Redis Pub/Sub, NotificationBell)
+- [ ] **Phase 7** — 결제 PG 실연동(Toss/Nice/PortOne), SMS/카카오 알림
+- [ ] **Phase 8** — 운영 대시보드, 매출 리포트, 정산
+- [ ] **Phase 9** — PWA 설치, 푸시 알림, 모바일 최적화
+
+## 빠른 시작 (Demo)
+
+```bash
+# 1. 환경
+cp .env.example .env.local
+# DATABASE_URL, REDIS_URL, JWT_SECRET 설정
+
+# 2. DB 마이그레이션
+npm run db:migrate
+psql $DATABASE_URL -f drizzle/0001_sales_views.sql   # 뷰
+
+# 3. 시드 (가맹점 3 + 렌즈 4종 + 직원 4명 + 초기재고)
+npm run db:seed
+
+# 4. 개발 서버
+npm run dev   # http://localhost:3001
+
+# 테스트 계정 (비밀번호: pickup1234!)
+#   픽업서비스 업체   : 01000000001  /login/warehouse
+#   강남 본점 직원     : 01000000002  /login/store
+#   홍대 지점 직원     : 01000000003  /login/store
+#   판교 지점 직원     : 01000000004  /login/store
+#   고객              : /register 에서 신규 가입
+```
+
+## End-to-End 시나리오
+
+1. **고객**: `/register` → 가입 → `/customer/order` → 렌즈/도수/가맹점/결제 선택 → 주문 생성
+2. **픽업서비스 업체**: 🔔 신규 알림 → `/warehouse/orders` 접수/패킹 → `/warehouse/picklist` 픽리스트 출력 → 출고 처리
+3. **고객**: 대시보드에 "배송 중" 자동 반영
+4. **픽업가맹점**: 🔔 알림 → `/store/incoming` 입고 → 도착알림 발송
+5. **고객**: 🔔 "픽업 가능" 알림 → 가맹점 방문
+6. **픽업가맹점**: `/store/pickup` → 결제 + 처리완료 → 매출 집계 반영
 
 ## frame_ops 와의 분리 원칙
 

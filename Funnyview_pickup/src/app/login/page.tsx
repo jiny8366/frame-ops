@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function CustomerLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomerLoginInner />
+    </Suspense>
+  );
+}
+
+function CustomerLoginInner() {
   const router = useRouter();
   const search = useSearchParams();
   const next = search.get('next') ?? '/customer';

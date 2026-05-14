@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,14 @@ interface InvRow {
 }
 
 export default function WarehouseInventoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <WarehouseInventoryInner />
+    </Suspense>
+  );
+}
+
+function WarehouseInventoryInner() {
   const params = useSearchParams();
   const lowOnly = params.get('low') === '1';
   const [rows, setRows] = useState<InvRow[] | null>(null);
