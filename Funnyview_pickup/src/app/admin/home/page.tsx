@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { SectionEditor } from '@/components/admin/section-editors';
 import { Button } from '@/components/ui/button';
+import type { SectionKind } from '@/lib/home/section-config';
 
 const KIND_LABELS: Record<string, { label: string; emoji: string }> = {
   hero: { label: 'Hero 배너', emoji: '🎯' },
@@ -206,22 +208,26 @@ function EditDialog({
   onSave: (body: Record<string, unknown>) => void;
 }) {
   const [title, setTitle] = useState(section.title ?? '');
-  const [configText, setConfigText] = useState(JSON.stringify(section.config, null, 2));
+  const [config, setConfig] = useState<Record<string, unknown>>(section.config);
   const [startsAt, setStartsAt] = useState(section.startsAt ? section.startsAt.slice(0, 16) : '');
   const [endsAt, setEndsAt] = useState(section.endsAt ? section.endsAt.slice(0, 16) : '');
+  const [advanced, setAdvanced] = useState(false);
+  const [jsonText, setJsonText] = useState(JSON.stringify(section.config, null, 2));
   const [error, setError] = useState<string | null>(null);
 
   function save() {
-    let config: Record<string, unknown>;
-    try {
-      config = JSON.parse(configText);
-    } catch {
-      setError('config JSON 형식 오류');
-      return;
+    let finalConfig = config;
+    if (advanced) {
+      try {
+        finalConfig = JSON.parse(jsonText);
+      } catch {
+        setError('JSON 형식 오류');
+        return;
+      }
     }
     onSave({
       title: title || null,
-      config,
+      config: finalConfig,
       startsAt: startsAt ? new Date(startsAt).toISOString() : null,
       endsAt: endsAt ? new Date(endsAt).toISOString() : null,
     });
@@ -229,10 +235,10 @@ function EditDialog({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold">섹션 편집 — {section.kind}</h3>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-4">
           <div>
             <label className="text-xs text-gray-500">관리자용 제목 (선택)</label>
             <input
@@ -263,18 +269,43 @@ function EditDialog({
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-gray-500">
-              Config (JSON) — kind={section.kind}
-            </label>
-            <textarea
-              className="mt-1 h-80 w-full rounded-lg border border-gray-300 p-3 font-mono text-xs"
-              value={configText}
-              onChange={(e) => setConfigText(e.target.value)}
-            />
-            <p className="mt-1 text-[10px] text-gray-400">
-              스키마: src/lib/home/section-config.ts 참고
-            </p>
+          <div className="border-t pt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-sm font-semibold">콘텐츠</h4>
+              <label className="text-xs text-gray-500">
+                <input
+                  type="checkbox"
+                  className="mr-1"
+                  checked={advanced}
+                  onChange={(e) => {
+                    setAdvanced(e.target.checked);
+                    if (e.target.checked) setJsonText(JSON.stringify(config, null, 2));
+                    else {
+                      try {
+                        setConfig(JSON.parse(jsonText));
+                      } catch {
+                        /* keep current */
+                      }
+                    }
+                  }}
+                />
+                JSON 고급 편집
+              </label>
+            </div>
+
+            {advanced ? (
+              <textarea
+                className="h-72 w-full rounded-lg border border-gray-300 p-3 font-mono text-xs"
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+              />
+            ) : (
+              <SectionEditor
+                kind={section.kind as SectionKind}
+                config={config}
+                onChange={setConfig}
+              />
+            )}
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
