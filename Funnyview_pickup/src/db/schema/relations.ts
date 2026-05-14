@@ -3,6 +3,7 @@ import { customerPrescriptions, customers } from './customers';
 import { inventory, inventoryMovements } from './inventory';
 import { lenses, lensBarcodes, lensVariants } from './lenses';
 import { notifications } from './notifications';
+import { userOauthAccounts } from './oauth';
 import { orders, orderItems, orderStatusHistory } from './orders';
 import { payments } from './payments';
 import { stores } from './stores';
@@ -18,7 +19,18 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     references: [customers.userId],
   }),
   notifications: many(notifications),
+  oauthAccounts: many(userOauthAccounts),
 }));
+
+export const userOauthAccountsRelations = relations(
+  userOauthAccounts,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userOauthAccounts.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
   user: one(users, {

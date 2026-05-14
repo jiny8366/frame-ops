@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { SocialButtons } from '@/components/auth/social-buttons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -55,6 +56,17 @@ function CustomerLoginInner() {
           <h1 className="text-xl font-bold">고객 로그인</h1>
           <p className="mt-1 text-sm text-gray-500">Funnyview Pickup</p>
         </header>
+
+        <SocialButtons returnTo={next} />
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-white px-2 text-gray-400">또는 전화번호로</span>
+          </div>
+        </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <Input

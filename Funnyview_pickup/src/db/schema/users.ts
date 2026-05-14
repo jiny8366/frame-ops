@@ -21,7 +21,7 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email'),
-    phone: text('phone').notNull(),
+    phone: text('phone'), // OAuth 가입 직후엔 NULL 가능 (온보딩에서 수집)
     passwordHash: text('password_hash'),
     role: userRoleEnum('role').notNull(),
     storeId: uuid('store_id'), // FK는 relations() 에서 선언 (순환 import 회피)
@@ -38,7 +38,7 @@ export const users = pgTable(
   (t) => ({
     phoneIdx: uniqueIndex('users_phone_idx')
       .on(t.phone)
-      .where(sql`deleted_at IS NULL`),
+      .where(sql`phone IS NOT NULL AND deleted_at IS NULL`),
     emailIdx: uniqueIndex('users_email_idx')
       .on(t.email)
       .where(sql`email IS NOT NULL AND deleted_at IS NULL`),

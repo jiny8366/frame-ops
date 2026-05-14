@@ -114,3 +114,10 @@ export const notificationStatusEnum = pgEnum('notification_status', [
   'failed',
   'read',
 ]);
+
+// 소셜 로그인 제공자
+export const oauthProviderEnum = pgEnum('oauth_provider', [
+  'naver',
+  'kakao',
+  'google',
+]);

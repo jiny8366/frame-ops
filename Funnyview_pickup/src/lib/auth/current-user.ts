@@ -6,7 +6,7 @@ import { readSession } from './session';
 export interface CurrentUser {
   id: string;
   role: 'customer' | 'warehouse_staff' | 'store_staff' | 'admin';
-  phone: string;
+  phone: string | null;
   email: string | null;
   storeId: string | null;
   customerId?: string;

@@ -12,4 +12,5 @@ export * from './inventory';
 export * from './orders';
 export * from './payments';
 export * from './notifications';
+export * from './oauth';
 export * from './relations';
