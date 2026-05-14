@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LogoutButton } from './logout-button';
 
 type Role = 'customer' | 'warehouse' | 'store';
 
@@ -30,6 +31,7 @@ export function RoleHeader({
               {item.label}
             </Link>
           ))}
+          <LogoutButton />
         </nav>
       </div>
     </header>
