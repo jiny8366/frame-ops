@@ -11,6 +11,7 @@ import {
   orders,
   users,
 } from '@/db/schema';
+import { notifyMany } from '@/lib/notifications/publish';
 import { formatOrderNumber, todayKst } from '@/lib/utils/order-number';
 
 export interface CreateOrderLine {
@@ -202,6 +203,16 @@ export async function createOrder(input: CreateOrderInput) {
           referenceType: 'order',
           referenceId: order.id,
         })),
+      );
+      await notifyMany(
+        warehouseUsers.map((u) => u.id),
+        {
+          type: 'order_received',
+          title: '신규 주문',
+          body: `주문번호 ${order.orderNumber}`,
+          orderId: order.id,
+          ts: Date.now(),
+        },
       );
     }
   } catch {

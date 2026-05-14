@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { LogoutButton } from './logout-button';
+import { NotificationBell } from './notification-bell';
 
 type Role = 'customer' | 'warehouse' | 'store';
 
@@ -31,6 +32,7 @@ export function RoleHeader({
               {item.label}
             </Link>
           ))}
+          <NotificationBell />
           <LogoutButton />
         </nav>
       </div>

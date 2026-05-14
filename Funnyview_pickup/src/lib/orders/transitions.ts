@@ -9,6 +9,7 @@ import {
   orders,
   users,
 } from '@/db/schema';
+import { notifyMany, notifyUser } from '@/lib/notifications/publish';
 import type { OrderStatus } from '@/types/order';
 
 export class TransitionError extends Error {
@@ -197,6 +198,13 @@ export async function markShipped(orderId: string, byUserId: string) {
             referenceId: ord[0].id,
           })),
         );
+        await notifyMany(recipients, {
+          type: 'order_shipped',
+          title: '배송 시작',
+          body: `주문 ${ord[0].orderNumber} 배송 중`,
+          orderId: ord[0].id,
+          ts: Date.now(),
+        });
       }
     }
   } catch {
@@ -238,6 +246,13 @@ export async function markReady(orderId: string, byUserId: string) {
           body: `주문 ${ord[0].orderNumber} 가 가맹점에 도착했습니다`,
           referenceType: 'order',
           referenceId: ord[0].id,
+        });
+        await notifyUser(customerUser[0].id, {
+          type: 'pickup_ready',
+          title: '픽업 가능',
+          body: `주문 ${ord[0].orderNumber} 가 가맹점에 도착했습니다`,
+          orderId: ord[0].id,
+          ts: Date.now(),
         });
       }
     }
