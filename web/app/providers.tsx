@@ -43,19 +43,26 @@ export function Providers({ children }: ProvidersProps) {
       }
     })();
 
-    const cleanup = initSyncListeners((deadItem) => {
+    const cleanup = initSyncListeners((alertItem) => {
       const label =
-        deadItem.table === 'orders' ? '판매 저장' :
-        deadItem.table === 'sales'  ? '판매 등록' :
-        deadItem.table === 'frames' ? '제품 업데이트' :
+        alertItem.table === 'orders' ? '판매 저장' :
+        alertItem.table === 'sales'  ? '판매 등록' :
+        alertItem.table === 'frames' ? '제품 업데이트' :
         '데이터';
-      // 정책 변경: dead-letter 가 아닌 임계치 도달 알림.
-      // 자동 재시도는 30초 주기로 계속 진행 중. 사용자에겐 이상 신호로만 노출.
-      toast.warning(`${label} 동기화 ${deadItem.retry_count}회 실패 — 자동 재시도 계속`, {
-        description: '네트워크 상태/서버 점검을 확인하세요. 우하단 배지로 큐 확인 가능.',
-        duration: 8000,
-      });
-      console.warn('[FrameOps Sync] 누적 실패:', deadItem);
+      // 'invalid' = 영구 오류 (서버 검증 실패) — 진단 필요.
+      // 'failed' = 임계치 도달한 일시 오류 — 자동 재시도 계속.
+      if (alertItem.status === 'invalid') {
+        toast.error(`${label} — 서버 검증 실패. 영구 오류로 분류됨.`, {
+          description: `우하단 배지에서 상세 확인 후 처리하세요. (${alertItem.last_error ?? '원인 미상'})`,
+          duration: 10000,
+        });
+      } else {
+        toast.warning(`${label} 동기화 ${alertItem.retry_count}회 실패 — 자동 재시도 계속`, {
+          description: '네트워크 상태/서버 점검을 확인하세요. 우하단 배지로 큐 확인 가능.',
+          duration: 8000,
+        });
+      }
+      console.warn('[FrameOps Sync] 누적 알림:', alertItem);
     });
 
     // 앱 부팅 시 누적된 dead 항목(과거 정책 산물) 도 강제 재시도 큐에 복귀

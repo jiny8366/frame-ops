@@ -31,7 +31,7 @@ interface FrameOpsDB extends DBSchema {
   };
 }
 
-export type SyncStatus = 'pending' | 'syncing' | 'failed' | 'dead';
+export type SyncStatus = 'pending' | 'syncing' | 'failed' | 'dead' | 'invalid';
 
 /**
  * sync_queue 의 table 식별자.
