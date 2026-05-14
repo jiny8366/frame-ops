@@ -2,9 +2,10 @@ import { RoleHeader } from '@/components/layout/role-header';
 
 const NAV = [
   { href: '/warehouse', label: '대시보드' },
-  { href: '/warehouse/orders', label: '주문 접수' },
+  { href: '/warehouse/orders', label: '주문 처리' },
   { href: '/warehouse/picklist', label: '픽리스트' },
   { href: '/warehouse/shipments', label: '출고 관리' },
+  { href: '/warehouse/inventory', label: '재고' },
 ] as const;
 
 export default function WarehouseLayout({
