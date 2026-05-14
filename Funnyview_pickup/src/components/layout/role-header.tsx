@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PushToggle } from '@/components/pwa/push-toggle';
 import { LogoutButton } from './logout-button';
 import { NotificationBell } from './notification-bell';
 
@@ -32,6 +33,7 @@ export function RoleHeader({
               {item.label}
             </Link>
           ))}
+          <PushToggle />
           <NotificationBell />
           <LogoutButton />
         </nav>

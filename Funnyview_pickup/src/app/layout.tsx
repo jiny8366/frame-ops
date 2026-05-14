@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { ServiceWorkerRegister } from '@/components/pwa/sw-register';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -7,6 +8,12 @@ export const metadata: Metadata = {
     template: '%s | Funnyview Pickup',
   },
   description: '콘택트렌즈 픽업서비스 - 주문하고 가까운 가맹점에서 픽업하세요',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Funnyview Pickup',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = {
@@ -23,7 +30,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { customers, notifications, users } from '@/db/schema';
+import { sendPushToUser } from '@/lib/push/web-push';
 import { getActiveSender } from './channels';
 import { notifyUser } from './publish';
 import {
@@ -51,7 +52,7 @@ export async function dispatchNotification(input: DispatchInput) {
       })
       .returning({ id: notifications.id });
 
-    // 2) SSE 푸시
+    // 2) SSE (인앱 알림 패널)
     try {
       await notifyUser(r.userId, {
         type: input.kind,
@@ -59,6 +60,21 @@ export async function dispatchNotification(input: DispatchInput) {
         body: tpl.body,
         orderId: input.referenceType === 'order' ? input.referenceId : undefined,
         ts: Date.now(),
+      });
+    } catch {
+      // ignore
+    }
+
+    // 2-B) 웹 푸시 (브라우저 잠금화면)
+    try {
+      await sendPushToUser(r.userId, {
+        title: tpl.title,
+        body: tpl.body,
+        url:
+          input.referenceType === 'order' && input.referenceId
+            ? `/customer/orders/${input.referenceId}`
+            : '/',
+        tag: input.referenceType && input.referenceId ? `${input.referenceType}:${input.referenceId}` : undefined,
       });
     } catch {
       // ignore
