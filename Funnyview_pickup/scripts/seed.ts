@@ -11,9 +11,10 @@
  */
 import 'dotenv/config';
 import { hash } from 'bcryptjs';
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { db } from '../src/db/client';
 import {
+  homeSections,
   inventory,
   inventoryMovements,
   lensVariants,
@@ -22,11 +23,16 @@ import {
   stores,
   users,
 } from '../src/db/schema';
+import { defaultConfig } from '../src/lib/home/section-config';
 import { generateSku } from '../src/lib/utils/sku';
 
 const PASSWORD_DEFAULT = 'pickup1234!';
 
-async function ensureUser(phone: string, role: 'warehouse_staff' | 'store_staff', storeId?: string) {
+async function ensureUser(
+  phone: string,
+  role: 'warehouse_staff' | 'store_staff' | 'admin',
+  storeId?: string,
+) {
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
   if (existing[0]) return existing[0].id;
   const passwordHash = await hash(PASSWORD_DEFAULT, 10);
@@ -152,11 +158,12 @@ async function main() {
   console.log('[seed] stores:', { store1, store2, store3 });
 
   // 2) Users
+  const admin = await ensureUser('01000000000', 'admin');
   const warehouse = await ensureUser('01000000001', 'warehouse_staff');
   const staff1 = await ensureUser('01000000002', 'store_staff', store1);
   const staff2 = await ensureUser('01000000003', 'store_staff', store2);
   const staff3 = await ensureUser('01000000004', 'store_staff', store3);
-  console.log('[seed] users:', { warehouse, staff1, staff2, staff3 });
+  console.log('[seed] users:', { admin, warehouse, staff1, staff2, staff3 });
 
   // 3) Lenses
   const acuOas = await ensureLens({
@@ -239,13 +246,32 @@ async function main() {
   }
   console.log('[seed] variants + inventory done');
 
+  // 5) Home CMS — 기본 데모 섹션 6개
+  const existingSections = await db
+    .select({ id: homeSections.id })
+    .from(homeSections)
+    .where(isNull(homeSections.deletedAt))
+    .limit(1);
+  if (existingSections.length === 0) {
+    await db.insert(homeSections).values([
+      { kind: 'banner_strip', title: '상단 띠 — 신규 쿠폰', config: defaultConfig('banner_strip'), sortOrder: 1, createdBy: admin },
+      { kind: 'hero', title: '메인 Hero', config: defaultConfig('hero'), sortOrder: 2, createdBy: admin },
+      { kind: 'category_chips', title: '카테고리', config: defaultConfig('category_chips'), sortOrder: 3, createdBy: admin },
+      { kind: 'countdown', title: '한정 카운트다운', config: defaultConfig('countdown'), sortOrder: 4, createdBy: admin },
+      { kind: 'product_grid', title: '베스트셀러', config: { ...(defaultConfig('product_grid') as object), mode: 'best' }, sortOrder: 5, createdBy: admin },
+      { kind: 'brand_story', title: '브랜드 스토리', config: defaultConfig('brand_story'), sortOrder: 6, createdBy: admin },
+    ]);
+    console.log('[seed] home_sections seeded (6)');
+  }
+
   console.log('\n[seed] 완료!\n');
   console.log('테스트 계정 (비밀번호: ' + PASSWORD_DEFAULT + ')');
+  console.log('  관리자            : 01000000000  /login/admin');
   console.log('  픽업서비스 업체   : 01000000001  /login/warehouse');
   console.log('  강남 본점 직원     : 01000000002  /login/store');
   console.log('  홍대 지점 직원     : 01000000003  /login/store');
   console.log('  판교 지점 직원     : 01000000004  /login/store');
-  console.log('  고객              : /register 에서 회원가입');
+  console.log('  고객              : /register 또는 소셜 로그인');
   process.exit(0);
 }
 

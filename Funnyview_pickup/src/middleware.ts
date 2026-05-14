@@ -7,10 +7,11 @@ const ROLE_PREFIX: Record<string, string[]> = {
   customer: ['/customer'],
   warehouse_staff: ['/warehouse'],
   store_staff: ['/store'],
-  admin: ['/customer', '/warehouse', '/store'],
+  admin: ['/customer', '/warehouse', '/store', '/admin'],
 };
 
 function loginUrlFor(pathname: string, search: string) {
+  if (pathname.startsWith('/admin')) return `/login/admin?next=${encodeURIComponent(pathname + search)}`;
   if (pathname.startsWith('/warehouse')) return `/login/warehouse?next=${encodeURIComponent(pathname + search)}`;
   if (pathname.startsWith('/store')) return `/login/store?next=${encodeURIComponent(pathname + search)}`;
   return `/login?next=${encodeURIComponent(pathname + search)}`;
@@ -19,11 +20,11 @@ function loginUrlFor(pathname: string, search: string) {
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
-  // 보호 영역: /customer, /warehouse, /store
   const isProtected =
     pathname.startsWith('/customer') ||
     pathname.startsWith('/warehouse') ||
-    pathname.startsWith('/store');
+    pathname.startsWith('/store') ||
+    pathname.startsWith('/admin');
 
   if (!isProtected) return NextResponse.next();
 
@@ -48,5 +49,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/customer/:path*', '/warehouse/:path*', '/store/:path*'],
+  matcher: ['/customer/:path*', '/warehouse/:path*', '/store/:path*', '/admin/:path*'],
 };

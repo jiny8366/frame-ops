@@ -15,6 +15,13 @@
       "when": 1778779265467,
       "tag": "0001_0002_oauth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778779548059,
+      "tag": "0002_0003_home_cms",
+      "breakpoints": true
     }
   ]
 }

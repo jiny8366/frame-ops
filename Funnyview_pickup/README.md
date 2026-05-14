@@ -183,9 +183,43 @@ npm run dev
 - [x] **Phase 4** — 픽업서비스 업체 (대시보드, 일괄 처리, 픽리스트, 재고)
 - [x] **Phase 5** — 픽업가맹점 (입고, 도착알림, 결제 다이얼로그, 처리완료)
 - [x] **Phase 6** — 실시간 알림 (SSE + Redis Pub/Sub, NotificationBell)
-- [ ] **Phase 7** — 결제 PG 실연동(Toss/Nice/PortOne), SMS/카카오 알림
-- [ ] **Phase 8** — 운영 대시보드, 매출 리포트, 정산
-- [ ] **Phase 9** — PWA 설치, 푸시 알림, 모바일 최적화
+- [x] **Phase 7** — 시드 데이터 + 빌드 검증
+- [x] **Phase 8** — 소셜 로그인 (Naver / Kakao / Google) + 전화번호 온보딩
+- [x] **Phase 9** — 홈화면 CMS (6 섹션 유형 + 분석 + 관리자 콘솔)
+- [ ] **Phase 10** — 결제 PG 실연동(Toss/Nice/PortOne), SMS/카카오 알림
+- [ ] **Phase 11** — 운영 대시보드, 매출 리포트, 정산
+- [ ] **Phase 12** — PWA 설치, 푸시 알림, 모바일 최적화
+
+## 홈화면 CMS (Phase 9)
+
+`/admin/home` 에서 비코드로 홈 화면 구성 — 6 섹션 유형:
+
+| 유형 | 용도 |
+| --- | --- |
+| `hero` | 풀와이드 메인 배너 (이미지/비디오 + CTA) |
+| `product_grid` | 추천 상품 (수동 선택 또는 best/new/trending 자동) |
+| `category_chips` | 빠른 필터 칩 (브랜드/유형, 배지) |
+| `banner_strip` | 띠 배너 (쿠폰·공지) |
+| `countdown` | 카운트다운 (한정 프로모션) |
+| `brand_story` | 브랜드 스토리 (이미지 + 텍스트 + CTA) |
+
+- 노출 일정 (`startsAt` / `endsAt`)
+- A/B variant 지원 (`variant` 컬럼)
+- 자동 임프레션 추적 (IntersectionObserver 40%)
+- 클릭/전환 이벤트 일괄 전송 (1초 배치)
+- `/admin/home/analytics` 에서 일/주/월별 CTR · CVR 모니터링
+
+## 소셜 로그인 설정 (Phase 8)
+
+각 provider 개발자 콘솔에서 OAuth 앱 등록 후 환경변수 설정:
+
+| Provider | 발급처 | Redirect URI |
+| --- | --- | --- |
+| Naver | https://developers.naver.com/apps | `{NEXT_PUBLIC_APP_URL}/api/auth/oauth/naver/callback` |
+| Kakao | https://developers.kakao.com | `{NEXT_PUBLIC_APP_URL}/api/auth/oauth/kakao/callback` |
+| Google | https://console.cloud.google.com | `{NEXT_PUBLIC_APP_URL}/api/auth/oauth/google/callback` |
+
+환경변수가 설정된 provider 만 로그인/가입 화면에 버튼이 노출됩니다. 미설정 시 전화번호 가입만 가능.
 
 ## 빠른 시작 (Demo)
 

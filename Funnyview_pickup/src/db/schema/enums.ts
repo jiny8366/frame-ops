@@ -121,3 +121,20 @@ export const oauthProviderEnum = pgEnum('oauth_provider', [
   'kakao',
   'google',
 ]);
+
+// 홈 섹션 유형 (CMS)
+export const homeSectionKindEnum = pgEnum('home_section_kind', [
+  'hero', // 풀와이드 배너 + CTA
+  'product_grid', // 추천 상품 그리드 (수동 또는 자동 큐레이션)
+  'category_chips', // 빠른 필터 칩 (브랜드/유형)
+  'banner_strip', // 텍스트 스트립 (긴급 공지)
+  'countdown', // 카운트다운 (한정 프로모션)
+  'brand_story', // 브랜드 스토리 (이미지 + 텍스트 + 링크)
+]);
+
+// 홈 섹션 이벤트
+export const homeSectionEventTypeEnum = pgEnum('home_section_event_type', [
+  'impression', // 노출
+  'click', // 클릭
+  'conversion', // 클릭 후 주문 전환
+]);
