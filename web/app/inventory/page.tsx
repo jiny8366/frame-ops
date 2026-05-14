@@ -182,7 +182,16 @@ export default function InventoryPage() {
               <SortBtn label="스타일순" active={sortMode === 'style'} onClick={() => setSortMode('style')} />
               <SortBtn label="재고 적은순" active={sortMode === 'low'} onClick={() => setSortMode('low')} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {canEditStock && (
+                <a
+                  href="/inventory/audit"
+                  title="실재고조사 엑셀 업로드 — 조사일 이후 거래량 자동 보정"
+                  className="pressable touch-target rounded-lg px-3 py-2 text-caption1 font-medium border bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]"
+                >
+                  📋 재고조사 업로드
+                </a>
+              )}
               <button
                 type="button"
                 onClick={handleExportXlsx}
