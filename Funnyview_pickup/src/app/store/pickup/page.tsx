@@ -62,15 +62,66 @@ function StorePickupInner() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">픽업 처리</h1>
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-xl font-bold md:text-2xl">픽업 처리</h1>
         <div className="flex gap-2 text-xs">
           <FilterTab active={statusParam === 'ready'} href="/store/pickup?status=ready" label="픽업 대기" />
           <FilterTab active={statusParam === 'completed'} href="/store/pickup?status=completed" label="완료" />
         </div>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+      {/* 모바일 카드 */}
+      <ul className="space-y-2 md:hidden">
+        {rows?.map((r) => (
+          <li key={r.id} className="rounded-2xl border border-gray-200 bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <Link
+                href={`/customer/orders/${r.id}`}
+                className="font-mono text-xs text-gray-500 hover:underline"
+              >
+                {r.orderNumber}
+              </Link>
+              <StatusBadge status={r.status} />
+            </div>
+            <div className="mt-1 font-medium">
+              {r.customerName}{' '}
+              <a href={`tel:${r.customerPhone}`} className="text-xs text-brand-600">
+                {r.customerPhone}
+              </a>
+            </div>
+            <div className="mt-0.5 flex items-center justify-between text-xs">
+              <span className={r.isPaid ? 'text-green-700' : 'text-gray-500'}>
+                {r.isPaid ? '선결제 완료' : '매장 결제'}
+              </span>
+              <span className="font-semibold">{formatKRW(r.total)}</span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-gray-400">
+              {r.completedAt ? `완료 ${formatDateTime(r.completedAt)}` : `준비 ${formatDateTime(r.readyAt)}`}
+            </div>
+            {r.status === 'ready' && (
+              <div className="mt-3">
+                {r.isPaid ? (
+                  <Button size="sm" disabled={busy === r.id} onClick={() => complete(r)} className="w-full bg-green-600 hover:bg-green-700">
+                    픽업 완료
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => setPayOpen(r)} className="w-full bg-amber-600 hover:bg-amber-700">
+                    결제 + 완료
+                  </Button>
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+        {rows && rows.length === 0 && (
+          <li className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-400">
+            건이 없습니다
+          </li>
+        )}
+      </ul>
+
+      {/* 데스크탑 테이블 */}
+      <div className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white md:block">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs uppercase text-gray-500">
             <tr>
@@ -151,8 +202,16 @@ function PaymentDialog({
   const [amount, setAmount] = useState(order.total);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center md:p-4">
+      <div
+        className="w-full max-w-md animate-slide-up bg-white p-6 shadow-xl md:animate-fade-in md:rounded-2xl"
+        style={{
+          borderTopLeftRadius: '1rem',
+          borderTopRightRadius: '1rem',
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)',
+        }}
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-300 md:hidden" />
         <h3 className="text-lg font-bold">결제 처리</h3>
         <p className="mt-1 text-sm text-gray-500">{order.orderNumber} · {order.customerName}</p>
 

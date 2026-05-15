@@ -92,7 +92,7 @@ export default function CustomerOrderDetailPage() {
         <StatusBadge status={order.status} />
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6">
         <div className="text-xs text-gray-500">주문번호</div>
         <div className="font-mono text-lg font-bold">{order.orderNumber}</div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-500">
@@ -105,33 +105,35 @@ export default function CustomerOrderDetailPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6">
         <h3 className="mb-3 font-semibold">픽업 장소</h3>
         <div className="text-sm">
           <div className="font-medium">{store.name}</div>
-          <div className="mt-1 text-gray-500">{store.phone}</div>
+          <a href={`tel:${store.phone}`} className="mt-1 inline-flex min-h-touch items-center text-brand-600">
+            📞 {store.phone}
+          </a>
           <div className="mt-1 text-gray-500">{store.address}</div>
         </div>
-        <div className="mt-3 flex gap-2 text-xs">
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
           {store.mapLinks.kakao && (
-            <a href={store.mapLinks.kakao} target="_blank" rel="noreferrer" className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800">
+            <a href={store.mapLinks.kakao} target="_blank" rel="noreferrer" className="inline-flex min-h-touch items-center rounded-full bg-yellow-100 px-4 py-2 font-medium text-yellow-800">
               카카오맵
             </a>
           )}
           {store.mapLinks.naver && (
-            <a href={store.mapLinks.naver} target="_blank" rel="noreferrer" className="rounded-full bg-green-100 px-3 py-1 text-green-800">
+            <a href={store.mapLinks.naver} target="_blank" rel="noreferrer" className="inline-flex min-h-touch items-center rounded-full bg-green-100 px-4 py-2 font-medium text-green-800">
               네이버지도
             </a>
           )}
           {store.mapLinks.tmap && (
-            <a href={store.mapLinks.tmap} target="_blank" rel="noreferrer" className="rounded-full bg-red-100 px-3 py-1 text-red-800">
+            <a href={store.mapLinks.tmap} target="_blank" rel="noreferrer" className="inline-flex min-h-touch items-center rounded-full bg-red-100 px-4 py-2 font-medium text-red-800">
               T맵
             </a>
           )}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6">
         <h3 className="mb-3 font-semibold">주문 상품</h3>
         <ul className="divide-y divide-gray-100">
           {items.map((it) => (
@@ -170,7 +172,7 @@ export default function CustomerOrderDetailPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6">
         <h3 className="mb-3 font-semibold">진행 상태</h3>
         <ul className="space-y-2 text-sm">
           {history.map((h) => (

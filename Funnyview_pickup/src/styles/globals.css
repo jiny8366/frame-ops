@@ -5,6 +5,11 @@
 :root {
   --background: 255 255 255;
   --foreground: 17 24 39;
+  /* iOS safe area inset — html 폴백 (CSS env() 미지원 환경) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +26,67 @@ body {
 }
 
 body {
-  font-family: 'Pretendard', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+    'Helvetica Neue', 'Apple SD Gothic Neo', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+/* iOS 자동 줌(폼 포커스 시) 방지 — input 16px 이상 */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
+/* 터치 최적화: 모든 인터랙티브 요소 최소 44px (Apple HIG) */
+@layer base {
+  button,
+  a[href],
+  input[type='button'],
+  input[type='submit'] {
+    touch-action: manipulation;
+  }
+}
+
+/* 모바일 네이티브 스크롤 모멘텀 */
+.scroll-mobile {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 스크롤바 숨김 — 가로 스크롤 carousel 용 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* prefers-reduced-motion 존중 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 인쇄 — 픽리스트/거래명세서 */
+@media print {
+  .print\\:hidden {
+    display: none !important;
+  }
 }

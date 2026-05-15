@@ -120,9 +120,9 @@ export default function CustomerOrderPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pb-32 md:space-y-8 md:pb-0">
       <header>
-        <h1 className="text-2xl font-bold">주문하기</h1>
+        <h1 className="text-xl font-bold md:text-2xl">주문하기</h1>
         <p className="mt-1 text-sm text-gray-500">상품 → 도수 → 픽업가맹점 → 결제</p>
       </header>
 
@@ -247,14 +247,17 @@ export default function CustomerOrderPage() {
         />
       </section>
 
-      {/* 합계 + 제출 */}
-      <section className="sticky bottom-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <div>
+      {/* 합계 + 제출 — 모바일 하단 탭 위로 고정 / 데스크탑은 sticky */}
+      <section
+        className="fixed inset-x-0 bottom-14 z-20 border-t border-gray-200 bg-white p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:sticky md:bottom-4 md:inset-x-auto md:rounded-2xl md:border md:shadow-md"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-1 md:px-0">
+          <div className="min-w-0">
             <div className="text-xs text-gray-500">결제 예정 금액</div>
-            <div className="text-xl font-bold">{formatKRW(total)}</div>
+            <div className="truncate text-xl font-bold">{formatKRW(total)}</div>
           </div>
-          <Button onClick={onSubmit} disabled={!canSubmit} size="lg">
+          <Button onClick={onSubmit} disabled={!canSubmit} size="lg" className="min-w-[40%] md:min-w-0">
             {submitting ? '주문 중...' : '주문하기'}
           </Button>
         </div>
@@ -300,7 +303,7 @@ function EyeSelector({
           <div>
             <label className="text-xs text-gray-500">도수 선택 (SKU)</label>
             <select
-              className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm"
+              className="mt-1 h-11 w-full rounded-lg border border-gray-300 px-3"
               value={value.variantId ?? ''}
               onChange={(e) =>
                 onChange({ ...value, variantId: e.target.value || null })
@@ -324,13 +327,14 @@ function EyeSelector({
             <label className="text-xs text-gray-500">수량 (박스)</label>
             <input
               type="number"
+              inputMode="numeric"
               min={1}
               max={20}
               value={value.quantity}
               onChange={(e) =>
                 onChange({ ...value, quantity: Math.max(1, Number(e.target.value)) })
               }
-              className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm"
+              className="mt-1 h-11 w-full rounded-lg border border-gray-300 px-3"
             />
           </div>
         </div>

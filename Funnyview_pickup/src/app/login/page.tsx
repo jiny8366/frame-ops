@@ -72,7 +72,10 @@ function CustomerLoginInner() {
           <Input
             label="휴대전화번호"
             name="phone"
+            type="tel"
             inputMode="numeric"
+            autoComplete="tel"
+            enterKeyHint="next"
             placeholder="01012345678"
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
@@ -83,6 +86,8 @@ function CustomerLoginInner() {
             label="비밀번호"
             name="password"
             type="password"
+            autoComplete="current-password"
+            enterKeyHint="go"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

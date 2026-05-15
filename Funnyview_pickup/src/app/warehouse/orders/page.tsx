@@ -80,11 +80,11 @@ function WarehouseOrdersInner() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-xl font-bold md:text-2xl">
           주문 처리{statusFilter ? ` (${statusFilter})` : ''}
         </h1>
-        <div className="flex gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 scrollbar-hide">
           <Button variant="secondary" size="sm" onClick={() => batch('accept')} disabled={selected.size === 0}>
             접수
           </Button>
@@ -102,7 +102,51 @@ function WarehouseOrdersInner() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+      {/* 모바일: 카드 리스트 */}
+      <ul className="space-y-2 md:hidden">
+        {orders?.map((o) => (
+          <li
+            key={o.id}
+            onClick={() => toggle(o.id)}
+            className={`rounded-2xl border bg-white p-3 ${
+              selected.has(o.id) ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={selected.has(o.id)}
+                onChange={() => toggle(o.id)}
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1 h-5 w-5"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-mono text-xs text-gray-500">{o.orderNumber}</div>
+                  <StatusBadge status={o.status} />
+                </div>
+                <div className="mt-1 font-medium">
+                  {o.customerName}{' '}
+                  <span className="text-xs text-gray-500">{o.customerPhone}</span>
+                </div>
+                <div className="mt-0.5 text-xs text-gray-500">→ {o.storeName}</div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-gray-500">{formatDateTime(o.paidAt)}</span>
+                  <span className="font-semibold">{formatKRW(o.total)} · {o.itemCount}건</span>
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+        {orders && orders.length === 0 && (
+          <li className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-400">
+            처리할 주문이 없습니다
+          </li>
+        )}
+      </ul>
+
+      {/* 데스크탑: 테이블 */}
+      <div className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white md:block">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs uppercase text-gray-500">
             <tr>

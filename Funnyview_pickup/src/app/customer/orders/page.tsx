@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/ui/badge';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { formatDateTime, formatKRW } from '@/lib/utils/format';
 import type { OrderStatus } from '@/types/order';
 
@@ -32,11 +33,13 @@ export default function CustomerOrdersPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">내 주문</h1>
+      <h1 className="text-xl font-bold md:text-2xl">내 주문</h1>
 
       {orders === null ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-400">
-          불러오는 중...
+        <div className="space-y-3">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       ) : orders.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center text-sm text-gray-400">
@@ -51,7 +54,7 @@ export default function CustomerOrdersPage() {
             <li key={o.id}>
               <Link
                 href={`/customer/orders/${o.id}`}
-                className="block rounded-2xl border border-gray-200 bg-white p-4 transition hover:border-brand-300"
+                className="block rounded-2xl border border-gray-200 bg-white p-4 transition active:scale-[0.99] hover:border-brand-300"
               >
                 <div className="flex items-center justify-between">
                   <div>

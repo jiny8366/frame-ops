@@ -78,12 +78,23 @@ export default function CustomerRegisterPage() {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <Input label="이름" name="name" required value={form.name} onChange={(e) => update('name', e.target.value)} />
+          <Input
+            label="이름"
+            name="name"
+            required
+            autoComplete="name"
+            enterKeyHint="next"
+            value={form.name}
+            onChange={(e) => update('name', e.target.value)}
+          />
           <Input
             label="휴대전화번호"
             name="phone"
+            type="tel"
             required
             inputMode="numeric"
+            autoComplete="tel"
+            enterKeyHint="next"
             placeholder="01012345678"
             value={form.phone}
             onChange={(e) => update('phone', e.target.value.replace(/\D/g, ''))}
@@ -94,6 +105,8 @@ export default function CustomerRegisterPage() {
             name="password"
             type="password"
             required
+            autoComplete="new-password"
+            enterKeyHint="next"
             value={form.password}
             onChange={(e) => update('password', e.target.value)}
             hint="8자 이상"

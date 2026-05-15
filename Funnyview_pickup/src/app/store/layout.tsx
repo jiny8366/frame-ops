@@ -14,7 +14,7 @@ export default function StoreLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <RoleHeader role="store" nav={[...NAV]} />
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-5 pb-safe md:px-6 md:py-8">{children}</main>
     </div>
   );
 }
