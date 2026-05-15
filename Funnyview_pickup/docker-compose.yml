@@ -1,0 +1,44 @@
+# Funnyview Pickup 로컬 개발용 인프라
+# PostgreSQL + Redis 한 번에 실행:
+#   docker compose up -d
+#
+# 종료/정리:
+#   docker compose down          # 컨테이너만
+#   docker compose down -v       # 데이터까지 (시드 다시 필요)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: funnyview-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: funnyview_pickup
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - funnyview_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d funnyview_pickup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: funnyview-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - funnyview_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  funnyview_pg_data:
+  funnyview_redis_data:
