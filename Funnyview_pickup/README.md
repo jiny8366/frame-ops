@@ -226,30 +226,105 @@ npm run dev
 
 환경변수가 설정된 provider 만 로그인/가입 화면에 버튼이 노출됩니다. 미설정 시 전화번호 가입만 가능.
 
-## 빠른 시작 (Demo)
+## 빠른 시작 — 본인 PC (5~10분)
+
+### A. Docker 사용 (가장 쉬움)
 
 ```bash
-# 1. 환경
+# 1. 코드 가져오기
+git clone https://github.com/jiny8366/frame-ops.git
+cd frame-ops
+git checkout claude/contact-lens-pickup-service-TuyS5
+cd Funnyview_pickup
+
+# 2. PostgreSQL + Redis 컨테이너
+docker compose up -d
+
+# 3. 환경변수
 cp .env.example .env.local
-# DATABASE_URL, REDIS_URL, JWT_SECRET 설정
+# .env.local 에서 최소 다음만 채우면 동작:
+#   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/funnyview_pickup
+#   REDIS_URL=redis://localhost:6379
+#   JWT_SECRET=<32자 이상 랜덤 문자열>
+#   NEXT_PUBLIC_APP_URL=http://localhost:3001
+#   NOTIFICATION_PROVIDER=console
 
-# 2. DB 마이그레이션
+# 4. 의존성 + DB 초기화
+npm install
 npm run db:migrate
-psql $DATABASE_URL -f drizzle/0001_sales_views.sql   # 뷰
-
-# 3. 시드 (가맹점 3 + 렌즈 4종 + 직원 4명 + 초기재고)
+psql "$DATABASE_URL" -f drizzle/0001_sales_views.sql
 npm run db:seed
 
-# 4. 개발 서버
-npm run dev   # http://localhost:3001
-
-# 테스트 계정 (비밀번호: pickup1234!)
-#   픽업서비스 업체   : 01000000001  /login/warehouse
-#   강남 본점 직원     : 01000000002  /login/store
-#   홍대 지점 직원     : 01000000003  /login/store
-#   판교 지점 직원     : 01000000004  /login/store
-#   고객              : /register 에서 신규 가입
+# 5. 개발 서버
+npm run dev   # → http://localhost:3001
 ```
+
+### B. Docker 없이 (PostgreSQL/Redis 직접 설치)
+
+```bash
+# macOS
+brew install postgresql@16 redis
+brew services start postgresql@16
+brew services start redis
+createdb funnyview_pickup
+
+# Ubuntu/Debian
+sudo apt install -y postgresql-16 redis-server
+sudo -u postgres createdb funnyview_pickup
+
+# 이후 위 A의 3단계부터 동일
+```
+
+### 테스트 계정 (비밀번호 모두 `pickup1234!`)
+
+| 역할 | 로그인 화면 | 전화번호 |
+| --- | --- | --- |
+| 관리자 | `/login/admin` | `01000000000` |
+| 픽업서비스 업체 | `/login/warehouse` | `01000000001` |
+| 강남 본점 직원 | `/login/store` | `01000000002` |
+| 홍대 지점 직원 | `/login/store` | `01000000003` |
+| 판교 지점 직원 | `/login/store` | `01000000004` |
+| 신규 고객 | `/register` | 본인 휴대폰 |
+
+## Vercel + Neon 배포 (공개 URL, 영구 무료 호스팅)
+
+### 1단계: Neon 에서 PostgreSQL 만들기
+
+1. https://neon.tech 가입 (GitHub 로그인)
+2. New Project → Region: Asia Pacific (Singapore) 선택
+3. Connection string (`Pooled connection`) 복사 — `postgresql://...neon.tech/...?sslmode=require`
+
+### 2단계: Upstash 에서 Redis 만들기 (선택)
+
+1. https://upstash.com 가입
+2. Create Redis Database → Region: Asia Pacific
+3. **REDIS URL** (rediss:// 로 시작) 복사
+4. 미설정 시 인앱 알림은 폴링으로 자동 폴백
+
+### 3단계: Vercel 배포
+
+1. https://vercel.com 가입 → New Project → GitHub `jiny8366/frame-ops` import
+2. **Root Directory**: `Funnyview_pickup` 선택 (중요!)
+3. **Framework**: Next.js (자동 감지)
+4. **Environment Variables** 설정:
+   - `DATABASE_URL` = Neon 풀드 URL
+   - `REDIS_URL` = Upstash URL (선택)
+   - `JWT_SECRET` = 32자 이상 랜덤
+   - `NEXT_PUBLIC_APP_URL` = `https://your-project.vercel.app`
+   - `NOTIFICATION_PROVIDER` = `console`
+5. Deploy 클릭 → `vercel:build` 가 자동으로 `drizzle-kit migrate` 실행
+
+### 4단계: 시드 + 매출 뷰 (1회)
+
+배포 성공 후 본인 PC에서:
+
+```bash
+# Vercel 환경변수와 같은 DATABASE_URL 을 .env.local 에 임시로 넣고
+psql "$DATABASE_URL" -f drizzle/0001_sales_views.sql
+DATABASE_URL=<neon-url> npm run db:seed
+```
+
+이후 https://your-project.vercel.app 에서 위 테스트 계정으로 로그인 가능.
 
 ## End-to-End 시나리오
 
