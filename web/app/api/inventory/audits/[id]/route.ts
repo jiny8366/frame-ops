@@ -13,7 +13,9 @@ interface PreviewRow {
   style_code: string | null;
   color_code: string | null;
   current_stock: number;
+  baseline_at_audit: number;
   counted_quantity: number;
+  audit_delta: number;
   delta_after_audit: number;
   applied_quantity: number;
   match_status: 'matched' | 'unmatched' | 'skipped';

@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { useSession } from '@/hooks/useSession';
 import { hasPermission, isHqRole } from '@/lib/auth/permissions';
 import { formatColor } from '@/lib/product-codes';
@@ -37,8 +38,15 @@ interface PreviewRow {
   style_code: string | null;
   color_code: string | null;
   current_stock: number;
+  /** audit_date 시점 추산 시스템 재고 = current_stock − delta_after_audit */
+  baseline_at_audit: number;
+  /** 사용자가 엑셀에 적은 실재고 카운팅 */
   counted_quantity: number;
+  /** ★ 실재고조사 증감 = counted_quantity − baseline_at_audit. 분실/오기록/도난 등으로 발견된 차이 */
+  audit_delta: number;
+  /** audit_date 이후 net 거래 (+매입+환불-판매-출고±이동) */
   delta_after_audit: number;
+  /** 적용 후 최종 재고 = counted + delta_after_audit */
   applied_quantity: number;
   match_status: 'matched' | 'unmatched' | 'skipped';
 }
@@ -240,11 +248,128 @@ export default function StockAuditPage() {
     const rows = detail?.preview ?? [];
     const matched = rows.filter((r) => r.match_status === 'matched');
     const totalCounted = matched.reduce((s, r) => s + r.counted_quantity, 0);
-    const totalDelta = matched.reduce((s, r) => s + r.delta_after_audit, 0);
     const totalApplied = matched.reduce((s, r) => s + r.applied_quantity, 0);
-    const changedCount = matched.filter((r) => r.applied_quantity !== r.current_stock).length;
-    return { totalCounted, totalDelta, totalApplied, changedCount, matchedCount: matched.length };
+    // 실재고조사 증감 (audit_delta) 통계 — 본래 의미의 증감
+    const totalAuditDelta = matched.reduce((s, r) => s + r.audit_delta, 0);
+    const auditDeltaPositive = matched
+      .filter((r) => r.audit_delta > 0)
+      .reduce((s, r) => s + r.audit_delta, 0);
+    const auditDeltaNegative = matched
+      .filter((r) => r.audit_delta < 0)
+      .reduce((s, r) => s + r.audit_delta, 0);
+    const discrepancyCount = matched.filter((r) => r.audit_delta !== 0).length;
+    return {
+      totalCounted,
+      totalApplied,
+      totalAuditDelta,
+      auditDeltaPositive,
+      auditDeltaNegative,
+      discrepancyCount,
+      matchedCount: matched.length,
+    };
   }, [detail]);
+
+  // 엑셀 다운로드 — 미리보기 + 헤더 메타데이터 + 미매칭 시트.
+  // 근거 자료로 보관 가능하도록 시점/매장/적용여부/실재고조사 증감 포함.
+  const handleExportXlsx = useCallback(() => {
+    if (!detail) return;
+    const { header, preview, unmatched } = detail;
+
+    // 매장 정보 — list 에서 조회 (header.store_id 만 있어서)
+    const storeRow = (list ?? []).find((r) => r.id === header.id);
+    const storeLabel = storeRow
+      ? `${storeRow.store_name ?? ''} (${storeRow.store_code ?? ''})`
+      : '—';
+
+    const fmtNum = (n: number) => (typeof n === 'number' ? n : 0);
+    const fmtSigned = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+
+    // --- 시트 1: 헤더 메타 + 통계 ---
+    const summarySheet: (string | number)[][] = [
+      ['재고조사 결과 보고서'],
+      [],
+      ['조사일 (audit_date)', header.audit_date],
+      ['적용 매장', storeLabel],
+      ['업로드 시각', new Date(header.uploaded_at).toLocaleString('ko-KR')],
+      ['적용 시각', header.applied_at ? new Date(header.applied_at).toLocaleString('ko-KR') : '(미적용)'],
+      ['상태', header.status === 'applied' ? '적용 완료' : header.status === 'draft' ? '미리보기 (미적용)' : '취소'],
+      ['메모', header.note ?? ''],
+      [],
+      ['── 통계 ──'],
+      ['총 라인', header.total_lines],
+      ['매칭 라인', header.matched_lines],
+      ['미매칭 라인', unmatched.length],
+      [],
+      ['── 실재고조사 증감 (★ 본래 의미) ──'],
+      ['차이 발견 SKU 수', stats.discrepancyCount],
+      ['증가 합계 (+)', stats.auditDeltaPositive],
+      ['감소 합계 (−)', stats.auditDeltaNegative],
+      ['순증감', fmtSigned(stats.totalAuditDelta)],
+      [],
+      ['실재고 합계 (counted)', stats.totalCounted],
+      ['적용 후 합계 (counted + audit 이후 거래)', stats.totalApplied],
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(summarySheet);
+    wsSummary['!cols'] = [{ wch: 32 }, { wch: 32 }];
+
+    // --- 시트 2: 매칭 라인 본문 ---
+    const matchedHeader = [
+      'NO.',
+      '브랜드',
+      '제품번호',
+      '컬러',
+      '조사일 추산재고',   // baseline_at_audit
+      '실재고 (카운팅)',   // counted_quantity
+      '★ 실재고조사 증감',   // audit_delta — 본래 의미
+      '조사 이후 거래(±)',   // delta_after_audit
+      '적용 후 최종',      // applied_quantity
+      '현재 재고(참고)',   // current_stock
+    ];
+    const matchedRows = preview
+      .filter((r) => r.match_status === 'matched')
+      .map((r, idx) => [
+        idx + 1,
+        r.brand_name ?? '',
+        r.style_code ?? '',
+        formatColor(r.color_code),
+        fmtNum(r.baseline_at_audit),
+        fmtNum(r.counted_quantity),
+        fmtSigned(r.audit_delta),
+        fmtSigned(r.delta_after_audit),
+        fmtNum(r.applied_quantity),
+        fmtNum(r.current_stock),
+      ]);
+    const wsMatched = XLSX.utils.aoa_to_sheet([matchedHeader, ...matchedRows]);
+    wsMatched['!cols'] = [
+      { wch: 5 }, { wch: 18 }, { wch: 14 }, { wch: 10 },
+      { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
+    ];
+
+    // --- 시트 3: 미매칭 (참고) ---
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsSummary, '요약');
+    XLSX.utils.book_append_sheet(wb, wsMatched, '재고조사 결과');
+    if (unmatched.length > 0) {
+      const unmatchedHeader = ['NO.', '브랜드(원본)', '제품번호(원본)', '컬러(원본)', '실재고'];
+      const unmatchedRows = unmatched.map((u, idx) => [
+        idx + 1,
+        u.raw_brand ?? '',
+        u.raw_style_code ?? '',
+        u.raw_color_code ?? '',
+        u.counted_quantity,
+      ]);
+      const wsUn = XLSX.utils.aoa_to_sheet([unmatchedHeader, ...unmatchedRows]);
+      wsUn['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, wsUn, '미매칭');
+    }
+
+    const storeCode = storeRow?.store_code ?? 'STORE';
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
+      .format(new Date())
+      .replace(/-/g, '');
+    XLSX.writeFile(wb, `재고조사_${storeCode}_${header.audit_date}_생성${today}.xlsx`);
+    toast.success(`Excel 다운로드 — ${matchedRows.length}건 (미매칭 ${unmatched.length}건)`);
+  }, [detail, list, stats]);
 
   useEffect(() => {
     if (!canEdit) return; // 권한 가드 — 외부에서도 처리되지만 클라이언트 가드도
@@ -350,10 +475,20 @@ export default function StockAuditPage() {
                 </h2>
                 <p className="text-caption2 text-[var(--color-label-tertiary)] mt-0.5">
                   조사일: <strong>{detail.header.audit_date}</strong> · 매칭 {stats.matchedCount}건 ·
-                  변경 {stats.changedCount}건 · 적용 후 총 수량 {stats.totalApplied.toLocaleString()}
+                  실재고조사 증감 발견 <strong>{stats.discrepancyCount}건</strong>{' '}
+                  (+{stats.auditDeltaPositive} / {stats.auditDeltaNegative}) ·
+                  적용 후 총 수량 {stats.totalApplied.toLocaleString()}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleExportXlsx}
+                  title="조사일 추산 / 실재고 / 증감 / 적용 후 등 모든 컬럼을 엑셀로 내보내기 (근거 자료)"
+                  className="pressable touch-target rounded-lg px-3 py-2 text-caption1 font-medium border bg-[var(--color-fill-quaternary)] text-[var(--color-label-primary)] border-[var(--color-separator-opaque)]"
+                >
+                  📥 Excel 다운로드
+                </button>
                 {detail.header.status === 'draft' && (
                   <>
                     <button
@@ -374,7 +509,7 @@ export default function StockAuditPage() {
                   </>
                 )}
                 {detail.header.status === 'applied' && (
-                  <span className="text-caption1 font-semibold text-[var(--color-system-green)]">
+                  <span className="text-caption1 font-semibold text-[var(--color-system-green)] self-center">
                     ✓ 적용 완료 ({new Date(detail.header.applied_at ?? '').toLocaleString('ko-KR')})
                   </span>
                 )}
@@ -411,6 +546,14 @@ export default function StockAuditPage() {
               </div>
             )}
 
+            <div className="px-4 py-2 bg-[var(--color-fill-quaternary)] text-caption2 text-[var(--color-label-secondary)]">
+              <strong>읽는 방법:</strong> <em>조사일 추산</em> = audit_date 시점 시스템 재고
+              (현재 − 그 이후 거래). <em>실재고</em> = 사용자가 카운팅한 실물 수량.{' '}
+              <strong className="text-[var(--color-label-primary)]">★ 재고조사 증감</strong> ={' '}
+              실재고 − 조사일 추산 (분실/오기록 등으로 발견된 차이). <em>적용 후</em> = 실재고 + 그
+              이후 거래 = 적용 확정 시 fo_stock 에 들어가는 값.
+            </div>
+
             <div className="overflow-auto max-h-[600px]">
               <table className="data-list-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
@@ -418,24 +561,43 @@ export default function StockAuditPage() {
                     <th>브랜드</th>
                     <th>제품번호</th>
                     <th>컬러</th>
-                    <th className="num">현재</th>
+                    <th className="num">조사일 추산</th>
                     <th className="num">실재고</th>
+                    <th className="num">★ 재고조사 증감</th>
                     <th className="num">조사 후 거래</th>
-                    <th className="num">적용 수량</th>
-                    <th className="num">증감</th>
+                    <th className="num">적용 후</th>
+                    <th className="num">현재(참고)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {detail.preview.map((r) => {
-                    const diff = r.applied_quantity - r.current_stock;
+                    const isDiscrepancy = r.audit_delta !== 0;
                     return (
-                      <tr key={r.line_id}>
+                      <tr
+                        key={r.line_id}
+                        className={isDiscrepancy ? 'bg-[var(--color-system-orange)]/5' : ''}
+                      >
                         <td>{r.brand_name ?? '—'}</td>
                         <td className="code">{r.style_code ?? '—'}</td>
                         <td className="code">{formatColor(r.color_code)}</td>
-                        <td className="num">{r.current_stock}</td>
+                        <td className="num">{r.baseline_at_audit}</td>
                         <td className="num" style={{ fontWeight: 600 }}>
                           {r.counted_quantity}
+                        </td>
+                        <td
+                          className="num"
+                          style={{
+                            color:
+                              r.audit_delta > 0
+                                ? 'var(--color-system-green)'
+                                : r.audit_delta < 0
+                                  ? 'var(--color-system-red)'
+                                  : 'var(--color-label-tertiary)',
+                            fontWeight: 700,
+                          }}
+                          title="실재고조사로 발견된 진짜 증감 = 실재고 − 조사일 추산"
+                        >
+                          {r.audit_delta > 0 ? `+${r.audit_delta}` : r.audit_delta}
                         </td>
                         <td
                           className="num"
@@ -445,27 +607,19 @@ export default function StockAuditPage() {
                                 ? 'var(--color-system-green)'
                                 : r.delta_after_audit < 0
                                   ? 'var(--color-system-red)'
-                                  : undefined,
+                                  : 'var(--color-label-tertiary)',
                           }}
+                          title="audit_date 이후 POS 거래 net (+매입+환불-판매-출고±이동)"
                         >
-                          {r.delta_after_audit > 0 ? `+${r.delta_after_audit}` : r.delta_after_audit}
+                          {r.delta_after_audit > 0
+                            ? `+${r.delta_after_audit}`
+                            : r.delta_after_audit}
                         </td>
                         <td className="num" style={{ fontWeight: 700 }}>
                           {r.applied_quantity}
                         </td>
-                        <td
-                          className="num"
-                          style={{
-                            color:
-                              diff > 0
-                                ? 'var(--color-system-green)'
-                                : diff < 0
-                                  ? 'var(--color-system-red)'
-                                  : 'var(--color-label-tertiary)',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {diff > 0 ? `+${diff}` : diff}
+                        <td className="num text-[var(--color-label-tertiary)]">
+                          {r.current_stock}
                         </td>
                       </tr>
                     );
