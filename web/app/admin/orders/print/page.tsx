@@ -6,6 +6,12 @@
 //   · preview=1 → 미리보기. 자동 인쇄·마킹 없음.
 //   · mark=1    → 데이터 로드 후 발주 처리 마킹 + 자동 인쇄.
 //   · 둘 다 없음 → 자동 인쇄만 (구버전 호환).
+//
+// 캐시 정책 (2026-05-18 추가):
+//   첫 fetch 성공 시 sessionStorage 에 24h TTL 로 저장.
+//   재방문/새로고침 시 캐시 우선 사용 — 마킹 후에도 PDF 재인쇄 가능.
+//   원인: fetch 가 미발주(ordered_at IS NULL) 만 조회하므로
+//   마킹 후엔 해당 supplier 그룹이 빈 결과로 떨어져 "데이터 없음" 으로 보였음.
 
 'use client';
 
@@ -33,6 +39,32 @@ function loadOverrides(): Record<string, number> {
     return raw ? (JSON.parse(raw) as Record<string, number>) : {};
   } catch {
     return {};
+  }
+}
+
+// 인쇄용 데이터 캐시 — 마킹 후에도 PDF 재인쇄 가능하도록.
+const PRINT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+function printCacheKey(supplierId: string, from: string, to: string): string {
+  return `fo_orders_print_${supplierId}_${from}_${to}`;
+}
+function loadPrintCache<T>(key: string): T | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts: number; data: T };
+    if (Date.now() - parsed.ts > PRINT_CACHE_TTL_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+function savePrintCache<T>(key: string, data: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    /* quota 초과 등 — 무시 */
   }
 }
 
@@ -73,6 +105,7 @@ export default function OrdersPrintPage() {
   const [data, setData] = useState<OrdersResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [printed, setPrinted] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
   const markedRef = useRef(false);
 
   useEffect(() => {
@@ -80,6 +113,21 @@ export default function OrdersPrintPage() {
       setError('잘못된 매개변수');
       return;
     }
+    const cacheKey = printCacheKey(supplierId, from, to);
+
+    // 1) sessionStorage 캐시 우선 — 첫 fetch 가 성공한 적이 있으면 즉시 표시.
+    //    마킹 후 새로고침해도 데이터 보존되어 재인쇄 가능.
+    const cached = loadPrintCache<OrdersResponse>(cacheKey);
+    if (cached) {
+      const hasGroup = cached.groups?.some((g) => g.supplier_id === supplierId);
+      if (hasGroup) {
+        setData(cached);
+        setFromCache(true);
+        return; // mark/print 흐름은 두 번째 useEffect 에서 처리 (markedRef 가드)
+      }
+    }
+
+    // 2) API fetch — 캐시 미스 또는 캐시에 해당 그룹 없을 때만
     void (async () => {
       try {
         const res = await fetch(`/api/admin/orders/pending?from=${from}&to=${to}`);
@@ -88,7 +136,17 @@ export default function OrdersPrintPage() {
           setError(json.error ?? '응답 없음');
           return;
         }
+        const hasGroup = json.data.groups?.some((g) => g.supplier_id === supplierId);
+        if (!hasGroup) {
+          // 마킹 후 새로고침 시나리오 — 사용자에게 명확한 안내
+          setError(
+            '해당 매입처의 미발주 항목이 없습니다.\n' +
+              '이미 발주 처리되었을 수 있습니다. 같은 창에서 "다시 인쇄" 버튼으로 재인쇄 가능합니다.'
+          );
+          return;
+        }
         setData(json.data);
+        savePrintCache(cacheKey, json.data); // 다음 새로고침 대비 캐시
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -110,8 +168,9 @@ export default function OrdersPrintPage() {
       setPrinted(true);
     }
 
-    // 마킹은 한 번만 — 인쇄 페이지가 데이터 fetch 완료 → 그 다음 마킹.
-    if (shouldMark && !markedRef.current) {
+    // 마킹은 한 번만, 그리고 캐시에서 로드된 경우는 마킹 스킵 (이미 됐을 가능성 ↑).
+    // 처음 PDF 다운로드 시에만 마킹 실행. 새로고침/재인쇄는 마킹 안 함.
+    if (shouldMark && !markedRef.current && !fromCache) {
       markedRef.current = true;
       void (async () => {
         try {
@@ -133,12 +192,33 @@ export default function OrdersPrintPage() {
     return () => {
       if (t !== undefined) window.clearTimeout(t);
     };
-  }, [data, printed, shouldMark, shouldAutoPrint, supplierId, from, to]);
+  }, [data, printed, shouldMark, shouldAutoPrint, fromCache, supplierId, from, to]);
 
   if (error) {
     return (
-      <main className="p-8">
-        <p className="text-red-600">{error}</p>
+      <main className="p-8 max-w-[640px] mx-auto">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-red-700 whitespace-pre-line font-medium">{error}</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => window.close()}
+              className="rounded-md bg-gray-200 px-3 py-1.5 text-sm"
+            >
+              창 닫기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // 같은 키의 캐시도 제거 후 재시도 (보존된 데이터 있으면 표시됨)
+                window.location.reload();
+              }}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-white text-sm"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
       </main>
     );
   }
@@ -153,8 +233,23 @@ export default function OrdersPrintPage() {
   const rawGroup = data.groups.find((g) => g.supplier_id === supplierId);
   if (!rawGroup) {
     return (
-      <main className="p-8">
-        <p>해당 매입처 데이터가 없습니다 (이미 발주됐거나 만료된 링크).</p>
+      <main className="p-8 max-w-[640px] mx-auto">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-amber-800 font-medium">
+            해당 매입처의 미발주 항목이 없습니다.
+          </p>
+          <p className="text-sm text-amber-700 mt-2">
+            이미 발주 처리되었을 수 있습니다. 처음 PDF 다운로드 받은 창이 닫히지 않았다면
+            그 창의 &ldquo;다시 인쇄&rdquo; 버튼으로 재인쇄가 가능합니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.close()}
+            className="mt-3 rounded-md bg-gray-300 px-3 py-1.5 text-sm"
+          >
+            창 닫기
+          </button>
+        </div>
       </main>
     );
   }
@@ -273,6 +368,14 @@ export default function OrdersPrintPage() {
         {isPreview && (
           <span className="rounded-md bg-amber-100 text-amber-800 px-2 py-1 text-xs font-semibold">
             미리보기 (발주 처리 안 됨)
+          </span>
+        )}
+        {fromCache && !isPreview && (
+          <span
+            className="rounded-md bg-emerald-100 text-emerald-800 px-2 py-1 text-xs font-semibold"
+            title="이전에 다운로드한 발주서를 캐시로 불러왔습니다. 발주 처리는 첫 다운로드 시에만 실행됩니다."
+          >
+            재인쇄 (캐시)
           </span>
         )}
         <button
