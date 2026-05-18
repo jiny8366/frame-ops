@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -554,57 +555,16 @@ function SupplierContent({
           </p>
         </div>
 
-        {/* 발주 버튼 + 선택 모달 */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={onTogglePicker}
-            disabled={busy}
-            className="pressable touch-target rounded-lg px-4 py-2 bg-[var(--color-system-orange)] text-white text-callout font-semibold disabled:opacity-40"
-          >
-            {busy ? '처리 중…' : '발주 ▾'}
-          </button>
-          {pickerOpen && !busy && (
-            <>
-              {/* 바깥 클릭 닫기 */}
-              <div className="fixed inset-0 z-40" onClick={onClosePicker} aria-hidden />
-              <div
-                role="menu"
-                className="absolute right-0 mt-2 z-50 min-w-[220px] rounded-xl bg-[var(--color-bg-elevated,var(--color-bg-secondary))] shadow-lg ring-1 ring-[var(--color-separator-opaque)] overflow-hidden"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={onPreview}
-                  className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
-                >
-                  <span className="text-[var(--color-label-primary)] font-semibold">미리보기</span>
-                  <span className="text-caption2 text-[var(--color-label-tertiary)]">발주 처리 안 함</span>
-                </button>
-                <div className="border-t border-[var(--color-separator-opaque)]" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={onExcel}
-                  className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
-                >
-                  <span className="text-[var(--color-system-green)] font-semibold">EXCEL</span>
-                  <span className="text-caption2 text-[var(--color-label-tertiary)]">.xlsx + 발주 처리</span>
-                </button>
-                <div className="border-t border-[var(--color-separator-opaque)]" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={onPrint}
-                  className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
-                >
-                  <span className="text-[var(--color-system-blue)] font-semibold">PDF인쇄</span>
-                  <span className="text-caption2 text-[var(--color-label-tertiary)]">인쇄/저장 + 발주 처리</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        {/* 발주 버튼 + 선택 메뉴 — Portal 로 body 에 mount (overflow 부모 영향 없음) */}
+        <OrderActionPicker
+          busy={busy}
+          open={pickerOpen}
+          onToggle={onTogglePicker}
+          onClose={onClosePicker}
+          onPreview={onPreview}
+          onExcel={onExcel}
+          onPrint={onPrint}
+        />
       </div>
 
       <div className="data-list-scroll">
@@ -801,5 +761,156 @@ function KeypadBtn({
     >
       {label}
     </button>
+  );
+}
+
+// ── 발주 액션 선택기 (미리보기 / EXCEL / PDF인쇄) ───────────────────────────────
+// Portal 로 document.body 에 mount → 부모 카드의 overflow-hidden 영향 X.
+// 버튼 좌표 기반 fixed positioning + 화면 하단 가까우면 위쪽으로 자동 flip.
+// 원인: 1품목짜리 카드처럼 짧은 컨테이너에서 absolute 드롭다운이 카드 밖으로
+//       빠져 잘려보였던 문제 (PDF인쇄 항목이 안 보이는 현상).
+function OrderActionPicker({
+  busy,
+  open,
+  onToggle,
+  onClose,
+  onPreview,
+  onExcel,
+  onPrint,
+}: {
+  busy: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onPreview: () => void;
+  onExcel: () => void;
+  onPrint: () => void;
+}) {
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; placement: 'down' | 'up' } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 좌표 계산 — 버튼 위치 기준. 화면 하단까지 메뉴 높이(~180px) 보다 작으면 위쪽으로 flip.
+  // 가로는 메뉴 오른쪽 끝을 버튼 오른쪽 끝에 맞춤 (right-aligned).
+  const recomputeCoords = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const MENU_HEIGHT = 180; // 3개 메뉴 + padding 대략치
+    const MENU_WIDTH = 260;
+    const gap = 8;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placement: 'down' | 'up' = spaceBelow >= MENU_HEIGHT + gap ? 'down' : 'up';
+
+    const top = placement === 'down' ? rect.bottom + gap : rect.top - MENU_HEIGHT - gap;
+    // 메뉴를 right-align: 오른쪽 끝을 버튼 오른쪽 끝에 맞춤.
+    // 화면 왼쪽 경계 보호 (left < 8 이면 8로)
+    const left = Math.max(8, rect.right - MENU_WIDTH);
+    setCoords({ top, left, placement });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    recomputeCoords();
+  }, [open, recomputeCoords]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => recomputeCoords();
+    window.addEventListener('scroll', handler, true); // capture: 내부 스크롤도 포착
+    window.addEventListener('resize', handler);
+    return () => {
+      window.removeEventListener('scroll', handler, true);
+      window.removeEventListener('resize', handler);
+    };
+  }, [open, recomputeCoords]);
+
+  // Esc 로 닫기
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [open, onClose]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={onToggle}
+        disabled={busy}
+        className="pressable touch-target rounded-lg px-4 py-2 bg-[var(--color-system-orange)] text-white text-callout font-semibold disabled:opacity-40"
+      >
+        {busy ? '처리 중…' : '발주 ▾'}
+      </button>
+
+      {mounted &&
+        open &&
+        !busy &&
+        coords &&
+        createPortal(
+          <>
+            {/* 바깥 클릭 닫기 — 전 화면 오버레이 */}
+            <div
+              className="fixed inset-0"
+              style={{ zIndex: 9998 }}
+              onClick={onClose}
+              aria-hidden
+            />
+            {/* 메뉴 본체 — fixed + 좌표 직접 지정 */}
+            <div
+              ref={menuRef}
+              role="menu"
+              style={{
+                position: 'fixed',
+                top: coords.top,
+                left: coords.left,
+                minWidth: 260,
+                zIndex: 9999,
+              }}
+              className="rounded-xl bg-[var(--color-bg-elevated,var(--color-bg-secondary))] shadow-xl ring-1 ring-[var(--color-separator-opaque)] overflow-hidden"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={onPreview}
+                className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
+              >
+                <span className="text-[var(--color-label-primary)] font-semibold">미리보기</span>
+                <span className="text-caption2 text-[var(--color-label-tertiary)]">발주 처리 안 함</span>
+              </button>
+              <div className="border-t border-[var(--color-separator-opaque)]" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={onExcel}
+                className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
+              >
+                <span className="text-[var(--color-system-green)] font-semibold">EXCEL</span>
+                <span className="text-caption2 text-[var(--color-label-tertiary)]">.xlsx + 발주 처리</span>
+              </button>
+              <div className="border-t border-[var(--color-separator-opaque)]" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={onPrint}
+                className="w-full text-left px-3 py-2.5 text-callout hover:bg-[var(--color-fill-quaternary)] flex items-center gap-2"
+              >
+                <span className="text-[var(--color-system-blue)] font-semibold">PDF인쇄</span>
+                <span className="text-caption2 text-[var(--color-label-tertiary)]">인쇄/저장 + 발주 처리</span>
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
+    </>
   );
 }
