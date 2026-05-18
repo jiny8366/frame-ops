@@ -85,6 +85,45 @@ function saveOverrides(map: Record<string, number>) {
   }
 }
 
+// 최근 발주 이력 — PDF 인쇄/Excel 다운로드 시 push. 재인쇄 진입점으로 사용.
+// 이유: 발주 처리 후 부모 페이지 SWR 이 그룹을 제거하므로 같은 supplier 의 재인쇄가 불가능했음.
+//       sessionStorage 의 인쇄 페이지 캐시 (24h TTL) 와 짝꿍.
+const RECENT_ORDERS_KEY = 'fo_orders_recent_v1';
+const RECENT_TTL_MS = 24 * 60 * 60 * 1000;
+interface RecentOrderEntry {
+  supplier_id: string;
+  supplier_name: string;
+  from: string;
+  to: string;
+  ts: number;
+  format: 'pdf' | 'excel';
+}
+function loadRecentOrders(): RecentOrderEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = sessionStorage.getItem(RECENT_ORDERS_KEY);
+    const arr = raw ? (JSON.parse(raw) as RecentOrderEntry[]) : [];
+    return arr.filter((e) => Date.now() - e.ts < RECENT_TTL_MS);
+  } catch {
+    return [];
+  }
+}
+function pushRecentOrder(entry: Omit<RecentOrderEntry, 'ts'>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = loadRecentOrders();
+    // 동일 (supplier_id, from, to) 항목은 최신으로 교체
+    const filtered = list.filter(
+      (e) =>
+        !(e.supplier_id === entry.supplier_id && e.from === entry.from && e.to === entry.to)
+    );
+    const next: RecentOrderEntry[] = [{ ...entry, ts: Date.now() }, ...filtered].slice(0, 10);
+    sessionStorage.setItem(RECENT_ORDERS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function OrdersPage() {
   const { session } = useSession();
   // 매입가/합계 컬럼 표시 — 본사(hq_*)만. 지점은 데이터 보유하나 화면 미노출.
@@ -98,8 +137,11 @@ export default function OrdersPage() {
 
   // 수량 override (product_id → 수량). 다운로드 시 적용.
   const [overrides, setOverrides] = useState<Record<string, number>>({});
+  // 최근 발주 이력 (재인쇄 진입점)
+  const [recent, setRecent] = useState<RecentOrderEntry[]>([]);
   useEffect(() => {
     setOverrides(loadOverrides());
+    setRecent(loadRecentOrders());
   }, []);
   const setOverride = useCallback((productId: string, qty: number) => {
     setOverrides((prev) => {
@@ -210,6 +252,14 @@ export default function OrdersPage() {
       const filename = `주문리스트_${selected.supplier_name}_${data.period.from}_${data.period.to}.xlsx`;
       XLSX.writeFile(wb, filename);
       await markPlaced(selected);
+      pushRecentOrder({
+        supplier_id: selected.supplier_id,
+        supplier_name: selected.supplier_name,
+        from: data.period.from,
+        to: data.period.to,
+        format: 'excel',
+      });
+      setRecent(loadRecentOrders());
     } finally {
       setBusy(false);
     }
@@ -226,6 +276,14 @@ export default function OrdersPage() {
       mark: '1',
     });
     window.open(`/admin/orders/print?${params.toString()}`, '_blank');
+    pushRecentOrder({
+      supplier_id: selected.supplier_id,
+      supplier_name: selected.supplier_name,
+      from,
+      to,
+      format: 'pdf',
+    });
+    setRecent(loadRecentOrders());
   }, [selected, from, to]);
 
   const handlePreview = useCallback(() => {
@@ -268,6 +326,61 @@ export default function OrdersPage() {
                 {data.store.address}
               </span>
             )}
+          </div>
+        )}
+
+        {/* 최근 발주 — 재인쇄 (세션 24h 보존) */}
+        {recent.length > 0 && (
+          <div className="rounded-xl bg-[var(--color-bg-secondary)] p-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-caption1 text-[var(--color-label-secondary)] font-semibold">
+                🕘 최근 발주 ({recent.length}) — 재인쇄
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem(RECENT_ORDERS_KEY);
+                  }
+                  setRecent([]);
+                }}
+                className="pressable text-caption2 text-[var(--color-label-tertiary)] hover:text-[var(--color-system-red)]"
+              >
+                목록 비우기
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {recent.map((r) => {
+                const params = new URLSearchParams({
+                  supplier_id: r.supplier_id,
+                  from: r.from,
+                  to: r.to,
+                  preview: '1', // 마킹 안함 — 캐시 또는 fetch 후 표시만
+                });
+                const url = `/admin/orders/print?${params.toString()}`;
+                return (
+                  <a
+                    key={`${r.supplier_id}_${r.from}_${r.to}`}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pressable rounded-lg px-3 py-1.5 bg-[var(--color-fill-quaternary)] text-caption1 border border-[var(--color-separator-opaque)] flex items-center gap-2"
+                    title={`${r.from} ~ ${r.to} 발주서 다시 보기 (${r.format.toUpperCase()})`}
+                  >
+                    <span className="font-medium">{r.supplier_name}</span>
+                    <span className="text-caption2 text-[var(--color-label-tertiary)]">
+                      {r.from === r.to ? r.from : `${r.from}~${r.to}`}
+                    </span>
+                    <span className="text-caption2 text-[var(--color-label-tertiary)]">
+                      [{r.format.toUpperCase()}]
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+            <p className="text-caption2 text-[var(--color-label-tertiary)]">
+              이 영역의 항목은 이번 세션 동안만 (24시간) 보존됩니다. 클릭 시 새 창에서 발주서가 다시 열립니다.
+            </p>
           </div>
         )}
 
