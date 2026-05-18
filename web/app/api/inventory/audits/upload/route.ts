@@ -30,9 +30,11 @@ interface PreviewRow {
   style_code: string | null;
   color_code: string | null;
   current_stock: number;
+  baseline_at_audit: number;   // audit_date 시점 추산 재고 = current_stock - delta_after_audit
   counted_quantity: number;
-  delta_after_audit: number;
-  applied_quantity: number;
+  audit_delta: number;         // ★ 실재고조사 증감 = counted - baseline
+  delta_after_audit: number;   // audit_date 이후 net 거래
+  applied_quantity: number;    // 적용 후 최종 = counted + delta_after_audit
   match_status: 'matched' | 'unmatched' | 'skipped';
 }
 
