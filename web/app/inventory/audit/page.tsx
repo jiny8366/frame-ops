@@ -11,8 +11,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { useSession } from '@/hooks/useSession';
-import { hasPermission } from '@/lib/auth/permissions';
+import { hasPermission, isHqRole } from '@/lib/auth/permissions';
 import { formatColor } from '@/lib/product-codes';
+
+interface StoreOpt {
+  id: string;
+  store_code: string;
+  name: string;
+}
+
+const accessibleStoresFetcher = async (): Promise<StoreOpt[]> => {
+  const res = await fetch('/api/auth/accessible-stores', { cache: 'no-store' });
+  const json = (await res.json()) as {
+    data: { stores: StoreOpt[]; current_store_id: string } | null;
+    error: string | null;
+  };
+  if (json.error || !json.data) throw new Error(json.error ?? '매장 목록 응답 없음');
+  return json.data.stores;
+};
 
 interface PreviewRow {
   line_id: string;
@@ -88,6 +104,7 @@ const auditDetailFetcher = async (url: string): Promise<AuditDetail> => {
 export default function StockAuditPage() {
   const { session } = useSession();
   const canEdit = hasPermission(session?.permissions, 'inventory_edit_stock');
+  const isHq = isHqRole(session?.role_code ?? '');
 
   const [auditDate, setAuditDate] = useState<string>(todayIsoKst());
   const [note, setNote] = useState<string>('');
@@ -95,7 +112,23 @@ export default function StockAuditPage() {
   const [uploading, setUploading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [currentAuditId, setCurrentAuditId] = useState<string | null>(null);
+  // 본사 계정은 매장 선택 가능. 매장 staff 는 자기 매장으로 자동 사용.
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: accessibleStores } = useSWR<StoreOpt[]>(
+    isHq ? 'accessible-stores' : null,
+    accessibleStoresFetcher
+  );
+
+  // 본사 계정인데 매장 미선택 시 session.store_id 를 기본값으로
+  useEffect(() => {
+    if (isHq && !selectedStoreId && session?.store_id) {
+      setSelectedStoreId(session.store_id);
+    }
+  }, [isHq, selectedStoreId, session?.store_id]);
+
+  const effectiveStoreId = isHq ? selectedStoreId : session?.store_id ?? '';
 
   const { data: list, mutate: mutateList } = useSWR<AuditListRow[]>(
     '/api/inventory/audits',
@@ -122,11 +155,16 @@ export default function StockAuditPage() {
       toast.error('실재고조사 날짜를 선택하세요.');
       return;
     }
+    if (!effectiveStoreId) {
+      toast.error(isHq ? '재고조사를 적용할 매장을 선택하세요.' : '매장 정보가 없습니다. 다시 로그인하세요.');
+      return;
+    }
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('audit_date', auditDate);
+      fd.append('store_id', effectiveStoreId);
       if (note) fd.append('note', note);
       const res = await fetch('/api/inventory/audits/upload', { method: 'POST', body: fd });
       const json = (await res.json()) as {
@@ -134,7 +172,7 @@ export default function StockAuditPage() {
         error: string | null;
       };
       if (!res.ok || json.error || !json.data) {
-        toast.error(json.error ?? '업로드 실패');
+        toast.error(json.error ?? '업로드 실패', { duration: 8000 });
         return;
       }
       toast.success(
@@ -146,11 +184,11 @@ export default function StockAuditPage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       await mutateList();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '업로드 실패');
+      toast.error(e instanceof Error ? e.message : '업로드 실패', { duration: 8000 });
     } finally {
       setUploading(false);
     }
-  }, [file, auditDate, note, mutateList]);
+  }, [file, auditDate, note, effectiveStoreId, isHq, mutateList]);
 
   const handleApply = useCallback(async () => {
     if (!currentAuditId) return;
@@ -248,7 +286,27 @@ export default function StockAuditPage() {
                 이 날짜 영업종료 이후 POS 거래는 자동 가감됩니다.
               </span>
             </label>
-            <label className="flex flex-col gap-1 lg:col-span-2">
+            {isHq && (
+              <label className="flex flex-col gap-1">
+                <span className="text-caption1 text-[var(--color-label-secondary)]">적용할 매장</span>
+                <select
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  className="rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-3 py-2 text-callout"
+                >
+                  <option value="">매장 선택…</option>
+                  {(accessibleStores ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.store_code})
+                    </option>
+                  ))}
+                </select>
+                <span className="text-caption2 text-[var(--color-label-tertiary)]">
+                  본사 계정 — 적용 대상 매장을 선택하세요.
+                </span>
+              </label>
+            )}
+            <label className={`flex flex-col gap-1 ${isHq ? '' : 'lg:col-span-2'}`}>
               <span className="text-caption1 text-[var(--color-label-secondary)]">메모 (선택)</span>
               <input
                 type="text"

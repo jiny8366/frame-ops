@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
+import { formatColor } from '@/lib/product-codes';
 import * as XLSX from 'xlsx';
 
 interface UploadResult {
@@ -54,12 +55,18 @@ function asInt(v: unknown): number {
   return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
-/** 컬러 정규화 — \"01\" / \"1\" / \"1번\" 등을 2자리 zero-pad. \"COMPACT BLACK\" 등 텍스트는 그대로. */
+/** 컬러 정규화 — DB 원본과 업로드 입력 양쪽에 동일한 변환 적용 (round-trip 정합성 보장).
+ *   다운로드 엑셀의 '컬러번호' = formatColor(DB color_code) 결과 ("C_01", "C_2197", "C_OMPACT BLACK" 등).
+ *   업로드 시 DB 원본과 매칭하려면 양쪽 모두 동일 함수를 거쳐서 표준화한 후 비교.
+ *   추가로 숫자형은 2자리 zero-pad 까지 강화 (예: "C_1" → "C_01" 동치). */
 function normalizeColor(raw: string): string {
   if (!raw) return '';
-  const digits = raw.match(/^\s*0*(\d+)\s*$/);
-  if (digits) return digits[1].padStart(2, '0');
-  return raw.trim();
+  const formatted = formatColor(raw); // 'C_XX' 형태로 표준화 (없으면 '—')
+  if (formatted === '—') return '';
+  // 'C_숫자' 케이스 — 숫자만 2자리 패딩 (사용자가 '1' 또는 '01' 모두 매칭되게)
+  const m = formatted.match(/^C_(\d+)$/);
+  if (m) return `C_${m[1].padStart(2, '0')}`;
+  return formatted;
 }
 
 /** style 정규화 — 소문자/공백 제거. */
@@ -89,6 +96,12 @@ export async function POST(request: Request) {
     if (!file || !(file instanceof Blob)) {
       return NextResponse.json({ data: null, error: '엑셀 파일이 필요합니다.' }, { status: 400 });
     }
+    if (!storeId) {
+      return NextResponse.json(
+        { data: null, error: '재고조사를 적용할 매장이 지정되지 않았습니다. (본사 계정은 매장 선택 필요)' },
+        { status: 400 }
+      );
+    }
     if (!auditDate || !/^\d{4}-\d{2}-\d{2}$/.test(auditDate)) {
       return NextResponse.json(
         { data: null, error: 'audit_date 는 YYYY-MM-DD 형식이어야 합니다.' },
@@ -96,8 +109,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const buf = Buffer.from(await file.arrayBuffer());
-    const wb = XLSX.read(buf, { type: 'buffer' });
+    let buf: Buffer;
+    try {
+      buf = Buffer.from(await file.arrayBuffer());
+    } catch {
+      return NextResponse.json({ data: null, error: '엑셀 파일 읽기 실패.' }, { status: 400 });
+    }
+
+    let wb: XLSX.WorkBook;
+    try {
+      wb = XLSX.read(buf, { type: 'buffer' });
+    } catch (e) {
+      return NextResponse.json(
+        { data: null, error: `엑셀 파싱 실패 — 손상되었거나 .xlsx 가 아닙니다 (${e instanceof Error ? e.message : 'unknown'})` },
+        { status: 400 }
+      );
+    }
     const ws = wb.Sheets[wb.SheetNames[0]];
     if (!ws) {
       return NextResponse.json({ data: null, error: '엑셀 시트를 찾을 수 없습니다.' }, { status: 400 });
@@ -108,18 +135,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ data: null, error: '엑셀에 데이터가 없습니다.' }, { status: 400 });
     }
 
+    // 헤더 키 유연 매핑 (다운로드 파일이 '브랜드' / 한글 헤더, 사용자가 임의 변경 가능성 대비)
+    const pickValue = (r: Record<string, unknown>, ...keys: string[]) => {
+      for (const k of keys) {
+        if (k in r && r[k] !== '' && r[k] != null) return r[k];
+      }
+      return '';
+    };
+
     const parsed: ParsedRow[] = rows
       .map((r) => ({
-        raw_brand: asString(r['브랜드'] ?? r['Brand'] ?? r['brand']),
-        raw_style: asString(r['제품번호'] ?? r['스타일'] ?? r['style_code'] ?? r['Style']),
-        raw_color: asString(r['컬러번호'] ?? r['컬러'] ?? r['color_code'] ?? r['Color']),
-        counted: asInt(r['현재고'] ?? r['수량'] ?? r['stock'] ?? r['Stock']),
+        raw_brand: asString(pickValue(r, '브랜드', 'Brand', 'brand', 'BRAND')),
+        raw_style: asString(pickValue(r, '제품번호', '스타일', 'style_code', 'Style', 'STYLE')),
+        raw_color: asString(pickValue(r, '컬러번호', '컬러', 'color_code', 'Color', 'COLOR')),
+        counted: asInt(pickValue(r, '현재고', '수량', 'stock', 'Stock', 'STOCK', '실재고')),
       }))
       .filter((r) => r.raw_style.length > 0);
 
     if (parsed.length === 0) {
+      const headers = rows[0] ? Object.keys(rows[0]).join(', ') : '(빈 헤더)';
       return NextResponse.json(
-        { data: null, error: '엑셀에서 유효한 행을 찾지 못했습니다. (제품번호 컬럼 누락?)' },
+        {
+          data: null,
+          error: `엑셀에서 유효한 행을 찾지 못했습니다. 헤더에 '제품번호' 컬럼이 있어야 합니다. 감지된 헤더: ${headers}`,
+        },
         { status: 400 }
       );
     }
@@ -156,13 +195,25 @@ export async function POST(request: Request) {
       productIndex.set(key, p.id);
     }
 
+    // uploaded_by 안전성 — fo_staff_profiles 에 존재하는 경우만 기록.
+    // (FK 위반으로 헤더 insert 가 통째로 실패하는 것 방지)
+    let uploadedBy: string | null = null;
+    if (session.staff_user_id) {
+      const { data: profileExists } = await db
+        .from('fo_staff_profiles')
+        .select('user_id')
+        .eq('user_id', session.staff_user_id)
+        .maybeSingle();
+      if (profileExists) uploadedBy = session.staff_user_id;
+    }
+
     // audit 헤더 insert
     const { data: audit, error: aErr } = await dbAny
       .from('fo_stock_audits')
       .insert({
         store_id: storeId,
         audit_date: auditDate,
-        uploaded_by: session.staff_user_id,
+        uploaded_by: uploadedBy,
         note: note || null,
         status: 'draft',
         total_lines: parsed.length,
@@ -171,7 +222,10 @@ export async function POST(request: Request) {
       .single();
     if (aErr || !audit) {
       return NextResponse.json(
-        { data: null, error: aErr?.message ?? '재고조사 헤더 생성 실패' },
+        {
+          data: null,
+          error: `재고조사 헤더 생성 실패: ${aErr?.message ?? 'unknown'}${aErr?.hint ? ` (${aErr.hint})` : ''}`,
+        },
         { status: 500 }
       );
     }
@@ -196,7 +250,13 @@ export async function POST(request: Request) {
     const { error: lErr } = await dbAny.from('fo_stock_audit_lines').insert(lineRows);
     if (lErr) {
       await dbAny.from('fo_stock_audits').delete().eq('id', audit.id);
-      return NextResponse.json({ data: null, error: lErr.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          data: null,
+          error: `라인 저장 실패: ${lErr.message}${lErr.hint ? ` (${lErr.hint})` : ''}`,
+        },
+        { status: 500 }
+      );
     }
 
     await dbAny
