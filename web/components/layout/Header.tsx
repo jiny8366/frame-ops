@@ -9,13 +9,20 @@ import { usePathname } from 'next/navigation';
 import { ThemeToggle, ThemeToggleMobile } from '@/components/ui/ThemeToggle';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { useSession } from '@/hooks/useSession';
+import { hasPermission } from '@/lib/auth/permissions';
 
-// ── 내비게이션 링크 정의 ──────────────────────────────────────────────────────
-const NAV_LINKS = [
-  { href: '/pos',           label: 'POS 판매' },
-  { href: '/inventory',     label: '재고' },
-  { href: '/admin/orders',  label: '주문' },
-] as const;
+// ── 내비게이션 링크 정의 — 권한 키 명시 ──────────────────────────────────────
+// 권한 없는 사용자에게는 해당 링크가 노출되지 않음.
+interface NavLink {
+  href: string;
+  label: string;
+  permission: string;
+}
+const NAV_LINKS: NavLink[] = [
+  { href: '/pos',           label: 'POS 판매', permission: 'pos_sales' },
+  { href: '/inventory',     label: '재고',     permission: 'inventory_view' },
+  { href: '/admin/orders',  label: '주문',     permission: 'orders_list' },
+];
 
 // ── 헤더 컴포넌트 ─────────────────────────────────────────────────────────────
 export function Header() {
@@ -65,9 +72,9 @@ export function Header() {
             );
           })()}
 
-          {/* 데스크톱 네비게이션 — 모바일에서 숨김 */}
+          {/* 데스크톱 네비게이션 — 모바일에서 숨김 + 권한 보유한 항목만 */}
           <nav className="hidden md:flex items-center gap-1" aria-label="주 내비게이션">
-            {NAV_LINKS.map(({ href, label }) => {
+            {NAV_LINKS.filter((l) => hasPermission(session?.permissions, l.permission)).map(({ href, label }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/');
               return (
                 <Link
@@ -120,12 +127,16 @@ export function Header() {
 }
 
 // ── 모바일 하단 탭바 ──────────────────────────────────────────────────────────
-// 모바일에서 상단 헤더 내비게이션을 대체
+// 모바일에서 상단 헤더 내비게이션을 대체. 권한 보유 항목만 노출.
 export function BottomTabBar() {
   const pathname = usePathname();
+  const { session } = useSession();
 
   // 로그인 페이지에서는 탭바 숨김
   if (pathname === '/login') return null;
+
+  const visible = NAV_LINKS.filter((l) => hasPermission(session?.permissions, l.permission));
+  if (visible.length === 0) return null;
 
   return (
     <nav
@@ -140,7 +151,7 @@ export function BottomTabBar() {
       ].join(' ')}
     >
       <div className="flex items-stretch h-[49px]">
-        {NAV_LINKS.map(({ href, label }) => {
+        {visible.map(({ href, label }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/');
           const ICONS: Record<string, string> = {
             '/pos': '💳',
