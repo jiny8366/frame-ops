@@ -138,6 +138,9 @@ export default function StatsPage() {
               <h2 className="text-headline font-semibold text-[var(--color-label-primary)]">
                 기간 합계 ({summary.period_count}건)
               </h2>
+              <p className="text-caption2 text-[var(--color-label-tertiary)] -mt-1">
+                매출 = 현금 + 카드 (할인 적용 후 받은 돈)
+              </p>
               <Stat label="매출" value={summary.period_revenue} bold large />
               <Stat label="현금" value={summary.period_cash} sub />
               <Stat label="카드" value={summary.period_card} sub />
@@ -147,6 +150,9 @@ export default function StatsPage() {
               <h2 className="text-headline font-semibold text-[var(--color-label-primary)]">
                 이번 달 누적 (1일~종료일 기준)
               </h2>
+              <p className="text-caption2 text-[var(--color-label-tertiary)] -mt-1">
+                매출 = 현금 + 카드 (할인 적용 후 받은 돈)
+              </p>
               <Stat label="매출" value={summary.month_revenue} bold large />
               <Stat label="현금" value={summary.month_cash} sub />
               <Stat label="카드" value={summary.month_card} sub />

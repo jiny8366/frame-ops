@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getDB } from '@/lib/supabase/server';
 import { getServerSession } from '@/lib/auth/server-session';
 import { fetchReturnsTotals } from '@/lib/sales-returns';
+import { enforcePeriodRevenue } from '@/lib/sales-revenue';
 
 function todayDate(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
@@ -121,16 +122,21 @@ export async function GET(request: Request) {
       }
     | null
     | undefined;
+  // 결제수단별 매출에서 환불 결제수단별 차감.
+  // revenue 는 항상 cash + card 로 재계산 (lib/sales-revenue.ts 의 단일 정의).
+  // 환불 amount(라인 합) 로 빼면 할인/메타 누락 등 정합성 불일치 가능 → cash + card 기반만 사용.
   const adjustedSummary = baseSummary
-    ? {
-        ...baseSummary,
-        period_revenue: (baseSummary.period_revenue ?? 0) - periodReturns.amount,
-        period_cash: (baseSummary.period_cash ?? 0) - periodReturns.cashRefund,
-        period_card: (baseSummary.period_card ?? 0) - periodReturns.cardRefund,
-        month_revenue: (baseSummary.month_revenue ?? 0) - monthReturns.amount,
-        month_cash: (baseSummary.month_cash ?? 0) - monthReturns.cashRefund,
-        month_card: (baseSummary.month_card ?? 0) - monthReturns.cardRefund,
-      }
+    ? enforcePeriodRevenue(
+        {
+          ...baseSummary,
+          period_cash: (baseSummary.period_cash ?? 0) - periodReturns.cashRefund,
+          period_card: (baseSummary.period_card ?? 0) - periodReturns.cardRefund,
+          month_cash: (baseSummary.month_cash ?? 0) - monthReturns.cashRefund,
+          month_card: (baseSummary.month_card ?? 0) - monthReturns.cardRefund,
+          // period_revenue, month_revenue 는 enforcePeriodRevenue 가 cash+card 로 재계산
+        },
+        'admin/stats'
+      )
     : null;
   const returns = periodReturns;
 
