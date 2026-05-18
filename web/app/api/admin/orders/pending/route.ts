@@ -33,8 +33,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: null, error: error.message }, { status: 500 });
   }
 
-  // 응답: { period, store, groups: [{supplier, items, totals}] }
+  // 응답: { period, store, groups: [{supplier, supplier_source, items, totals}] }
+  // supplier_source — RPC 가 새로 반환:
+  //   'direct'        : fo_products.supplier_id 로 명시 지정
+  //   'brand_mapping' : fo_supplier_brands(브랜드→매입처) 매핑으로 자동 결정
+  //   'unassigned'    : 둘 다 없음 — '매입처 미지정' 그룹
   type PendingOrderRow = (typeof data extends Array<infer R> ? R : never) & {
+    supplier_source?: 'direct' | 'brand_mapping' | 'unassigned';
     product_line?: string | null;
     category?: string | null;
     current_stock?: number;
@@ -65,6 +70,8 @@ export async function GET(request: Request) {
       supplier_business_number: string | null;
       supplier_address: string | null;
       supplier_contact: string | null;
+      /** 그룹 내 모든 라인의 supplier_source 가 동일하면 그 값, 혼합이면 'mixed'. */
+      supplier_source: 'direct' | 'brand_mapping' | 'unassigned' | 'mixed';
       items: typeof rows;
       total_quantity: number;
       total_revenue: number;
@@ -74,6 +81,7 @@ export async function GET(request: Request) {
 
   for (const r of rows) {
     const key = r.supplier_id ?? UNASSIGNED_KEY;
+    const src = r.supplier_source ?? (r.supplier_id ? 'direct' : 'unassigned');
     let g = groupsMap.get(key);
     if (!g) {
       g = {
@@ -83,12 +91,15 @@ export async function GET(request: Request) {
         supplier_business_number: null,
         supplier_address: null,
         supplier_contact: null,
+        supplier_source: src,
         items: [],
         total_quantity: 0,
         total_revenue: 0,
         total_cost: 0,
       };
       groupsMap.set(key, g);
+    } else if (g.supplier_source !== src) {
+      g.supplier_source = 'mixed';
     }
     g.items.push(r);
     g.total_quantity += r.total_quantity;
