@@ -1,11 +1,14 @@
-// Frame Ops Web — 인증 미들웨어
-// 비로그인 사용자는 /login 으로 리다이렉트. /login, /api/auth/*, _next, 정적 자원은 통과.
+// Frame Ops Web — 인증 + 권한 미들웨어 (deep guard)
+// 비로그인 사용자는 /login 으로 리다이렉트.
+// 로그인했어도 라우트별 필요 권한이 없으면 /forbidden 으로 리다이렉트.
+// /login, /api/auth/*, _next, 정적 자원은 통과.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, verifySession } from '@/lib/auth/session';
 import { isHqRole } from '@/lib/auth/permissions';
+import { getRequiredPermission } from '@/lib/auth/route-permissions';
 
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/login', '/forbidden'];
 // 인증 불필요 — /api/auth/* (로그인 흐름) + /api/health (cold-start 방지 워머)
 const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/health'];
 const HQ_PREFIXES = ['/hq', '/api/hq/'];
@@ -47,11 +50,23 @@ export async function middleware(request: NextRequest) {
         { status: 403 }
       );
     }
-    // 비본사 사용자가 본사 URL 접근 시 홈으로
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = '/';
     homeUrl.search = '';
     return NextResponse.redirect(homeUrl);
+  }
+
+  // 라우트별 권한 매핑 검사 (페이지에만 적용 — API 는 각 라우트가 자체 가드)
+  if (!pathname.startsWith('/api/')) {
+    const required = getRequiredPermission(pathname);
+    if (required && !session.permissions?.includes(required)) {
+      const forbiddenUrl = request.nextUrl.clone();
+      forbiddenUrl.pathname = '/forbidden';
+      forbiddenUrl.search = '';
+      forbiddenUrl.searchParams.set('from', pathname);
+      forbiddenUrl.searchParams.set('need', required);
+      return NextResponse.redirect(forbiddenUrl);
+    }
   }
 
   return NextResponse.next();
