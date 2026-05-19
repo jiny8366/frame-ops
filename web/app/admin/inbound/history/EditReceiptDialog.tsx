@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { mutate as globalMutate } from 'swr';
 import { formatColor } from '@/lib/product-codes';
+import { NumberKeypadDialog } from '@/components/ui/NumberKeypadDialog';
 import type { Receipt, ReceiptLine } from './page';
 
 interface Supplier {
@@ -35,6 +36,8 @@ export function EditReceiptDialog({ receipt, suppliers, onClose, onSaved }: Prop
     receipt.lines.map((l) => ({ ...l }))
   );
   const [busy, setBusy] = useState(false);
+  // 수량 키패드 활성 라인 ID
+  const [qtyEditingId, setQtyEditingId] = useState<string | null>(null);
 
   // ESC 닫기
   useEffect(() => {
@@ -286,21 +289,19 @@ export function EditReceiptDialog({ receipt, suppliers, onClose, onSaved }: Prop
                     <td className="code">{l.product?.style_code ?? '—'}</td>
                     <td className="code">{formatColor(l.product?.color_code)}</td>
                     <td className="num">
-                      <input
-                        type="number"
-                        step={1}
-                        value={l.quantity}
-                        onChange={(e) =>
-                          handleLineChange(l.id, { quantity: Math.trunc(Number(e.target.value) || 0) })
-                        }
-                        title="양수 = 매입, 음수 = 반품. 0 은 저장 불가."
+                      <button
+                        type="button"
+                        onClick={() => setQtyEditingId(l.id)}
+                        title="클릭하여 수량 키패드 열기. '±' 키로 매입↔반품 전환."
                         className={[
-                          'w-24 rounded-lg border bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums',
+                          'pressable rounded-lg border bg-[var(--color-bg-primary)] px-3 py-1 text-right tabular-nums min-w-[72px]',
                           isReturn
                             ? 'border-[var(--color-system-red)] text-[var(--color-system-red)] font-semibold'
-                            : 'border-[var(--color-separator-opaque)]',
+                            : 'border-[var(--color-separator-opaque)] text-[var(--color-label-primary)] font-semibold',
                         ].join(' ')}
-                      />
+                      >
+                        {l.quantity}
+                      </button>
                     </td>
                     <td className="num">
                       <input
@@ -387,6 +388,26 @@ export function EditReceiptDialog({ receipt, suppliers, onClose, onSaved }: Prop
           </button>
         </div>
       </div>
+
+      {/* 수량 키패드 — '±' 키로 매입↔반품 전환 */}
+      {qtyEditingId && (() => {
+        const line = lines.find((x) => x.id === qtyEditingId);
+        if (!line) return null;
+        return (
+          <NumberKeypadDialog
+            title="수량 수정"
+            subtitle={`${line.product?.brand?.name ?? '—'} · ${line.product?.style_code ?? '—'}${
+              line.product?.color_code ? ` / ${formatColor(line.product.color_code)}` : ''
+            }`}
+            value={line.quantity}
+            allowNegative
+            onSave={(next) => {
+              handleLineChange(line.id, { quantity: Math.trunc(next) });
+            }}
+            onClose={() => setQtyEditingId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

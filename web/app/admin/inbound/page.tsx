@@ -18,6 +18,7 @@ import { productsSearch } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import { formatColor } from '@/lib/product-codes';
+import { NumberKeypadDialog } from '@/components/ui/NumberKeypadDialog';
 import { PendingList } from './PendingList';
 
 interface Supplier {
@@ -125,14 +126,17 @@ export default function InboundPage() {
     if (!keepSearch) setQuery('');
   }, [keepSearch]);
 
-  const handleQty = useCallback((idx: number, value: number) => {
+  // 수량 키패드 다이얼로그로 직접 갱신 (부호 포함 정수).
+  const setLineQty = useCallback((idx: number, signedValue: number) => {
     setLines((prev) => {
       const next = [...prev];
-      // 음수 허용 (반품). 정수로 truncate. 0 은 그대로 허용 (제출 시 거부).
-      next[idx] = { ...next[idx], quantity: Math.trunc(value) };
+      next[idx] = { ...next[idx], quantity: Math.trunc(signedValue) };
       return next;
     });
   }, []);
+
+  // 수량 키패드 활성 라인 인덱스
+  const [qtyEditingIdx, setQtyEditingIdx] = useState<number | null>(null);
 
   const handleCost = useCallback((idx: number, value: number) => {
     setLines((prev) => {
@@ -313,9 +317,6 @@ export default function InboundPage() {
 
           {mode === 'search' ? (
             <>
-              <div className="rounded-lg bg-[var(--color-fill-quaternary)] px-3 py-2 text-caption2 text-[var(--color-label-secondary)]">
-                💡 <strong>수량 입력 규칙</strong> — 양수(예: 5) = 매입 추가, <span className="text-[var(--color-system-red)] font-semibold">음수(예: −2) = 반품</span> (매입처로 반환, 재고 차감)
-              </div>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between gap-3">
                   <label htmlFor="inbound-search-input" className="text-caption1 text-[var(--color-label-secondary)]">
@@ -430,22 +431,21 @@ export default function InboundPage() {
                         <td className="code">{l.style_code}</td>
                         <td className="code">{formatColor(l.color_code)}</td>
                         <td className="num">
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            step={1}
-                            value={l.quantity}
-                            onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
-                            title="양수 = 매입, 음수 = 반품 (매입처 반환). 0 은 제출 불가."
+                          <button
+                            type="button"
+                            onClick={() => setQtyEditingIdx(idx)}
+                            title="클릭하여 수량 키패드 열기"
                             className={[
-                              'w-20 rounded-lg border bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums',
+                              'pressable rounded-lg border bg-[var(--color-bg-primary)] px-3 py-1 text-right tabular-nums min-w-[72px]',
                               isReturn
                                 ? 'border-[var(--color-system-red)] text-[var(--color-system-red)] font-semibold'
                                 : isZero
                                   ? 'border-[var(--color-system-orange)]'
-                                  : 'border-[var(--color-separator-opaque)]',
+                                  : 'border-[var(--color-separator-opaque)] text-[var(--color-label-primary)] font-semibold',
                             ].join(' ')}
-                          />
+                          >
+                            {l.quantity}
+                          </button>
                         </td>
                         <td className="num">
                           <input
@@ -552,6 +552,27 @@ export default function InboundPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 수량 키패드 다이얼로그 — '±' 키로 매입/반품 전환 */}
+      {qtyEditingIdx !== null && lines[qtyEditingIdx] && (
+        <NumberKeypadDialog
+          title="매입 수량"
+          subtitle={`${lines[qtyEditingIdx].brand_name || '—'} · ${
+            lines[qtyEditingIdx].style_code
+          }${
+            lines[qtyEditingIdx].color_code
+              ? ` / ${formatColor(lines[qtyEditingIdx].color_code)}`
+              : ''
+          }`}
+          value={lines[qtyEditingIdx].quantity}
+          allowNegative
+          onSave={(next) => {
+            setLineQty(qtyEditingIdx, next);
+            // 키패드는 닫힘. 0 이면 라인은 남아있으나 canSubmit 가 막음.
+          }}
+          onClose={() => setQtyEditingIdx(null)}
+        />
       )}
     </main>
   );
