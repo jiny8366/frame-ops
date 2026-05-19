@@ -268,20 +268,38 @@ export function EditReceiptDialog({ receipt, suppliers, onClose, onSaved }: Prop
                 </tr>
               </thead>
               <tbody>
-                {lines.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.product?.brand?.name ?? '—'}</td>
+                {lines.map((l) => {
+                  const isReturn = l.quantity < 0;
+                  return (
+                  <tr
+                    key={l.id}
+                    style={isReturn ? { backgroundColor: 'rgba(255,59,48,0.05)' } : undefined}
+                  >
+                    <td>
+                      {isReturn && (
+                        <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-caption2 font-semibold bg-[var(--color-system-red)] text-white">
+                          반품
+                        </span>
+                      )}
+                      {l.product?.brand?.name ?? '—'}
+                    </td>
                     <td className="code">{l.product?.style_code ?? '—'}</td>
                     <td className="code">{formatColor(l.product?.color_code)}</td>
                     <td className="num">
                       <input
                         type="number"
-                        min={1}
+                        step={1}
                         value={l.quantity}
                         onChange={(e) =>
-                          handleLineChange(l.id, { quantity: Math.max(1, Number(e.target.value) || 0) })
+                          handleLineChange(l.id, { quantity: Math.trunc(Number(e.target.value) || 0) })
                         }
-                        className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
+                        title="양수 = 매입, 음수 = 반품. 0 은 저장 불가."
+                        className={[
+                          'w-24 rounded-lg border bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums',
+                          isReturn
+                            ? 'border-[var(--color-system-red)] text-[var(--color-system-red)] font-semibold'
+                            : 'border-[var(--color-separator-opaque)]',
+                        ].join(' ')}
                       />
                     </td>
                     <td className="num">
@@ -296,8 +314,14 @@ export function EditReceiptDialog({ receipt, suppliers, onClose, onSaved }: Prop
                         className="w-24 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
                       />
                     </td>
-                    <td className="num" style={{ fontWeight: 600 }}>
-                      ₩{(l.quantity * l.unit_cost).toLocaleString()}
+                    <td
+                      className="num"
+                      style={{
+                        fontWeight: 600,
+                        color: isReturn ? 'var(--color-system-red)' : undefined,
+                      }}
+                    >
+                      {isReturn ? '−' : ''}₩{Math.abs(l.quantity * l.unit_cost).toLocaleString()}
                     </td>
                     <td className="num">
                       <div className="inline-flex gap-1">
@@ -321,14 +345,25 @@ export function EditReceiptDialog({ receipt, suppliers, onClose, onSaved }: Prop
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr>
                   <td colSpan={3}>합계</td>
-                  <td className="num">{totalQty}</td>
+                  <td
+                    className="num"
+                    style={totalQty < 0 ? { color: 'var(--color-system-red)' } : undefined}
+                  >
+                    {totalQty}
+                  </td>
                   <td></td>
-                  <td className="num">₩{totalCost.toLocaleString()}</td>
+                  <td
+                    className="num"
+                    style={totalCost < 0 ? { color: 'var(--color-system-red)' } : undefined}
+                  >
+                    {totalCost < 0 ? '−' : ''}₩{Math.abs(totalCost).toLocaleString()}
+                  </td>
                   <td></td>
                 </tr>
               </tfoot>
