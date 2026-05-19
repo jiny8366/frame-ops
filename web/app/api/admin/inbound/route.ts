@@ -128,9 +128,10 @@ export async function POST(request: Request) {
       );
     }
     for (const l of body.lines) {
-      if (!l.product_id || !l.quantity || l.quantity <= 0) {
+      // quantity 는 0 이 아닌 정수/소수 허용. 양수 = 매입, 음수 = 반품 (매입처로 반환).
+      if (!l.product_id || !Number.isFinite(l.quantity) || l.quantity === 0) {
         return NextResponse.json(
-          { data: null, error: '각 항목은 product_id 와 0 보다 큰 quantity 를 가져야 합니다.' },
+          { data: null, error: '각 항목은 product_id 와 0 이 아닌 quantity 를 가져야 합니다. (음수 = 반품)' },
           { status: 400 }
         );
       }

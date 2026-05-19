@@ -42,9 +42,10 @@ async function adjustStock(productId: string, delta: number) {
     .eq('id', productId)
     .maybeSingle();
   const cur = prod?.stock_quantity ?? 0;
+  // 음수 재고도 허용 (반품/오기록 보정용) — clamp 제거.
   await db
     .from('fo_products')
-    .update({ stock_quantity: Math.max(0, cur + delta) })
+    .update({ stock_quantity: cur + delta })
     .eq('id', productId);
 }
 
@@ -69,10 +70,14 @@ export async function PATCH(
     const body = (await request.json()) as PatchBody;
     const update: { quantity?: number; unit_cost?: number } = {};
     if (body.quantity !== undefined) {
-      if (!Number.isFinite(body.quantity) || body.quantity <= 0) {
-        return NextResponse.json({ data: null, error: '수량은 1 이상이어야 합니다.' }, { status: 400 });
+      // quantity 0 거부, 음수(반품) 허용.
+      if (!Number.isFinite(body.quantity) || body.quantity === 0) {
+        return NextResponse.json(
+          { data: null, error: '수량은 0 이외의 값이어야 합니다. (음수 = 반품)' },
+          { status: 400 }
+        );
       }
-      update.quantity = Math.floor(body.quantity);
+      update.quantity = Math.trunc(body.quantity);
     }
     if (body.unit_cost !== undefined) {
       if (!Number.isFinite(body.unit_cost) || body.unit_cost < 0) {

@@ -227,12 +227,16 @@ export default function InboundHistoryPage() {
                   {flatLines.map(({ receipt, line, lineIndex, lineCountInReceipt }) => {
                     const p = line.product;
                     const subtotal = line.quantity * line.unit_cost;
+                    const isReturn = line.quantity < 0;
                     return (
                       <tr
                         key={line.id}
                         onClick={() => setEditing(receipt)}
-                        title="클릭하여 전표 편집"
-                        style={{ cursor: 'pointer' }}
+                        title={isReturn ? '반품 라인 — 클릭하여 전표 편집' : '클릭하여 전표 편집'}
+                        style={{
+                          cursor: 'pointer',
+                          backgroundColor: isReturn ? 'rgba(255,59,48,0.05)' : undefined,
+                        }}
                       >
                         <td className="num" style={{ textAlign: 'left' }}>
                           {receipt.document_at.slice(0, 10)}
@@ -240,14 +244,32 @@ export default function InboundHistoryPage() {
                         <td>{receipt.supplier?.name ?? '직매입'}</td>
                         <td>{p?.category ?? '—'}</td>
                         <td className="num meta">{lineIndex}/{lineCountInReceipt}</td>
-                        <td>{p?.brand?.name ?? '—'}</td>
+                        <td>
+                          {isReturn && (
+                            <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-caption2 font-semibold bg-[var(--color-system-red)] text-white">
+                              반품
+                            </span>
+                          )}
+                          {p?.brand?.name ?? '—'}
+                        </td>
                         <td className="code">{p?.style_code ?? '—'}</td>
                         <td className="code">{formatColor(p?.color_code)}</td>
-                        <td className="num">{line.quantity}</td>
+                        <td
+                          className="num"
+                          style={isReturn ? { color: 'var(--color-system-red)', fontWeight: 700 } : undefined}
+                        >
+                          {line.quantity}
+                        </td>
                         {showCost && <td className="num">₩{line.unit_cost.toLocaleString()}</td>}
                         {showCost && (
-                          <td className="num" style={{ fontWeight: 600 }}>
-                            ₩{subtotal.toLocaleString()}
+                          <td
+                            className="num"
+                            style={{
+                              fontWeight: 600,
+                              color: isReturn ? 'var(--color-system-red)' : undefined,
+                            }}
+                          >
+                            {isReturn ? '−' : ''}₩{Math.abs(subtotal).toLocaleString()}
                           </td>
                         )}
                       </tr>
@@ -257,9 +279,21 @@ export default function InboundHistoryPage() {
                 <tfoot>
                   <tr>
                     <td colSpan={7}>합계</td>
-                    <td className="num">{summary.qty}</td>
+                    <td
+                      className="num"
+                      style={summary.qty < 0 ? { color: 'var(--color-system-red)' } : undefined}
+                    >
+                      {summary.qty}
+                    </td>
                     {showCost && <td></td>}
-                    {showCost && <td className="num">₩{summary.cost.toLocaleString()}</td>}
+                    {showCost && (
+                      <td
+                        className="num"
+                        style={summary.cost < 0 ? { color: 'var(--color-system-red)' } : undefined}
+                      >
+                        {summary.cost < 0 ? '−' : ''}₩{Math.abs(summary.cost).toLocaleString()}
+                      </td>
+                    )}
                   </tr>
                 </tfoot>
               </table>

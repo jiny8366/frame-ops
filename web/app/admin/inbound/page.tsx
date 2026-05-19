@@ -3,6 +3,11 @@
 //   1) 제품 검색 모드 — 직접 검색 후 라인 추가 (ad-hoc 매입)
 //   2) 주문리스트 모드 — 발주처리됐으나 매입 안 된 항목, 행 단위 매입처리
 // 주문리스트 탭은 자체적으로 매입 처리 (parent 폼 거치지 않음).
+//
+// 반품 처리 (2026-05-19 추가):
+//   수량을 음수(-)로 입력하면 매입처로 반환(반품)으로 처리됨.
+//   서버는 fo_inbound_lines.quantity 에 음수 저장 → fo_products.stock_quantity 차감.
+//   매입 합계도 음수가 되어 매입 비용 환수 효과.
 
 'use client';
 
@@ -123,7 +128,8 @@ export default function InboundPage() {
   const handleQty = useCallback((idx: number, value: number) => {
     setLines((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], quantity: Math.max(0, value) };
+      // 음수 허용 (반품). 정수로 truncate. 0 은 그대로 허용 (제출 시 거부).
+      next[idx] = { ...next[idx], quantity: Math.trunc(value) };
       return next;
     });
   }, []);
@@ -145,8 +151,10 @@ export default function InboundPage() {
     () => lines.reduce((s, l) => s + l.quantity * l.unit_cost, 0),
     [lines]
   );
-
-  const canSubmit = lines.length > 0 && lines.every((l) => l.quantity > 0);
+  // 음수 라인이 하나라도 있으면 '반품 포함' 상태로 표시.
+  const hasReturn = useMemo(() => lines.some((l) => l.quantity < 0), [lines]);
+  // 모든 라인이 0 이 아니어야 제출 가능 (음수는 반품으로 허용).
+  const canSubmit = lines.length > 0 && lines.every((l) => l.quantity !== 0);
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
@@ -305,6 +313,9 @@ export default function InboundPage() {
 
           {mode === 'search' ? (
             <>
+              <div className="rounded-lg bg-[var(--color-fill-quaternary)] px-3 py-2 text-caption2 text-[var(--color-label-secondary)]">
+                💡 <strong>수량 입력 규칙</strong> — 양수(예: 5) = 매입 추가, <span className="text-[var(--color-system-red)] font-semibold">음수(예: −2) = 반품</span> (매입처로 반환, 재고 차감)
+              </div>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between gap-3">
                   <label htmlFor="inbound-search-input" className="text-caption1 text-[var(--color-label-secondary)]">
@@ -398,56 +409,94 @@ export default function InboundPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((l, idx) => (
-                    <tr key={l.product_id}>
-                      <td>{l.category || '—'}</td>
-                      <td className="num meta">{idx + 1}</td>
-                      <td>{l.brand_name || '—'}</td>
-                      <td className="code">{l.style_code}</td>
-                      <td className="code">{formatColor(l.color_code)}</td>
-                      <td className="num">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          value={l.quantity}
-                          onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
-                          className="w-16 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
-                        />
-                      </td>
-                      <td className="num">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          step={100}
-                          value={l.unit_cost}
-                          onChange={(e) => handleCost(idx, Number(e.target.value) || 0)}
-                          className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
-                        />
-                      </td>
-                      <td className="num" style={{ fontWeight: 600 }}>
-                        ₩{(l.quantity * l.unit_cost).toLocaleString()}
-                      </td>
-                      <td className="num">
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(idx)}
-                          className="pressable text-[var(--color-system-red)]"
-                          aria-label="삭제"
+                  {lines.map((l, idx) => {
+                    const isReturn = l.quantity < 0;
+                    const isZero = l.quantity === 0;
+                    return (
+                      <tr
+                        key={l.product_id}
+                        className={isReturn ? 'bg-[var(--color-system-red)]/5' : ''}
+                      >
+                        <td>{l.category || '—'}</td>
+                        <td className="num meta">{idx + 1}</td>
+                        <td>
+                          {isReturn && (
+                            <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded text-caption2 font-semibold bg-[var(--color-system-red)] text-white">
+                              반품
+                            </span>
+                          )}
+                          {l.brand_name || '—'}
+                        </td>
+                        <td className="code">{l.style_code}</td>
+                        <td className="code">{formatColor(l.color_code)}</td>
+                        <td className="num">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            step={1}
+                            value={l.quantity}
+                            onChange={(e) => handleQty(idx, Number(e.target.value) || 0)}
+                            title="양수 = 매입, 음수 = 반품 (매입처 반환). 0 은 제출 불가."
+                            className={[
+                              'w-20 rounded-lg border bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums',
+                              isReturn
+                                ? 'border-[var(--color-system-red)] text-[var(--color-system-red)] font-semibold'
+                                : isZero
+                                  ? 'border-[var(--color-system-orange)]'
+                                  : 'border-[var(--color-separator-opaque)]',
+                            ].join(' ')}
+                          />
+                        </td>
+                        <td className="num">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            step={100}
+                            value={l.unit_cost}
+                            onChange={(e) => handleCost(idx, Number(e.target.value) || 0)}
+                            className="w-20 rounded-lg border border-[var(--color-separator-opaque)] bg-[var(--color-bg-primary)] px-2 py-1 text-right tabular-nums"
+                          />
+                        </td>
+                        <td
+                          className="num"
+                          style={{
+                            fontWeight: 600,
+                            color: isReturn ? 'var(--color-system-red)' : undefined,
+                          }}
                         >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                          {isReturn ? '−' : ''}₩{Math.abs(l.quantity * l.unit_cost).toLocaleString()}
+                        </td>
+                        <td className="num">
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(idx)}
+                            className="pressable text-[var(--color-system-red)]"
+                            aria-label="삭제"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={5}>합계</td>
-                    <td className="num">{totalQty}</td>
+                    <td colSpan={5}>합계{hasReturn ? ' (반품 포함)' : ''}</td>
+                    <td
+                      className="num"
+                      style={totalQty < 0 ? { color: 'var(--color-system-red)' } : undefined}
+                    >
+                      {totalQty}
+                    </td>
                     <td></td>
-                    <td className="num">₩{totalCost.toLocaleString()}</td>
+                    <td
+                      className="num"
+                      style={totalCost < 0 ? { color: 'var(--color-system-red)' } : undefined}
+                    >
+                      {totalCost < 0 ? '−' : ''}₩{Math.abs(totalCost).toLocaleString()}
+                    </td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -461,11 +510,16 @@ export default function InboundPage() {
         <button
           type="submit"
           disabled={!canSubmit || submitting}
-          className="pressable touch-target-lg rounded-xl bg-[var(--color-system-blue)] py-3 text-headline font-semibold text-white disabled:opacity-40"
+          className={[
+            'pressable touch-target-lg rounded-xl py-3 text-headline font-semibold text-white disabled:opacity-40',
+            hasReturn ? 'bg-[var(--color-system-red)]' : 'bg-[var(--color-system-blue)]',
+          ].join(' ')}
         >
           {submitting
             ? '저장 중…'
-            : `매입 등록 (${lines.length}품목 / ₩${totalCost.toLocaleString()})`}
+            : `${hasReturn ? '매입/반품 처리' : '매입 등록'} (${lines.length}품목 / ${
+                totalCost < 0 ? '−' : ''
+              }₩${Math.abs(totalCost).toLocaleString()})`}
         </button>
         )}
       </form>
