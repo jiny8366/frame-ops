@@ -1,0 +1,470 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "meta": {
+    "title": "권한 / 계정 시스템 응용 가이드",
+    "subtitle": "Frame Ops 의 인증·권한·계정 관리 구조 — 다른 프로젝트로 옮길 수 있는 형태",
+    "version": "1.0.0",
+    "generated_at": "2026-05-19",
+    "source_project": "frame-ops",
+    "language": "ko",
+    "stack": ["Next.js 14 App Router", "Supabase Postgres", "jose (JWT)", "bcryptjs", "SWR"]
+  },
+
+  "design_principles": [
+    {
+      "id": "perm-as-text-array",
+      "title": "권한 = 문자열 키 배열",
+      "rationale": "boolean 컬럼 N 개 대신 permissions text[] 단일 컬럼. 새 권한 추가 시 ALTER TABLE 불필요."
+    },
+    {
+      "id": "role-as-defaults",
+      "title": "role 은 기본값 묶음",
+      "rationale": "사용자별 명시 권한(permissions)이 있으면 그것, 없으면 role 의 ROLE_DEFAULTS 적용. effectivePermissions() 가 결합."
+    },
+    {
+      "id": "multi-layer-guard",
+      "title": "다층 가드",
+      "rationale": "UI(아이콘) · Middleware(라우트) · Page(client) · API(라우트별) 4단계. 우회 방지 + 사용성 동시 확보."
+    },
+    {
+      "id": "jwt-in-httponly-cookie",
+      "title": "JWT in httpOnly cookie",
+      "rationale": "XSS 방어 + Edge runtime 호환 (jose 라이브러리)."
+    },
+    {
+      "id": "split-account-mgmt",
+      "title": "계정 생성 권한 분리",
+      "rationale": "본사는 /hq/staff, 지점 매니저는 /admin/staff. 같은 매장 내 동일 비밀번호 차단 등 도메인 규칙 강제."
+    }
+  ],
+
+  "db_schema": {
+    "tables": [
+      {
+        "name": "fo_staff_profiles",
+        "purpose": "사용자 본체",
+        "columns": [
+          { "name": "user_id",             "type": "UUID PRIMARY KEY",       "note": "gen_random_uuid()" },
+          { "name": "login_id",            "type": "TEXT",                   "note": "본사 = 고유 ID, 지점 = store_code 공유" },
+          { "name": "display_name",        "type": "TEXT" },
+          { "name": "role_code",           "type": "TEXT NOT NULL FK",       "note": "→ fo_staff_roles.role_code" },
+          { "name": "job_title_code",      "type": "TEXT FK",                "note": "→ fo_staff_job_titles.code" },
+          { "name": "email",               "type": "TEXT" },
+          { "name": "phone",               "type": "TEXT" },
+          { "name": "password_hash",       "type": "TEXT",                   "note": "bcrypt 10 rounds" },
+          { "name": "password_plain",      "type": "TEXT",                   "note": "운영용 평문 보관 (보안 trade-off, 제거 가능)" },
+          { "name": "password_updated_at", "type": "TIMESTAMPTZ" },
+          { "name": "permissions",         "type": "TEXT[]",                 "note": "NULL = role 기본값, ARRAY = 명시 override" },
+          { "name": "active",              "type": "BOOLEAN NOT NULL DEFAULT true" },
+          { "name": "created_at",          "type": "TIMESTAMPTZ NOT NULL DEFAULT NOW()" },
+          { "name": "updated_at",          "type": "TIMESTAMPTZ NOT NULL DEFAULT NOW()" }
+        ]
+      },
+      {
+        "name": "fo_staff_roles",
+        "purpose": "역할 정의 — 코드의 ROLE_DEFAULTS 와 동기",
+        "columns": [
+          { "name": "role_code",  "type": "TEXT PRIMARY KEY", "note": "'hq_super' | 'hq_purchase' | 'store_manager' | …" },
+          { "name": "label",      "type": "TEXT NOT NULL" },
+          { "name": "sort_order", "type": "INT NOT NULL DEFAULT 0" }
+        ]
+      },
+      {
+        "name": "fo_staff_store_scopes",
+        "purpose": "사용자 ↔ 매장 다대다 매핑",
+        "columns": [
+          { "name": "user_id",  "type": "UUID NOT NULL FK ON DELETE CASCADE" },
+          { "name": "store_id", "type": "UUID NOT NULL FK ON DELETE CASCADE" }
+        ],
+        "primary_key": ["user_id", "store_id"],
+        "usage": {
+          "hq": "보통 1행 (primary 매장). 여러 매장 권한 부여 가능",
+          "store": "정확히 1행 (근무지 매장)",
+          "login": "로그인 시 store_code → 매장 → 이 테이블 join 으로 후보 직원 → 비밀번호 매칭"
+        }
+      },
+      {
+        "name": "fo_stores",
+        "purpose": "매장 (도메인 단위)",
+        "columns": [
+          { "name": "id",               "type": "UUID PRIMARY KEY" },
+          { "name": "store_code",       "type": "TEXT NOT NULL UNIQUE", "note": "로그인 식별자" },
+          { "name": "name",             "type": "TEXT NOT NULL" },
+          { "name": "active",           "type": "BOOLEAN NOT NULL DEFAULT true" },
+          { "name": "lat",              "type": "NUMERIC",              "note": "GPS 출퇴근 검증용 (옵션)" },
+          { "name": "lng",              "type": "NUMERIC" },
+          { "name": "geo_radius_m",     "type": "INT NOT NULL DEFAULT 200" },
+          { "name": "geo_required",     "type": "BOOLEAN NOT NULL DEFAULT false" },
+          { "name": "business_reg_no",  "type": "TEXT" },
+          { "name": "address",          "type": "TEXT" },
+          { "name": "phone",            "type": "TEXT" }
+        ],
+        "note": "store_code 가 로그인 ID 의 일부로 동작. 같은 매장 직원은 같은 ID, 다른 비밀번호로 식별."
+      }
+    ]
+  },
+
+  "permissions": {
+    "definitions": [
+      { "key": "pos_sales",              "label": "POS 판매",           "group": "운영",     "scope": "store" },
+      { "key": "inventory_view",         "label": "재고 조회",          "group": "운영",     "scope": "store" },
+      { "key": "inventory_edit_stock",   "label": "재고 수량 수정",     "group": "운영",     "scope": "both" },
+      { "key": "inventory_pending",      "label": "발주 대기",          "group": "운영",     "scope": "store" },
+      { "key": "orders_list",            "label": "주문리스트",         "group": "운영",     "scope": "store" },
+      { "key": "inbound_register",       "label": "매입 등록",          "group": "운영",     "scope": "store" },
+      { "key": "interstore_transfer",    "label": "점간이동",           "group": "운영",     "scope": "both" },
+      { "key": "settlement",             "label": "정산",               "group": "운영",     "scope": "store" },
+      { "key": "sales_stats",            "label": "판매통계",           "group": "분석",     "scope": "store" },
+      { "key": "sales_search",           "label": "판매내역 검색",      "group": "분석",     "scope": "store" },
+      { "key": "master_products",        "label": "상품 등록",          "group": "마스터",   "scope": "both" },
+      { "key": "master_suppliers",       "label": "매입처 관리",        "group": "마스터",   "scope": "both" },
+      { "key": "store_staff_manage",     "label": "직원 관리 (지점)",   "group": "지점관리", "scope": "store" },
+      { "key": "store_info_edit",        "label": "매장 정보",          "group": "지점관리", "scope": "store" },
+      { "key": "attendance_view",        "label": "근태관리 (출퇴근)",  "group": "지점관리", "scope": "both" },
+      { "key": "hq_dashboard",           "label": "본사 대시보드",      "group": "본사",     "scope": "hq" },
+      { "key": "hq_stores_manage",       "label": "매장 관리 (본사)",   "group": "본사",     "scope": "hq" },
+      { "key": "hq_staff_manage",        "label": "계정설정 (본사용)",  "group": "본사",     "scope": "hq" },
+      { "key": "hq_store_accounts",      "label": "매장 계정 (본사용)", "group": "본사",     "scope": "hq" },
+      { "key": "hq_stats",               "label": "본사 통합 통계",     "group": "본사",     "scope": "hq" },
+      { "key": "hq_sales_search",        "label": "본사 판매내역",      "group": "본사",     "scope": "hq" },
+      { "key": "hq_comparison",          "label": "매장 비교",          "group": "본사",     "scope": "hq" },
+      { "key": "settlement_edit_locked", "label": "마감된 정산 수정",   "group": "본사",     "scope": "hq" }
+    ],
+    "naming_convention": {
+      "pattern": "<domain>_<action>",
+      "rules": [
+        "영어 소문자 + 언더스코어",
+        "도메인 prefix (pos_, inventory_, orders_, hq_, store_, master_)",
+        "액션 누적: view → edit → manage 순으로 단계 표현"
+      ]
+    }
+  },
+
+  "role_defaults": {
+    "hq_super":          { "description": "전권 — 모든 권한",                   "permissions": "PERMISSION_KEYS (전체)" },
+    "hq_purchase":       { "description": "매입 + 본사 대시보드",                "permissions": ["pos_sales", "inventory_view", "inventory_pending", "orders_list", "master_products", "master_suppliers", "hq_dashboard", "hq_stores_manage", "hq_stats"] },
+    "hq_view":           { "description": "본사 조회 전용",                      "permissions": ["sales_stats", "sales_search", "hq_dashboard", "hq_stats", "hq_sales_search", "hq_comparison"] },
+    "store_manager":     { "description": "지점 매니저 — 매장 운영 전체",        "permissions": ["pos_sales", "inventory_view", "inventory_edit_stock", "inventory_pending", "orders_list", "inbound_register", "interstore_transfer", "settlement", "sales_stats", "sales_search", "store_staff_manage", "store_info_edit", "attendance_view"] },
+    "store_salesperson": { "description": "판매사 — POS + 조회",                 "permissions": ["pos_sales", "inventory_view", "sales_search", "attendance_view"] },
+    "store_staff":       { "description": "일반 직원 — 판매사와 동일",           "permissions": ["pos_sales", "inventory_view", "sales_search", "attendance_view"] }
+  },
+
+  "route_permissions": {
+    "description": "라우트 → 필요 권한 매핑. longest-prefix match 로 결정. middleware 가 자동 차단.",
+    "mappings": {
+      "/pos":                  "pos_sales",
+      "/inventory":            "inventory_view",
+      "/inventory/audit":      "inventory_edit_stock",
+      "/inventory/pending":    "inventory_pending",
+      "/admin/orders":         "orders_list",
+      "/admin/stats":          "sales_stats",
+      "/admin/settlement":     "settlement",
+      "/admin/sales-search":   "sales_search",
+      "/admin/inbound":        "inbound_register",
+      "/admin/transfers":      "interstore_transfer",
+      "/admin/products":       "master_products",
+      "/admin/suppliers":      "master_suppliers",
+      "/admin/staff":          "store_staff_manage",
+      "/admin/store-info":     "store_info_edit",
+      "/admin/attendance":     "attendance_view",
+      "/hq":                   "hq_dashboard",
+      "/hq/stores":            "hq_stores_manage",
+      "/hq/staff":             "hq_staff_manage",
+      "/hq/store-accounts":    "hq_store_accounts",
+      "/hq/stats":             "hq_stats",
+      "/hq/sales-search":      "hq_sales_search",
+      "/hq/comparison":        "hq_comparison"
+    }
+  },
+
+  "auth_flow": {
+    "jwt": {
+      "library": "jose",
+      "algorithm": "HS256",
+      "issuer": "frame-ops",
+      "expires_in": "12h",
+      "secret_env": "AUTH_SECRET",
+      "secret_min_length": 32,
+      "payload": {
+        "staff_user_id": "string",
+        "store_id": "string",
+        "store_code": "string",
+        "display_name": "string",
+        "role_code": "string",
+        "permissions": "string[] (effective — 이미 resolve 된 상태)"
+      },
+      "cookie": {
+        "name": "fo_session",
+        "httpOnly": true,
+        "sameSite": "lax",
+        "secure": "production only",
+        "path": "/",
+        "max_age_seconds": 43200
+      },
+      "decisions": [
+        "jose 사용 — Web Crypto 기반 → middleware (Edge) + API (Node) 양쪽 호환",
+        "권한을 토큰에 인라인 → DB 조회 없이 middleware 가 권한 체크 (cold start 절감)",
+        "만료 12h — 매장 한 시프트 길이",
+        "AUTH_SECRET 누출 시 누구나 토큰 위조 → 안전한 비밀 관리 필수"
+      ]
+    },
+    "password": {
+      "library": "bcryptjs",
+      "rounds": 10,
+      "runtime_restriction": "middleware (Edge) 에서 import 금지 — bcryptjs 는 Node 전용. 로그인 검증은 API 라우트에서만."
+    },
+    "login_modes": [
+      {
+        "mode": "hq",
+        "identifier_source": "login_id (예: hq_admin)",
+        "password_source": "user-specific",
+        "lookup": "WHERE login_id = $1 AND role_code LIKE 'hq_%' AND active",
+        "result_route": "/hq"
+      },
+      {
+        "mode": "store",
+        "identifier_source": "store_code (예: BKC01)",
+        "password_source": "store staff 의 개인 비밀번호",
+        "lookup": "fo_stores.store_code → fo_staff_store_scopes → fo_staff_profiles 후보들 → bcrypt.compare 1명 일치",
+        "duplicate_handling": "0명 → 401, 2명+ → 409 (같은 매장 동일 비번 충돌)",
+        "extra": "모바일 + geo_required 매장 → GPS 위치 검증 + fo_attendance 출근 기록",
+        "result_route": "/pos"
+      }
+    ],
+    "endpoints": [
+      { "method": "POST", "path": "/api/auth/login",                   "purpose": "두 모드 자동 분기 로그인 + 세션 발급" },
+      { "method": "POST", "path": "/api/auth/logout",                  "purpose": "쿠키 삭제" },
+      { "method": "GET",  "path": "/api/auth/me",                      "purpose": "현재 세션 + 매장명 (클라이언트 useSession 캐시 소스)" },
+      { "method": "POST", "path": "/api/auth/switch-store",            "purpose": "본사 사용자 매장 전환" },
+      { "method": "POST", "path": "/api/auth/verify-staff-password",   "purpose": "결제 시 담당자 비번 재확인" },
+      { "method": "GET",  "path": "/api/auth/accessible-stores",       "purpose": "본사 사용자 접근 가능 매장 목록" }
+    ]
+  },
+
+  "guard_layers": [
+    {
+      "layer": 1,
+      "name": "Middleware (Edge)",
+      "file": "middleware.ts",
+      "purpose": "URL 직접 입력 차단의 유일한 안전 지점",
+      "checks": [
+        "쿠키에서 JWT 추출 → verifySession",
+        "비로그인 → /login 리다이렉트",
+        "/hq 영역은 hq_* role 만 통과",
+        "route-permissions 매핑 → 권한 없으면 /forbidden 으로 redirect",
+        "API 는 401/403 JSON 응답"
+      ]
+    },
+    {
+      "layer": 2,
+      "name": "UI 메뉴/탭바 필터링",
+      "files": ["app/page.tsx", "components/layout/Header.tsx", "components/layout/UserMenu.tsx"],
+      "purpose": "사용자가 클릭 못하는 메뉴는 보이지 않게 (UX)",
+      "pattern": "NAV_LINKS.filter((l) => hasPermission(session?.permissions, l.permission))"
+    },
+    {
+      "layer": 3,
+      "name": "Page-level guard (Client)",
+      "purpose": "페이지 안의 액션 버튼 조건부 표시",
+      "pattern": "const canEdit = hasPermission(session?.permissions, 'inventory_edit_stock'); if (!canEdit) return <안내>;"
+    },
+    {
+      "layer": 4,
+      "name": "API 라우트 가드",
+      "purpose": "최후의 데이터 변조 방지 + 메서드별 권한 차별화",
+      "pattern": "if (!session.permissions?.includes('some_perm_key')) return NextResponse.json({error}, {status: 403});"
+    }
+  ],
+
+  "forbidden_page": {
+    "path": "/forbidden",
+    "trigger": "middleware 가 권한 없는 라우트 접근 시 redirect",
+    "query_params": ["from (원래 URL)", "need (요구 권한 키)"],
+    "ui": "🔒 아이콘 + 권한 라벨 + 요청 경로 + 홈 링크"
+  },
+
+  "account_management": {
+    "pages": [
+      { "path": "/admin/staff",        "for": "지점 매니저", "manages": ["store_salesperson", "store_staff"], "scope": "본인 매장만" },
+      { "path": "/hq/staff",           "for": "본사 관리자", "manages": "hq_* 전체",                          "scope": "전사" },
+      { "path": "/hq/store-accounts",  "for": "본사 관리자", "manages": ["store_manager"],                    "scope": "전 매장" }
+    ],
+    "form_pattern": {
+      "file": "app/admin/staff/StaffFormDialog.tsx",
+      "behavior": [
+        "role_code 선택 → setPerms(ROLE_DEFAULTS[role]) 로 기본값 자동 적용",
+        "'사용자 지정 권한' 체크박스 활성 시 — 각 권한 키 체크박스 (group 별)",
+        "저장: useCustomPerms ? Array.from(perms) : null (null 이면 role 따름)"
+      ]
+    },
+    "server_validations": [
+      "callerIsHq || callerIsManager 가 아니면 403",
+      "지점 매니저는 STORE_MANAGEABLE_ROLES (판매사/직원) 만 생성 가능",
+      "지점 매니저는 store_id 를 본인 매장으로 강제 (위조 차단)",
+      "지점 역할의 login_id 는 store_code 로 강제",
+      "본사 계정 login_id 중복 차단 (hq 범위)",
+      "지점 역할 비밀번호: 같은 매장 내 중복 차단 (로그인 충돌 방지)"
+    ]
+  },
+
+  "applying_to_new_project": {
+    "env_vars": [
+      { "name": "AUTH_SECRET",                "min_length": 32, "generator": "openssl rand -base64 48" },
+      { "name": "SUPABASE_URL",               "format": "https://xxx.supabase.co" },
+      { "name": "SUPABASE_SERVICE_ROLE_KEY",  "note": "Supabase 대시보드 > Project Settings > API" }
+    ],
+    "dependencies": {
+      "jose": "^5.x",
+      "bcryptjs": "^2.x",
+      "@supabase/supabase-js": "^2.x",
+      "swr": "^2.x"
+    },
+    "migration_order": [
+      "1. fo_stores (또는 organizations / tenants 등 도메인 단위)",
+      "2. fo_staff_roles + 기본 role 행 insert",
+      "3. fo_staff_job_titles (선택)",
+      "4. fo_staff_profiles",
+      "5. fo_staff_store_scopes",
+      "6. (선택) fo_attendance — GPS 출근"
+    ],
+    "code_porting_order": [
+      "1. lib/auth/ 디렉터리 전체 복사 (session, server-session, password, permissions, route-permissions)",
+      "2. middleware.ts 복사 — PUBLIC_PATHS / HQ_PREFIXES 만 도메인에 맞게",
+      "3. hooks/useSession.ts 복사",
+      "4. app/api/auth/ 라우트 복사 (login, logout, me)",
+      "5. app/login/page.tsx — 폼 라벨만 도메인에 맞게",
+      "6. app/forbidden/page.tsx",
+      "7. app/admin/staff/ + StaffFormDialog — 권한 키 그룹/라벨만 수정",
+      "8. Header.tsx / BottomTabBar — NAV_LINKS 도메인에 맞게",
+      "9. 각 페이지 / API 라우트에 hasPermission 체크 추가"
+    ],
+    "adding_new_permission_steps": [
+      "1. lib/auth/permissions.ts 의 ALL_PERMISSIONS 에 한 줄 추가",
+      "2. 필요한 ROLE_DEFAULTS 에 키 추가",
+      "3. 라우트 보호 필요 시 route-permissions.ts 에 매핑 추가",
+      "4. 사용처에서 hasPermission(perms, 'new_key') 호출",
+      "5. DB 변경 불필요 — text[] 컬럼이라 즉시 사용 가능"
+    ]
+  },
+
+  "antipatterns": [
+    {
+      "id": "client-only-guard",
+      "title": "클라이언트만 가드 두기",
+      "why_bad": "메뉴 숨김만으로는 URL 직접 입력 우회 가능",
+      "correct": "middleware (페이지) + API 라우트 양쪽 모두 가드"
+    },
+    {
+      "id": "secrets-in-jwt",
+      "title": "JWT 에 민감 정보 넣기",
+      "why_bad": "JWT 는 base64 — 누구나 디코드 가능 (서명 위조만 불가)",
+      "correct": "user_id + role + permissions 정도만. 비밀번호/PII/결제정보 금지"
+    },
+    {
+      "id": "bcrypt-in-edge",
+      "title": "bcryptjs 를 Edge runtime 에서 import",
+      "why_bad": "Node 전용 라이브러리 → 빌드 실패 또는 런타임 에러",
+      "correct": "비밀번호 검증은 Node runtime API 라우트에서만"
+    },
+    {
+      "id": "all-perms-in-middleware",
+      "title": "모든 권한 체크를 미들웨어에 몰기",
+      "why_bad": "메서드별 / 본문 의존 / 동적 권한 표현 불가",
+      "correct": "각 API 라우트 첫 줄에 if (!session.permissions.includes(...)) return 403"
+    },
+    {
+      "id": "role-defaults-in-db",
+      "title": "ROLE_DEFAULTS 를 DB 에 저장",
+      "why_bad": "PR 리뷰로 변경 추적 불가, 환경별 불일치, 마이그레이션 복잡",
+      "correct": "ROLE_DEFAULTS 는 코드에 둔다 (lib/auth/permissions.ts)"
+    }
+  ],
+
+  "best_practices": [
+    "권한 변경은 코드 PR 로 — git log 에 누가/언제/왜 기록",
+    "새 페이지 추가 시 route-permissions 매핑 함께 추가 → 미들웨어 자동 보호",
+    "테스트 계정도 ROLE_DEFAULTS 와 동일하게 부여 → 실 사용자와 같은 경험",
+    "password_plain 사용 여부는 보안/운영 trade-off (Frame Ops 는 매장 매니저 분실 잦아 보관 채택)",
+    "세션 만료: 12h (매장 시프트) / 1h (금융) / 24h (B2B 일반) — 도메인별 결정",
+    "/api/auth/me 캐싱: 30s deduping (권한 즉시 반영 5s, 트래픽 우선 2m)"
+  ],
+
+  "verification_scenarios": [
+    "비로그인 → 보호 페이지 접근 → /login 으로 리다이렉트",
+    "권한 없는 사용자 → URL 직접 입력 → /forbidden 으로 리다이렉트",
+    "권한 없는 사용자 → 홈에 해당 메뉴 아이콘 안 보임",
+    "권한 없는 사용자 → API POST 직접 호출 → 403",
+    "JWT 만료 → 자동 로그아웃 + /login 이동",
+    "AUTH_SECRET 변경 → 모든 사용자 강제 로그아웃 (의도된 동작)",
+    "권한 매핑 추가 시 새 사용자 권한 정상 동작",
+    "같은 매장 동일 비밀번호 → 생성 단계 차단 (지점 모드)"
+  ],
+
+  "file_index": [
+    { "file": "lib/auth/session.ts",                                "role": "JWT sign/verify (jose, Edge 호환)" },
+    { "file": "lib/auth/server-session.ts",                         "role": "RSC/API 라우트용 헬퍼" },
+    { "file": "lib/auth/password.ts",                               "role": "bcrypt (Node 전용)" },
+    { "file": "lib/auth/permissions.ts",                            "role": "권한 키 + 역할 기본값" },
+    { "file": "lib/auth/route-permissions.ts",                      "role": "라우트 → 권한 매핑" },
+    { "file": "lib/auth/accessible-stores.ts",                      "role": "사용자별 접근 가능 매장" },
+    { "file": "middleware.ts",                                      "role": "모든 요청 가드 (Edge)" },
+    { "file": "hooks/useSession.ts",                                "role": "클라이언트 세션 hook" },
+    { "file": "app/api/auth/login/route.ts",                        "role": "로그인 (HQ + 지점 양쪽)" },
+    { "file": "app/api/auth/logout/route.ts",                       "role": "쿠키 삭제" },
+    { "file": "app/api/auth/me/route.ts",                           "role": "현재 세션 + 매장명" },
+    { "file": "app/api/auth/switch-store/route.ts",                 "role": "본사 사용자 매장 전환" },
+    { "file": "app/api/auth/verify-staff-password/route.ts",        "role": "결제 시 담당자 비번 재확인" },
+    { "file": "app/forbidden/page.tsx",                             "role": "권한 부족 안내" },
+    { "file": "app/login/page.tsx",                                 "role": "로그인 폼" },
+    { "file": "app/admin/staff/page.tsx",                           "role": "지점 직원 관리" },
+    { "file": "app/admin/staff/StaffFormDialog.tsx",                "role": "직원 폼 (권한 편집)" },
+    { "file": "app/hq/staff/page.tsx",                              "role": "본사 직원 관리" },
+    { "file": "app/hq/store-accounts/page.tsx",                     "role": "매장 매니저 계정 관리" },
+    { "file": "components/layout/Header.tsx",                       "role": "데스크탑 nav + 모바일 탭바" },
+    { "file": "components/layout/UserMenu.tsx",                     "role": "우측 사용자 드롭다운" }
+  ],
+
+  "request_flow_example": {
+    "title": "한 요청의 전체 path — 사용자가 /admin/orders 클릭",
+    "steps": [
+      {
+        "step": 1,
+        "location": "middleware.ts (Edge)",
+        "actions": [
+          "isPublic('/admin/orders') → false",
+          "verifySession(cookie) → SessionPayload | null",
+          "null → redirect('/login?next=/admin/orders')",
+          "session OK → isHqPath? → false",
+          "getRequiredPermission → 'orders_list'",
+          "session.permissions.includes('orders_list') → true",
+          "NextResponse.next()"
+        ]
+      },
+      {
+        "step": 2,
+        "location": "Page render (RSC or Client)",
+        "actions": [
+          "RSC: const session = await getServerSession()",
+          "Client: useSession() → SWR 캐시 (/api/auth/me)",
+          "JSX 렌더링 (이미 권한 검증 후라 신뢰 가능)"
+        ]
+      },
+      {
+        "step": 3,
+        "location": "사용자가 페이지 내 '발주 처리' 버튼 클릭",
+        "actions": ["POST /api/admin/orders/place"]
+      },
+      {
+        "step": 4,
+        "location": "API 라우트",
+        "actions": [
+          "middleware 가 또 검사 (= step 1)",
+          "const session = await getServerSession()",
+          "if (!session.permissions.includes('orders_list')) return 403",
+          "비즈니스 로직 실행",
+          "JSON 응답"
+        ]
+      }
+    ]
+  }
+}
