@@ -2,7 +2,7 @@
 // 30 초마다 자동 갱신. 매장 셀렉터로 전체 또는 단일 매장.
 // 모든 데이터: 현재 시점 직전 12시간 (날짜 지정 없음).
 // KPI: 매출 / 매입 / 영업이익 / 건수·수량
-// 그래프: 직전 12시간 시간대별 매출·수량 라인
+// 그래프: 직전 12시간 시간대별 매출·수량 바형 (각 시간대 실 발생량)
 // 하단: 판매 상품 (데스크톱 20행 / 모바일 10행 + 스크롤)
 
 'use client';
@@ -10,8 +10,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -206,20 +206,18 @@ function Kpi({
 }
 
 function HourlyChart({ data }: { data: HourlyPoint[] }) {
-  // 누적 곡선 — 12시간 윈도우 시작부터 시간이 지남에 따라 우상향.
-  const cumulative = useMemo(() => {
-    let r = 0;
-    let q = 0;
-    return data.map((p) => {
-      r += p.revenue;
-      q += p.qty;
-      return {
+  // 시간대별 매출/수량 — 막대 차트.
+  // 누적 곡선 대신 각 시간대의 발생량을 그대로 표시 → 시간대 간 비교 직관적.
+  // 매출(파랑) / 수량(주황) 이중 Y축.
+  const chartData = useMemo(
+    () =>
+      data.map((p) => ({
         hour: p.label,
-        매출: r,
-        수량: q,
-      };
-    });
-  }, [data]);
+        매출: p.revenue,
+        수량: p.qty,
+      })),
+    [data]
+  );
 
   const formatY = useCallback((v: number) => `${(v / 10000).toFixed(0)}만`, []);
   const formatTooltip = useCallback((value: unknown, name: unknown) => {
@@ -231,8 +229,8 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
   return (
     <div className="w-full h-[260px] sm:h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={cumulative} margin={{ top: 5, right: 16, bottom: 5, left: 8 }}>
-          <CartesianGrid stroke="var(--color-separator-non-opaque)" strokeDasharray="3 3" />
+        <BarChart data={chartData} margin={{ top: 5, right: 16, bottom: 5, left: 8 }} barGap={4}>
+          <CartesianGrid stroke="var(--color-separator-non-opaque)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="hour"
             stroke="var(--color-label-tertiary)"
@@ -256,6 +254,7 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
             width={36}
           />
           <Tooltip
+            cursor={{ fill: 'var(--color-fill-quaternary)' }}
             contentStyle={{
               backgroundColor: 'var(--color-bg-primary)',
               border: '1px solid var(--color-separator-opaque)',
@@ -265,25 +264,21 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
             formatter={formatTooltip}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Line
+          <Bar
             yAxisId="rev"
-            type="monotone"
             dataKey="매출"
-            stroke="var(--color-system-blue)"
-            strokeWidth={2}
-            dot={{ r: 3 }}
+            fill="var(--color-system-blue)"
+            radius={[4, 4, 0, 0]}
             isAnimationActive={false}
           />
-          <Line
+          <Bar
             yAxisId="qty"
-            type="monotone"
             dataKey="수량"
-            stroke="var(--color-system-orange)"
-            strokeWidth={2}
-            dot={{ r: 3 }}
+            fill="var(--color-system-orange)"
+            radius={[4, 4, 0, 0]}
             isAnimationActive={false}
           />
-        </LineChart>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
