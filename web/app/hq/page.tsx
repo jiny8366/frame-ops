@@ -2,7 +2,7 @@
 // 30 초마다 자동 갱신. 매장 셀렉터로 전체 또는 단일 매장.
 // 모든 데이터: 현재 시점 직전 12시간 (날짜 지정 없음).
 // KPI: 매출 / 매입 / 영업이익 / 건수·수량
-// 그래프: 직전 12시간 시간대별 매출·수량 바형 (각 시간대 실 발생량)
+// 그래프: 직전 12시간 시간대별 매출·수량 바형 + 추세선 (progressive SMA)
 // 하단: 판매 상품 (데스크톱 20행 / 모바일 10행 + 스크롤)
 
 'use client';
@@ -10,8 +10,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -150,9 +151,12 @@ export default function HqDashboardPage() {
             </section>
 
             <section className="rounded-xl bg-[var(--color-bg-secondary)] p-4">
-              <h2 className="text-headline font-semibold text-[var(--color-label-primary)] mb-3">
+              <h2 className="text-headline font-semibold text-[var(--color-label-primary)]">
                 시간대별 매출·수량 (직전 12시간)
               </h2>
+              <p className="text-caption2 text-[var(--color-label-tertiary)] mb-2">
+                막대 = 각 시간대 실 발생량 · 선 = 누적 평균 추세 (시간이 갈수록 안정)
+              </p>
               <HourlyChart data={data.hourly} />
             </section>
 
@@ -206,30 +210,40 @@ function Kpi({
 }
 
 function HourlyChart({ data }: { data: HourlyPoint[] }) {
-  // 시간대별 매출/수량 — 막대 차트.
-  // 누적 곡선 대신 각 시간대의 발생량을 그대로 표시 → 시간대 간 비교 직관적.
-  // 매출(파랑) / 수량(주황) 이중 Y축.
-  const chartData = useMemo(
-    () =>
-      data.map((p) => ({
+  // 시간대별 매출/수량 — 막대 + 추세선.
+  // 막대: 각 시간대 실 발생량 (비교 직관적).
+  // 추세선: progressive SMA (1..i 시점 평균) — 시간이 지남에 따라 안정되는 추세를
+  //          1시간차부터 끊김 없이 표시. centered SMA 처럼 양 끝 NaN 문제 없음.
+  // 이중 Y축: 매출(좌, 파랑) / 수량(우, 주황).
+  const chartData = useMemo(() => {
+    let revSum = 0;
+    let qtySum = 0;
+    return data.map((p, i) => {
+      revSum += p.revenue;
+      qtySum += p.qty;
+      const n = i + 1;
+      return {
         hour: p.label,
         매출: p.revenue,
         수량: p.qty,
-      })),
-    [data]
-  );
+        매출_추세: Math.round(revSum / n),
+        수량_추세: Math.round((qtySum / n) * 100) / 100,
+      };
+    });
+  }, [data]);
 
   const formatY = useCallback((v: number) => `${(v / 10000).toFixed(0)}만`, []);
   const formatTooltip = useCallback((value: unknown, name: unknown) => {
     const v = typeof value === 'number' ? value : Number(value) || 0;
     const n = String(name ?? '');
-    return n === '매출' ? [`₩${v.toLocaleString()}`, n] : [v, n];
+    if (n === '매출' || n === '매출 추세') return [`₩${v.toLocaleString()}`, n];
+    return [v, n];
   }, []) as never;
 
   return (
     <div className="w-full h-[260px] sm:h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 5, right: 16, bottom: 5, left: 8 }} barGap={4}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 16, bottom: 5, left: 8 }} barGap={4}>
           <CartesianGrid stroke="var(--color-separator-non-opaque)" strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey="hour"
@@ -264,6 +278,7 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
             formatter={formatTooltip}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
+          {/* 매출 막대 */}
           <Bar
             yAxisId="rev"
             dataKey="매출"
@@ -271,6 +286,7 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
             radius={[4, 4, 0, 0]}
             isAnimationActive={false}
           />
+          {/* 수량 막대 */}
           <Bar
             yAxisId="qty"
             dataKey="수량"
@@ -278,7 +294,34 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
             radius={[4, 4, 0, 0]}
             isAnimationActive={false}
           />
-        </BarChart>
+          {/* 매출 추세선 — 진한 파랑, 점선 없는 부드러운 monotone */}
+          <Line
+            yAxisId="rev"
+            type="monotone"
+            dataKey="매출_추세"
+            name="매출 추세"
+            stroke="var(--color-system-blue)"
+            strokeWidth={2.5}
+            strokeOpacity={0.85}
+            dot={false}
+            activeDot={{ r: 4 }}
+            isAnimationActive={false}
+          />
+          {/* 수량 추세선 — 진한 주황 점선 (보조 정보) */}
+          <Line
+            yAxisId="qty"
+            type="monotone"
+            dataKey="수량_추세"
+            name="수량 추세"
+            stroke="var(--color-system-orange)"
+            strokeWidth={1.5}
+            strokeOpacity={0.75}
+            strokeDasharray="4 3"
+            dot={false}
+            activeDot={{ r: 3 }}
+            isAnimationActive={false}
+          />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
