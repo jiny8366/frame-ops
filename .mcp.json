@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "supabase-frameops": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=abexvzqtpyqovytlcgst&read_only=true"
+    }
+  }
+}
