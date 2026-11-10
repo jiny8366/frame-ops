@@ -1,0 +1,415 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>D5 안경광학 · 안경사 국가시험 공부</title><meta name="description" content="안경사 국가시험 10일 로드맵·문제·해설 (자체 제작 학습 자료)">
+<style>*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR","Malgun Gothic","NanumGothic",sans-serif;font-size:17px;line-height:1.65;color:#1d2330;background:#f6f8fb;word-break:keep-all;overflow-wrap:anywhere;padding-bottom:96px}
+a{color:#1f5fbf}
+header.top{position:sticky;top:0;z-index:20;background:#1f3a5f;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+header.top .in{max-width:760px;margin:0 auto;padding:8px 12px;display:flex;align-items:center;gap:8px}
+header.top .ttl{font-weight:700;font-size:16px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;max-width:760px;margin:0 auto;padding:0 8px 8px;scrollbar-width:none}
+nav.tabs a{flex:0 0 auto;color:#fff;text-decoration:none;font-size:14px;padding:6px 11px;border-radius:16px;background:rgba(255,255,255,.14)}
+nav.tabs a.on{background:#e07b00}
+main{max-width:760px;margin:0 auto;padding:12px}
+h1{font-size:1.45em;line-height:1.35;margin:.4em 0 .3em;color:#1f3a5f}
+h2{font-size:1.2em;line-height:1.4;margin:1.4em 0 .5em;color:#1f3a5f;border-left:5px solid #1f3a5f;padding-left:8px}
+h3{font-size:1.05em;margin:1em 0 .4em}
+.card{background:#fff;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 3px rgba(20,40,80,.08)}
+.core{background:#fff8ec;border:2px solid #e07b00;border-radius:14px;padding:12px 14px;margin:12px 0}
+.core h2{border:0;padding:0;margin:.2em 0 .4em;color:#b35f00}
+.core ol{margin:0;padding-left:1.3em}
+.box{border-radius:10px;padding:10px 12px;margin:10px 0;font-size:.95em}
+.box b:first-child{display:inline-block;margin-right:6px}
+.box.term{background:#eef5ff;border-left:5px solid #2a6fdb}
+.box.bg{background:#f1f3f6;border-left:5px solid #777}
+.box.must{background:#fff1de;border-left:5px solid #e07b00}
+.box.must b:first-child{color:#b35f00}
+.box.star{background:#fffbe6;border-left:5px solid #d4a400}
+.box.err{background:#fdeeee;border-left:5px solid #c0392b}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.two>div{background:#fff;border:2px solid #1f3a5f;border-radius:10px;padding:8px 10px;font-size:.92em}
+.two>div:last-child{border-color:#e07b00}
+@media (max-width:380px){.two{grid-template-columns:1fr}}
+.case{background:#fff;border:1px solid #d7deea;border-radius:10px;padding:10px;margin:10px 0}
+.tblw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.tbl{border-collapse:collapse;width:100%;font-size:.88em;margin:8px 0;background:#fff}
+table.tbl th,table.tbl td{border:1px solid #cfd8e6;padding:6px 7px;vertical-align:top;text-align:left}
+table.tbl th{background:#e9eff8}
+svg.fig{display:block;width:100%;max-width:520px;height:auto;margin:10px auto;background:#fff;border-radius:10px}
+.sec{background:#fff;border-radius:14px;padding:4px 14px 12px;margin:14px 0;box-shadow:0 1px 3px rgba(20,40,80,.08);scroll-margin-top:96px}
+.sec h2{margin-top:.8em}
+.meta{font-size:.8em;color:#556}
+.stars{color:#d48a00;letter-spacing:1px}
+.tier{display:inline-block;font-size:.75em;padding:1px 8px;border-radius:10px;color:#fff;vertical-align:middle}
+.t-기본{background:#1b7a43}.t-응용{background:#2a6fdb}.t-심화{background:#7b3fb5}
+.tag{display:inline-block;font-size:.72em;padding:1px 7px;border-radius:10px;border:1px solid;vertical-align:middle}
+.tag.ok{color:#a3460a;border-color:#e07b00;background:#fff4e6}.tag.est{color:#445;border-color:#99a;background:#f4f5f8}
+.note{font-size:.9em;color:#556}.src{font-size:.78em;color:#667;word-break:break-all}
+.btn,button.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border-radius:10px;border:0;background:#1f3a5f;color:#fff;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;margin:4px 4px 4px 0}
+.btn.o{background:#e07b00}.btn.g{background:#1b7a43}.btn.l{background:#e9eff8;color:#1f3a5f}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.grid a.tile{display:block;background:#fff;border:2px solid #d7deea;border-radius:12px;padding:10px;text-decoration:none;color:#1d2330;min-height:64px}
+.grid a.tile b{display:block;color:#1f3a5f}
+.grid a.tile.done{border-color:#1b7a43;background:#effaf2}
+.q{background:#fff;border-radius:14px;padding:12px;margin:12px 0;box-shadow:0 1px 3px rgba(20,40,80,.1)}
+.qh{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.qh .num{font-weight:700;color:#1f3a5f}
+.qh .mtl{font-size:.72em;color:#667}
+.qt{font-weight:600;margin-bottom:8px}
+button.opt{display:block;width:100%;text-align:left;background:#f4f7fb;border:2px solid #d7deea;border-radius:10px;padding:10px 12px;margin:6px 0;font-size:16px;line-height:1.45;color:#1d2330;cursor:pointer;min-height:44px;font-family:inherit}
+button.opt:disabled{cursor:default;color:#1d2330}
+button.opt.right{background:#e6f6ea;border-color:#1b7a43}
+button.opt.wrong{background:#fdeaea;border-color:#c0392b}
+button.opt.pick{background:#eef5ff;border-color:#2a6fdb}
+.diag{margin-top:8px;border-top:1px dashed #ccd;padding-top:8px;font-size:.94em}
+.diag .ok{color:#1b7a43;font-weight:700}.diag .no{color:#c0392b;font-weight:700}
+.diag details{margin:6px 0}.diag summary{cursor:pointer;color:#1f5fbf}
+.simbox{border-left:4px solid #e07b00;padding-left:8px;margin-top:8px}
+.ctrl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ctrl select{font-size:15px;min-height:44px;border-radius:10px;border:1px solid #bcc7d8;padding:6px 8px;max-width:100%;background:#fff}
+.chip{border:2px solid #1f3a5f;background:#fff;color:#1f3a5f;border-radius:18px;padding:6px 12px;min-height:40px;font-size:14px;font-weight:700;cursor:pointer}
+.chip.on{background:#1f3a5f;color:#fff}
+.askbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid #d7deea;box-shadow:0 -2px 8px rgba(0,0,0,.08)}
+.askbar form{max-width:760px;margin:0 auto;display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.askbar input{flex:1;min-width:0;font-size:16px;border:1px solid #bcc7d8;border-radius:10px;padding:10px}
+.askbar button{min-height:44px;border:0;border-radius:10px;background:#e07b00;color:#fff;font-weight:700;padding:0 12px;font-size:15px}
+.askbar .alt{background:#e9eff8;color:#1f3a5f;padding:0 8px;font-size:13px}
+.bigbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bigbtns button{min-height:64px;font-size:17px;font-weight:700;border-radius:14px;border:2px solid #1f3a5f;background:#fff;color:#1f3a5f}
+.bigbtns button.on{background:#1f3a5f;color:#fff}
+.flash{background:#fff;border-radius:16px;min-height:200px;padding:18px;box-shadow:0 2px 8px rgba(20,40,80,.12);font-size:1.05em}
+.flash .front{font-weight:700;font-size:1.1em;color:#1f3a5f}
+.flash .back{margin-top:12px;border-top:1px dashed #ccd;padding-top:12px}
+.boxes{display:flex;gap:6px;flex-wrap:wrap;font-size:.85em}
+.boxes span{background:#e9eff8;border-radius:8px;padding:3px 8px}
+.dis{background:#fff;border-radius:14px;padding:12px;margin:12px 0;box-shadow:0 1px 3px rgba(20,40,80,.08)}
+.dis img{width:100%;max-width:520px;height:auto;border-radius:10px;display:block;margin:6px auto}
+.dis dl{margin:6px 0}.dis dt{font-weight:700;color:#1f3a5f}.dis dd{margin:0 0 6px 0}
+.cap{font-size:.75em;color:#556;word-break:break-all}
+.link1{background:#effaf2;border-left:5px solid #1b7a43;padding:8px 10px;border-radius:8px;font-size:.93em}
+.ref{display:grid;gap:8px}.ref div{border-radius:10px;padding:8px 10px;color:#fff}
+.dday{font-size:1.6em;font-weight:800;color:#c0392b}
+.progress{height:10px;background:#e3e8f0;border-radius:6px;overflow:hidden}.progress i{display:block;height:100%;background:#1b7a43}
+.hide{display:none!important}
+footer{max-width:760px;margin:20px auto;padding:0 12px;font-size:.8em;color:#667}
+</style></head><body data-cat="기타"><header class="top"><div class="in"><span class="ttl">D5 안경광학</span></div><nav class="tabs"><a data-l="index.html" href="index.html">홈</a><a data-l="d01.html" href="d01.html" class=on>10일</a><a data-l="p1.html" href="p1.html">1 구조</a><a data-l="p2.html" href="p2.html">2 법규</a><a data-l="p3.html" href="p3.html">3 기하</a><a data-l="p4.html" href="p4.html">4 물리</a><a data-l="p5.html" href="p5.html">5 안경·프리즘</a><a data-l="p6.html" href="p6.html">6 CL·실기</a><a data-l="p7.html" href="p7.html">7 안과·양안시</a><a data-l="eye.html" href="eye.html">안질환</a><a data-l="quiz.html" href="quiz.html">퀴즈</a><a data-l="cards.html" href="cards.html">카드</a><a data-l="ask.html" href="ask.html">질문</a><a data-l="credits.html" href="credits.html">출처</a></nav></header>
+<main><h1>D5 · 안경광학</h1><div class="card"><table class="tbl"><tr><th>오전 · 기본</th><td>정점간거리, 가입도</td></tr><tr><th>오후 · 응용</th><td>누진·이중초점, 짝눈 상하 불균형</td></tr><tr><th>저녁 · 문제</th><td>계산 문제 2단계 풀이</td></tr><tr><th>시간 남으면</th><td>배율·사축 원주</td></tr></table><p><b>읽을 곳</b>: <a data-l="p5.html#p5-vertex" href="p5.html#p5-vertex">정점간거리</a> · <a data-l="p5.html#p5-add" href="p5.html#p5-add">가입도·누진·이중초점</a> · <a data-l="p5.html#p5-astig" href="p5.html#p5-astig">난시 표기·구면등가·사축 원주</a> · <a data-l="p5.html#p5-magnif" href="p5.html#p5-magnif">배율·재료 (시간 남으면)</a></p><label style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="daydone" data-d="d5" style="width:24px;height:24px"> 오늘 공부 끝!</label><div class="ctrl"><a data-l="d04.html" href="d04.html" class="btn l">← D4</a><a data-l="d06.html" href="d06.html" class="btn l">D6 →</a></div></div><section class="sec" id="d5-quiz"><h2>D5 문제 (61문항)</h2><div data-set data-ids="mat-01,mat-02,mat-04,mat-07,mat-12,sopt-01,sopt-10,sopt-14,sopt-16,refr-01,refr-02,refr-03,refr-08,refr-09,refr-10,refr-11,refr-12,refr-14,fab-02,fab-05,fab-08,fab-09,nsopt-04,nrefr-01,nrefr-03,nrefr-04,nsopt-08,mat-03,mat-06,mat-08,mat-09,mat-11,mat-13,mat-14,sopt-07,sopt-09,sopt-12,refr-15,fab-13,fab-14,fab-15,fab-16,nsopt-05,nrefr-02,nsopt-09,mat-05,mat-10,mat-15,sopt-02,sopt-03,sopt-11,sopt-13,sopt-15,sopt-17,refr-05,refr-06,fab-03,fab-04,fab-06,fab-12,nsopt-06"></div></section></main>
+<footer>자체 제작 학습 자료(문항·그림 직접 제작, 사진은 재사용 허락 라이선스만 사용 → <a data-l="credits.html" href="credits.html">출처·라이선스</a>). 합격을 보장하지 않아요. 시험 정보는 국시원 공고를 기준으로 하세요.</footer>
+<div class="askbar"><form id="askform" autocomplete="off"><input id="askq" type="text" placeholder="궁금한 걸 물어보세요 (기타)" aria-label="질문"><button type="submit">Grok에 묻기</button><button type="button" class="alt" id="askalt">ChatGPT</button></form></div>
+<script>window.OE_DATA={"cfg": {"qr_base": "https://html-preview.github.io/?url=https://github.com/jiny8366/frame-ops/blob/gh-pages/optician-exam/", "preview_host": "html-preview.github.io"}, "page": "d5", "offline": false, "fullBank": false, "qs": [{"id": "mat-01", "ch": "mat", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "CR-39 렌즈의 특성으로 가장 옳은 것은?", "o": ["긁힘에 유리렌즈보다 강하다.", "굴절률 약 1.50, 아베수 약 58의 열경화성 플라스틱이다.", "유리보다 비중이 크다.", "열가소성 수지여서 사출 성형한다.", "굴절률 약 1.59, 아베수 약 30이다."], "a": 1, "why": null, "e": "CR-39(알릴디글리콜카보네이트)는 열경화성 수지로 굴절률 약 1.498, 아베수 약 58, 비중 약 1.32로 가볍고 광학 품질이 우수하나 유리보다 긁힘에 약해 하드코팅이 필요하다.", "th": "폴리카보네이트는 열가소성(사출 성형), 굴절률 약 1.586, 아베수 약 30.", "cite": "", "area": "이론"}, {"id": "mat-02", "ch": "mat", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "어린이 안경, 스포츠·보호안경에 가장 적합한, 내충격성이 매우 우수한 렌즈 재료는?", "o": ["폴리카보네이트", "CR-39", "크라운유리", "고굴절 유리(n=1.80)", "플린트유리"], "a": 0, "why": null, "e": "폴리카보네이트는 내충격성이 매우 뛰어나고 가벼우며 자외선 차단이 우수하여 어린이·보호용 안경에 적합하다. 단, 아베수가 약 30으로 낮아 주변부 색수차가 생길 수 있다.", "th": "아베수가 낮을수록 프리즘 효과에 따른 횡색수차(TCA = P/ν)가 커진다.", "cite": "", "area": "이론"}, {"id": "mat-04", "ch": "mat", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "굴절률 1.50인 렌즈 한 면에 빛이 수직으로 입사할 때의 반사율은? (공기 n=1.00)", "o": ["2.0 %", "4.0 %", "6.0 %", "8.0 %", "10.0 %"], "a": 1, "why": null, "e": "R = ((n − 1)/(n + 1))² = (0.5/2.5)² = 0.04 → 4 %. 앞뒤 두 면이면 약 8 %가 반사된다.", "th": "프레넬 반사율 공식(수직입사). 굴절률이 높을수록 반사율 증가 → 고굴절 렌즈일수록 반사방지 코팅의 필요성이 크다.", "cite": "", "area": "이론"}, {"id": "mat-07", "ch": "mat", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "UV-B의 파장 범위로 옳은 것은?", "o": ["100~280 nm", "280~315 nm", "315~400 nm", "400~500 nm", "700~1,000 nm"], "a": 1, "why": null, "e": "CIE 구분: UV-C 100~280 nm, UV-B 280~315 nm, UV-A 315~400 nm. UV-B는 각막(광각막염)·수정체에 영향을 준다.", "th": "UV400 렌즈는 400 nm 이하의 자외선을 차단한다.", "cite": "", "area": "이론"}, {"id": "mat-12", "ch": "mat", "part": "p5", "tier": "기본", "tag": "[기출 확인]", "mt": "concept", "q": "운전자가 맞은편에서 오는 차량의 유리창에 반사된 빛에 의한 눈부심을 호소하고 있다. 이를 가장 효과적으로 해소할 수 있는 안경렌즈는?", "o": ["편광렌즈", "프레넬렌즈", "렌티큘러렌즈", "자외선 차단렌즈", "적외선 투과렌즈"], "a": 0, "why": null, "e": "유리창·수면·도로 등 비금속 표면에서 반사된 빛은 반사면과 평행한(주로 수평) 진동 성분이 강한 부분 편광이 된다. 투과축이 수직인 편광렌즈가 이 성분을 흡수하여 반사 눈부심을 줄인다.", "th": "브루스터각(tan θ_B = n)에서 반사광은 완전 편광. 말루스 법칙 I = I₀cos²θ.", "cite": "출처: 한국보건의료인국가시험원, 「2025년도 안경사 국가시험 종합안내서」(2025.8.) Ⅲ-2. 예시문항 (문항 원문 인용, 정답·풀이는 이 자료의 풀이). 국시원 출제정보: https://www.kuksiwon.or.kr", "area": "이론"}, {"id": "sopt-01", "ch": "sopt", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "vertex", "q": "정점간거리 12 mm에서 −8.00 D 안경을 착용하는 사람에게 필요한 각막면(콘택트렌즈) 굴절력은?", "o": ["−8.80 D", "−8.00 D", "−7.75 D", "−7.30 D", "−6.75 D"], "a": 3, "why": null, "e": "F_c = F/(1 − dF) = −8.00/(1 − 0.012 × (−8.00)) = −8.00/1.096 = −7.299 ≈ −7.30 D. 마이너스 렌즈는 눈에 가까워질수록 필요한 굴절력의 절대값이 줄어든다.", "th": "정점간거리 보정 F_c = F/(1 − dF). 근시: |CL| &lt; |안경|, 원시: CL &gt; 안경.", "cite": "", "area": "이론"}, {"id": "sopt-10", "ch": "sopt", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "age", "q": "원용 정시인 사람의 조절력이 2.00 D이다. 40 cm에서 독서할 때 조절력의 1/2을 예비로 남기려면 필요한 가입도는?", "o": ["+0.50 D", "+1.00 D", "+1.50 D", "+2.00 D", "+2.50 D"], "a": 2, "why": null, "e": "작업거리 요구 조절 = 1/0.40 = 2.50 D. 사용할 조절 = 2.00 × 1/2 = 1.00 D. Add = 2.50 − 1.00 = +1.50 D.", "th": "Add = 1/d − (A/2). '조절력 1/2 예비' 원칙은 일반적 기준이며 실제로는 근용 검사로 확인한다.", "cite": "", "area": "이론"}, {"id": "sopt-14", "ch": "sopt", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "고도 플러스 안경(예: 무수정체 안경)을 착용할 때 렌즈 가장자리 부근에서 시야의 일부가 보이지 않는 현상은?", "o": ["중심암점", "변시증", "환상암점(ring scotoma)", "환상복시", "광시증"], "a": 2, "why": null, "e": "고도 플러스 렌즈의 가장자리 프리즘(기저가 렌즈 중심 쪽) 효과 때문에 렌즈 테두리 바로 바깥의 일부 시야가 보이지 않는 고리 모양 암점이 생긴다. 마이너스 렌즈는 반대로 가장자리 부근 시야가 겹쳐 보인다(환상복시).", "th": "눈을 움직이면 암점도 움직인다('잭 인 더 박스' 현상).", "cite": "", "area": "이론"}, {"id": "sopt-16", "ch": "sopt", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "unit", "q": "+20.00 D 확대경의 배율은? (명시거리 25 cm 기준, M = F/4)", "o": ["2배", "4배", "5배", "8배", "20배"], "a": 2, "why": null, "e": "확대경의 정상(공칭) 배율 M = F/4 = 20/4 = 5배.", "th": "M = F/4는 명시거리 25 cm를 기준으로 한 공칭 배율. 상을 명시거리에 맺으면 M = F/4 + 1로 계산하는 교재도 있다.", "cite": "", "area": "이론"}, {"id": "refr-01", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[기출 확인]", "mt": "concept", "q": "A학생을 운무상태에서 난시 검사한 결과 방사선시표 1시 방향이 선명하게 보였다면 (-)원주렌즈 축 방향으로 옳은 것은?", "o": ["30°", "60°", "90°", "120°", "150°"], "a": 0, "why": null, "e": "운무 상태에서 가장 선명한 선(1시–7시 선)의 작은 시계 숫자 1에 30을 곱하면 (−)원주렌즈 축 = 1 × 30° = 30°이다.", "th": "'30배 법칙': 가장 선명하게 보이는 선 방향의 작은 시계 숫자 × 30 = 교정 (−)원주 축. 선명한 선은 망막에 가장 가까이 초선을 맺는 경선에 대응한다.", "cite": "출처: 한국보건의료인국가시험원, 「2025년도 안경사 국가시험 종합안내서」(2025.8.) Ⅲ-2. 예시문항 (문항 원문 인용, 정답·풀이는 이 자료의 풀이). 국시원 출제정보: https://www.kuksiwon.or.kr", "area": "응용"}, {"id": "refr-02", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "자각적 굴절검사에서 운무법(fogging)을 사용하는 주된 목적은?", "o": ["조절을 이완시키기 위해", "동공을 축소시키기 위해", "양안시를 차단하기 위해", "난시 축을 고정하기 위해", "폭주를 유발하기 위해"], "a": 0, "why": null, "e": "플러스 렌즈를 추가해 눈을 인공적인 근시 상태(초점이 망막 앞)로 만들면 조절해도 상이 더 흐려지므로 조절이 이완된다.", "th": "운무량은 보통 시력이 0.3~0.5 정도로 떨어질 만큼(약 +0.75~+1.50 D) 추가.", "cite": "", "area": "응용"}, {"id": "refr-03", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "unit", "q": "50 cm 작업거리에서 검영법으로 +3.00 D에서 중화되었다. 이 눈의 실제 굴절이상은?", "o": ["−1.00 D", "+1.00 D", "+2.00 D", "+3.00 D", "+5.00 D"], "a": 1, "why": null, "e": "작업거리 50 cm의 보정량은 1/0.50 = 2.00 D이므로 실제 굴절이상 = +3.00 − 2.00 = +1.00 D(원시).", "th": "검영법 작업거리 보정: 순굴절 = 총 중화 렌즈 − 1/작업거리.", "cite": "", "area": "응용"}, {"id": "refr-08", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "시력이 낮은 사람에게 핀홀(바늘구멍) 검사를 했더니 시력이 크게 향상되었다. 이 결과가 시사하는 것은?", "o": ["시력저하의 주원인은 굴절이상일 가능성이 높다.", "망막박리가 의심된다.", "황반변성이 원인이다.", "약시가 확실하다.", "시신경 질환이 원인이다."], "a": 0, "why": null, "e": "핀홀은 주변 광선을 차단해 초점심도를 높이므로 굴절이상에 의한 흐림을 줄인다. 시력이 향상되면 굴절 교정으로 시력 개선이 기대되며, 향상되지 않으면 안질환 등을 의심해 의뢰를 고려한다.", "th": "핀홀 직경 약 1~1.2 mm. 너무 작으면 회절로 오히려 흐려진다.", "cite": "", "area": "응용"}, {"id": "refr-09", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "Snellen 시력 20/40을 소수시력으로 바꾸면?", "o": ["0.2", "0.4", "0.5", "0.8", "2.0"], "a": 2, "why": null, "e": "소수시력 = 검사거리/표준거리 = 20/40 = 0.5.", "th": "6/12 = 0.5, 6/6 = 1.0. logMAR 0.3.", "cite": "", "area": "응용"}, {"id": "refr-10", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "원시의 분류에서 '총원시'를 옳게 나타낸 것은?", "o": ["수의원시만", "절대원시 − 수의원시", "수의원시 + 잠복원시", "현성원시 − 잠복원시", "잠복원시 + 현성원시"], "a": 4, "why": null, "e": "총원시 = 잠복원시(조절 긴장으로 숨어 있음, 조절마비 시 드러남) + 현성원시(수의원시 + 절대원시)이다.", "th": "젊을수록 조절력이 커서 잠복원시 비율이 크다 → 운무법 등으로 최대한 조절을 이완.", "cite": "", "area": "응용"}, {"id": "refr-11", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "S −1.00 D ◯ C −1.50 D Ax 180으로 교정되는 눈의 난시 분류는?", "o": ["단성근시성 도난시", "복성근시성 직난시", "혼합난시", "복성근시성 도난시", "복성원시성 직난시"], "a": 1, "why": null, "e": "두 주경선 굴절: 180° 경선 = −1.00 D, 90° 경선 = −2.50 D → 두 초선 모두 망막 앞(복성근시성). 수직경선(90°)의 굴절력이 더 강하므로 직난시((−)원주 축 180°).", "th": "(−)원주 축이 180°±30° → 직난시, 90°±30° → 도난시.", "cite": "", "area": "응용"}, {"id": "refr-12", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "S +1.00 D ◯ C −2.00 D Ax 90으로 교정되는 눈의 난시 분류는?", "o": ["복성근시성 난시", "복성원시성 난시", "단성근시성 난시", "혼합난시", "단성원시성 난시"], "a": 3, "why": null, "e": "90° 경선 = +1.00 D(원시), 180° 경선 = +1.00 + (−2.00) = −1.00 D(근시) → 한 초선은 망막 뒤, 다른 초선은 망막 앞이므로 혼합난시이다.", "th": "교정렌즈 주경선 굴절력: 축 방향 = S, 축과 수직 방향 = S + C.", "cite": "", "area": "응용"}, {"id": "refr-14", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "안경사가 고객의 굴절검사를 할 때 법령상 허용되지 않는 것은?", "o": ["운무법을 사용하는 것", "검영기 없이 자동굴절검사기를 사용하는 것", "포롭터로 자각적 굴절검사를 하는 것", "사이클로펜톨레이트 등 조절마비제를 점안하여 굴절검사를 하는 것", "적록검사를 시행하는 것"], "a": 3, "why": null, "e": "안경사의 굴절검사는 '약제를 사용하지 않는' 자각적 굴절검사와 자동굴절검사기기를 이용한 타각적 굴절검사로 규정되어 있다. 조절마비제 점안은 할 수 없다.", "th": "「의료기사 등에 관한 법률」 제1조의2, 시행령 [별표 1].", "cite": "", "area": "응용"}, {"id": "fab-02", "ch": "fab", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "S +2.00 D ◯ C −3.00 D Ax 45를 (+)원주 형식으로 바르게 전환한 것은?", "o": ["S +2.00 D ◯ C +3.00 D Ax 135", "S −1.00 D ◯ C +3.00 D Ax 45", "S −1.00 D ◯ C +3.00 D Ax 135", "S −1.00 D ◯ C −3.00 D Ax 135", "S +5.00 D ◯ C +3.00 D Ax 135"], "a": 2, "why": null, "e": "새 구면 = S + C = +2.00 + (−3.00) = −1.00 D, 새 원주 = +3.00 D, 새 축 = 45° + 90° = 135°.", "th": "구면-원주 전환 3단계: ① 대수합 ② 원주 부호 반전 ③ 축 90° 회전.", "cite": "", "area": "응용"}, {"id": "fab-05", "ch": "fab", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "unit", "q": "박스법에서 렌즈 수평 폭(A) 52 mm, 렌즈 간 거리(DBL) 18 mm인 안경테에 PD 64 mm인 고객의 렌즈를 조제할 때 한쪽 렌즈의 수평 편위량과 방향은?", "o": ["3 mm 내측(비측)", "6 mm 내측(비측)", "편위 불필요", "6 mm 외측(이측)", "3 mm 외측(이측)"], "a": 0, "why": null, "e": "FPD = A + DBL = 52 + 18 = 70 mm. 편위량 = (FPD − PD)/2 = (70 − 64)/2 = 3 mm. 고객 PD가 FPD보다 작으므로 광학중심을 각각 3 mm 내측으로 옮긴다.", "th": "FPD(Frame PD) &gt; PD → 내측 편위, FPD &lt; PD → 외측 편위.", "cite": "", "area": "응용"}, {"id": "fab-08", "ch": "fab", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "이중초점렌즈의 분절 상단 높이를 정하는 일반적인 기준 위치는?", "o": ["위눈꺼풀 가장자리", "동공 중심", "안경테 하단에서 5 mm", "각막 윤부 상단", "아래눈꺼풀 가장자리(하안검연) 높이"], "a": 4, "why": null, "e": "일반적인 이중초점은 분절 상단을 아래눈꺼풀 가장자리(또는 하측 각막윤부) 높이에 맞춘다. 근거리 작업이 많으면 약간 높게, 원거리 위주면 약간 낮게 조정한다.", "th": "삼중초점은 분절 상단을 동공 하연 부근에 맞춘다.", "cite": "", "area": "응용"}, {"id": "fab-09", "ch": "fab", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "누진굴절력렌즈 조제 시 피팅 포인트(fitting cross)의 위치로 옳은 것은?", "o": ["안경테 기하중심", "동공 중심보다 5 mm 위", "아래눈꺼풀 가장자리", "코받침 높이", "원거리 정면 주시 시의 동공 중심"], "a": 4, "why": null, "e": "누진렌즈는 원거리 정면 주시 상태에서 단안 PD와 피팅 높이를 측정해 피팅 포인트를 동공 중심에 맞춘다.", "th": "안면 비대칭이 흔하므로 양안 PD가 아닌 단안 PD를 사용한다.", "cite": "", "area": "응용"}, {"id": "nsopt-04", "ch": "sopt", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "vertex", "q": "정점간거리 12 mm에서 −8.00 D 안경을 쓰는 손님의 CL 도수(구면)에 가장 가까운 것은?", "o": ["−9.00 D", "−8.75 D", "−8.00 D", "−7.25 D", "−6.50 D"], "a": 3, "why": ["방향과 크기 모두 틀렸어요.", "원시처럼 강해지는 방향으로 계산했어요(1 − dF 사용).", "정점간거리를 빼먹었어요.", "Fc = −8 ÷ (1 + 0.012 × 8) = −8 ÷ 1.096 ≈ −7.30 → 0.25 D 단위로 −7.25 D. 근시는 CL이 약해져요.", "너무 많이 줄였어요."], "e": "", "th": "", "cite": "", "area": "이론"}, {"id": "nrefr-01", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "sign", "q": "S −3.00 D C −1.50 D Ax 90의 구면등가는?", "o": ["−4.50 D", "−2.25 D", "−1.50 D", "−3.00 D", "−3.75 D"], "a": 4, "why": ["C를 반으로 나누지 않았어요.", "C/2의 부호를 반대로 더했어요.", "원주만 봤어요.", "원주를 무시했어요.", "S + C/2 = −3 + (−0.75) = −3.75 D."], "e": "", "th": "", "cite": "", "area": "응용"}, {"id": "nrefr-03", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[기출 확인]", "mt": "concept", "q": "운무 상태에서 방사선시표를 보게 했더니 2시–8시 방향 선이 가장 선명하다고 한다. 교정할 (−)원주렌즈의 축은?", "o": ["30°", "60°", "90°", "120°", "150°"], "a": 1, "why": ["1시일 때 값이에요.", "작은 시 숫자 2 × 30° = 60°. (국시원 예시문항 2번과 같은 유형)", "3시일 때 값이에요.", "4시(10시)일 때 값이에요.", "5시(11시)일 때 값이에요."], "e": "", "th": "", "cite": "", "area": "응용"}, {"id": "nrefr-04", "ch": "refr", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "sign", "q": "원점(먼 쪽 선명한 한계)이 눈앞 25 cm인 근시안의 완전 교정 도수는(정점간거리 무시)?", "o": ["−25.00 D", "−0.25 D", "−2.50 D", "+4.00 D", "−4.00 D"], "a": 4, "why": ["cm 숫자를 그대로 썼어요.", "25 cm를 m로 잘못 바꿨어요(1/4 m가 아니라 4 m로).", "40 cm일 때의 값이에요.", "근시에 (+)를 썼어요(부호 실수).", "원점 25 cm = 0.25 m → 1 ÷ 0.25 = 4. 근시는 (−)렌즈 → −4.00 D."], "e": "", "th": "", "cite": "", "area": "응용"}, {"id": "nsopt-08", "ch": "sopt", "part": "p5", "tier": "기본", "tag": "[출제기준 추정]", "mt": "age", "q": "Hofstetter 평균 조절력 공식으로 45세의 조절력과 근점(정시 기준)은?", "o": ["5.0 D, 50 cm", "4.0 D, 25 cm", "5.0 D, 20 cm", "3.0 D, 33 cm", "6.5 D, 15 cm"], "a": 2, "why": ["D를 cm로 잘못 바꿨어요.", "최소 공식(15 − 0.25×나이 = 3.75)과도 다른 값이에요.", "18.5 − 0.3 × 45 = 5.0 D → 근점 100 ÷ 5 = 20 cm.", "50세 무렵 값이에요.", "40세 평균값이에요."], "e": "", "th": "", "cite": "", "area": "이론"}, {"id": "mat-03", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "아베수(Abbe number)에 대한 설명으로 옳은 것은?", "o": ["아베수가 클수록 굴절률이 높다.", "아베수는 렌즈 두께에 비례한다.", "아베수 = (n_F − n_C)/(n_d − 1)이다.", "아베수가 작을수록 분산이 커서 색수차가 크다.", "아베수는 반사율을 나타낸다."], "a": 3, "why": null, "e": "아베수 ν = (n_d − 1)/(n_F − n_C)로 분산의 역수 개념이다. ν가 작을수록 파장에 따른 굴절률 차이가 커서 색수차가 크다.", "th": "일반적으로 고굴절률 재료일수록 아베수가 낮아지는 경향이 있다.", "cite": "", "area": "이론"}, {"id": "mat-06", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "플라스틱 조광렌즈의 특성으로 옳은 것은?", "o": ["온도가 낮을수록 더 진하게 변색되는 경향이 있다.", "가시광선의 적색 파장에 의해 주로 변색된다.", "할로겐화은 결정이 렌즈 내부에 분산되어 있다.", "자동차 앞유리 안쪽에서도 실외와 똑같이 변색된다.", "변색 후 원래 상태로 돌아오지 않는다."], "a": 0, "why": null, "e": "조광렌즈는 주로 자외선(일부 단파장 가시광)에 반응하며, 저온에서는 퇴색 반응이 느려 더 진해진다. 자동차 앞유리가 자외선을 차단하므로 차 안에서는 반응이 약하다. 할로겐화은은 유리 조광렌즈의 원리이고, 플라스틱은 유기 광변색 염료를 쓴다.", "th": "광변색 반응은 가역적이다(자외선 제거 시 탈색).", "cite": "", "area": "이론"}, {"id": "mat-08", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "티타늄 안경테 재료의 특성으로 옳지 않은 것은?", "o": ["금속 알레르기를 잘 일으키지 않는다.", "자성이 강하고 용접·납땜이 쉽다.", "강도가 높다.", "내식성이 우수하다.", "비중이 작아 가볍다."], "a": 1, "why": null, "e": "티타늄은 비자성이며, 고온에서 산소·질소와 쉽게 반응하여 일반 납땜이 어렵고 진공 또는 불활성 기체 분위기에서 용접해야 한다.", "th": "티타늄 비중 약 4.5(철 약 7.9). 생체적합성이 높아 의료용 임플란트에도 사용.", "cite": "", "area": "이론"}, {"id": "mat-09", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "니켈 알레르기가 있는 고객에게 피하도록 권하는 것이 가장 적절한 안경테 재료는?", "o": ["모넬(Monel)", "셀룰로오스 아세테이트", "베타 티타늄 (니켈 무첨가 등급)", "순수 티타늄", "TR-90(폴리아미드 계열)"], "a": 0, "why": null, "e": "모넬은 니켈-구리 합금으로 니켈 함량이 높아 접촉성 피부염을 일으킬 수 있다.", "th": "니켈 함유 합금: 모넬, 양은(니켈 실버), 니켈-티타늄 형상기억합금 등.", "cite": "", "area": "이론"}, {"id": "mat-11", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "age", "q": "누진굴절력렌즈의 '소프트 디자인'에 대한 설명으로 옳은 것은?", "o": ["주변 비점수차가 좁은 영역에 집중된다.", "누진대가 길고 넓으며 주변 비점수차가 넓게 분산되어 적응이 쉽다.", "원용부와 근용부의 명시역이 하드 디자인보다 넓다.", "누진대가 짧아 작은 안경테에만 쓴다.", "가입도가 클수록 적합하다."], "a": 1, "why": null, "e": "소프트 디자인은 비점수차를 넓은 영역에 낮은 크기로 분산시켜 주변 흔들림이 적고 적응이 쉬우나, 원용·근용 명시역은 상대적으로 좁다. 하드 디자인은 명시역이 넓은 대신 수차가 좁은 영역에 집중된다.", "th": "민코비츠 정리: 누진면의 측방 비점수차 증가율은 누진대 굴절력 변화율과 관련 → 누진대가 길수록 수차 경사 완만.", "cite": "", "area": "이론"}, {"id": "mat-13", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "청색광 차단(블루라이트 차단) 렌즈에 대한 설명으로 옳은 것은?", "o": ["편광 필터의 일종이다.", "UV-C만 차단한다.", "모든 가시광선을 균일하게 50 % 줄인다.", "가시광선 중 단파장(약 380~500 nm) 청색광의 일부를 흡수 또는 반사한다.", "적외선만 선택적으로 차단한다."], "a": 3, "why": null, "e": "청색광 차단 렌즈는 렌즈 소재에 흡수제를 넣거나 표면 코팅으로 단파장 청색광의 일부를 줄이며, 이로 인해 렌즈가 약간 노란빛을 띠거나 표면 반사가 푸르스름하게 보일 수 있다.", "th": "청색광 차단율은 제품마다 다르며, 색 인지에 약간 영향을 줄 수 있다.", "cite": "", "area": "이론"}, {"id": "mat-14", "ch": "mat", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "유리렌즈와 비교한 플라스틱(CR-39) 렌즈의 특성으로 옳은 것은?", "o": ["가볍고 깨짐에 강하나 표면 긁힘에 약하다.", "무겁고 깨지기 쉬우나 긁힘에 강하다.", "염색이 불가능하다.", "열에 의한 변형이 전혀 없다.", "굴절률이 항상 유리보다 높다."], "a": 0, "why": null, "e": "플라스틱 렌즈는 비중이 작아 가볍고 내충격성이 좋으며 염색이 쉽지만, 표면 경도가 낮아 긁힘에 약하므로 하드코팅을 한다.", "th": "크라운유리 비중 약 2.5, CR-39 약 1.32.", "cite": "", "area": "이론"}, {"id": "sopt-07", "ch": "sopt", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "unit", "q": "굴절력 +60.00 D, 내부 굴절률 4/3인 생략안의 후초점거리(굴절면~망막 초점)는?", "o": ["약 16.7 mm", "약 17.1 mm", "약 22.2 mm", "약 24.0 mm", "약 25.0 mm"], "a": 2, "why": null, "e": "후초점거리 f′ = n′/F = 1.333/60 m = 0.0222 m = 22.2 mm. 전초점거리 f = 1/F = 16.7 mm.", "th": "생략안 곡률반경 r = (n′ − 1)/F = 0.333/60 = 5.55 mm.", "cite": "", "area": "이론"}, {"id": "sopt-09", "ch": "sopt", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "S −1.00 D ◯ C −2.00 D Ax 180 렌즈의 등가구면 굴절력은?", "o": ["−3.00 D", "−2.00 D", "−1.50 D", "−1.00 D", "+1.00 D"], "a": 1, "why": null, "e": "등가구면 = S + C/2 = −1.00 + (−2.00/2) = −2.00 D. 최소착란원은 이 위치에 생긴다.", "th": "스텀 원뿔(Sturm's conoid): 두 초선 사이 디옵터상 중간에 최소착란원.", "cite": "", "area": "이론"}, {"id": "sopt-12", "ch": "sopt", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "카파각이 양(+)으로 큰 사람에게서 나타나는 외관상 소견은?", "o": ["각막반사가 동공 중심보다 비측에 위치하여 외사시처럼 보인다.", "수직 사시처럼 보인다.", "실제 내사시가 있다.", "실제 외사시가 있다.", "각막반사가 이측에 위치하여 내사시처럼 보인다."], "a": 0, "why": null, "e": "양성 카파각(시축이 동공중심선보다 비측)에서는 각막반사가 동공 중심의 비측에 보여 가성외사시처럼 보인다. 가림검사에서 움직임이 없으면 실제 사시가 아니다.", "th": "카파각: 시축과 동공중심선이 이루는 각. 허쉬버그 검사 시 해석에 주의.", "cite": "", "area": "이론"}, {"id": "refr-15", "ch": "refr", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "age", "q": "NRA(음성상대조절) +2.50 D, PRA(양성상대조절) −1.50 D, 잠정 가입도 +1.00 D일 때 NRA/PRA 균형법으로 조정한 가입도는?", "o": ["+0.50 D", "+1.00 D", "+1.50 D", "+2.00 D", "+2.50 D"], "a": 2, "why": null, "e": "조정 가입도 = 잠정 가입도 + (NRA + PRA)/2 = +1.00 + (+2.50 + (−1.50))/2 = +1.00 + 0.50 = +1.50 D.", "th": "NRA·PRA를 잠정 가입도 위에서 측정하였을 때 적용. NRA와 PRA가 같아지도록 중앙에 맞추는 원리.", "cite": "", "area": "응용"}, {"id": "fab-13", "ch": "fab", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "안경을 착용했을 때 안경이 자꾸 코 아래로 흘러내린다. 가장 적절한 조정은?", "o": ["렌즈를 더 큰 것으로 교체한다.", "안경다리 끝(팁)의 굽힘 위치를 앞당기고 귀 뒤에 밀착되도록 조인다.", "전경각을 크게 한다.", "안경다리를 바깥으로 벌린다.", "코받침 간격을 넓힌다."], "a": 1, "why": null, "e": "흘러내림은 템플 팁의 굽힘 위치가 귀보다 뒤에 있거나 템플이 헐거운 경우가 많다. 굽힘 위치를 귀 뿌리에 맞추고 팁을 귀 뒤 형태에 밀착시키며, 필요하면 코받침 간격을 좁힌다.", "th": "피팅 3점 지지: 코 + 양쪽 귀. 템플 벌어짐(개폐각)·길이·팁 밀착 점검.", "cite": "", "area": "응용"}, {"id": "fab-14", "ch": "fab", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "age", "q": "렌즈미터로 누진굴절력렌즈의 가입도를 측정하는 방법으로 옳은 것은?", "o": ["피팅 포인트에서 한 번만 측정한다.", "근용부 후면정점굴절력에서 원용부 전면정점굴절력을 뺀다.", "가입도는 렌즈미터로 측정할 수 없다.", "렌즈 전면을 렌즈 받침에 대고 근용부와 원용부의 전면정점굴절력 차이를 구한다.", "후면을 대고 원용부만 측정한다."], "a": 3, "why": null, "e": "다초점렌즈의 가입도는 근용 분절(또는 누진면)이 대개 전면에 있으므로 전면을 렌즈 받침에 대고 원용부·근용부의 전면정점굴절력을 측정해 그 차이로 구한다. 누진렌즈는 숨은 각인의 가입도 표기로도 확인한다.", "th": "원용 처방 확인은 후면정점굴절력(후면을 받침에)으로 한다.", "cite": "", "area": "응용"}, {"id": "fab-15", "ch": "fab", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "unit", "q": "고도근시(−8.00 D) 고객의 안경테 선택 조언으로 가장 적절한 것은?", "o": ["전경각이 없는 큰 보잉 선글라스형을 권한다.", "렌즈 크기가 작고 FPD가 고객 PD에 가까운 테를 고르고, 고굴절 렌즈를 권한다.", "렌즈 크기가 큰 테를 고른다.", "무테 투포인트에 CR-39 렌즈를 권한다.", "FPD가 PD보다 10 mm 이상 큰 테를 고른다."], "a": 1, "why": null, "e": "마이너스 렌즈는 가장자리가 두꺼우므로 렌즈 크기가 작고 편위량이 적은(FPD ≈ PD) 테를 고르면 가장자리 두께와 무게가 줄어든다. 고굴절·비구면 렌즈를 함께 권한다.", "th": "가장자리 두께는 렌즈 반경의 제곱에 비례해 증가하는 새그(sag)에 의해 결정된다: s ≈ h²/(2r).", "cite": "", "area": "응용"}, {"id": "fab-16", "ch": "fab", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "산업용 보호안경이나 무테(투포인트) 안경에 가공 시 균열 위험이 적어 많이 사용하는 렌즈 재료는?", "o": ["플린트유리", "크라운유리", "폴리카보네이트 또는 트라이벡스(Trivex)", "고굴절 유리(n=1.9)", "CR-39 (특히 고도 마이너스 무코팅)"], "a": 2, "why": null, "e": "폴리카보네이트·트라이벡스는 내충격성과 인장강도가 높아 구멍을 뚫는 무테 가공이나 보호안경에 적합하다.", "th": "트라이벡스: n ≈ 1.53, 아베수 약 43~45, 가볍고 내충격성 우수.", "cite": "", "area": "응용"}, {"id": "nsopt-05", "ch": "sopt", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "vertex", "q": "정점간거리 14 mm에서 +6.00 D 안경을 쓰는 손님의 CL 도수에 가장 가까운 것은?", "o": ["+5.50 D", "+5.75 D", "+6.00 D", "+6.50 D", "+7.25 D"], "a": 3, "why": ["근시처럼 약해지는 방향으로 계산했어요.", "방향을 반대로 계산했어요.", "정점간거리를 빼먹었어요.", "Fc = 6 ÷ (1 − 0.014 × 6) = 6 ÷ 0.916 ≈ +6.55 → +6.50 D. 원시는 CL이 강해져요.", "너무 크게 잡았어요."], "e": "", "th": "", "cite": "", "area": "이론"}, {"id": "nrefr-02", "ch": "refr", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "sign", "q": "S +1.00 D C −2.00 D Ax 30을 (+)원주 형식으로 바꾸면?", "o": ["S −1.00 D C −2.00 D Ax 120", "S +1.00 D C +2.00 D Ax 120", "S −1.00 D C +2.00 D Ax 30", "S −1.00 D C +2.00 D Ax 120", "S +3.00 D C −2.00 D Ax 120"], "a": 3, "why": ["C의 부호를 바꾸지 않았어요.", "S를 바꾸지 않았어요.", "축을 90° 돌리지 않았어요.", "S′ = S + C = −1.00, C′ = +2.00, 축 30 + 90 = 120.", "S − C로 계산했어요."], "e": "", "th": "", "cite": "", "area": "응용"}, {"id": "nsopt-09", "ch": "sopt", "part": "p5", "tier": "응용", "tag": "[출제기준 추정]", "mt": "age", "q": "55세 정시안이 40 cm에서 책을 읽는다. Hofstetter 평균 조절력의 절반을 남긴다고 할 때 필요한 가입도는?", "o": ["+0.75 D", "+1.00 D", "+1.50 D", "+2.00 D", "+2.50 D"], "a": 2, "why": ["나이 계산이 틀렸어요.", "조절력을 전부 쓴다고 봤어요(남김 없음).", "조절력 18.5 − 16.5 = 2.0 D, 절반 1.0 D 사용 → 2.50 − 1.00 = +1.50 D.", "작업거리 계산이 틀렸어요.", "조절력을 전혀 쓰지 않는다고 봤어요."], "e": "", "th": "", "cite": "", "area": "이론"}, {"id": "mat-05", "ch": "mat", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "굴절률 1.74인 고굴절 렌즈 한 면의 수직입사 반사율로 가장 가까운 것은?", "o": ["약 4.0 %", "약 5.2 %", "약 7.3 %", "약 9.8 %", "약 12.5 %"], "a": 2, "why": null, "e": "R = ((1.74 − 1)/(1.74 + 1))² = (0.74/2.74)² = 0.2701² ≈ 0.0729 → 약 7.3 %.", "th": "R = ((n − 1)/(n + 1))².", "cite": "", "area": "이론"}, {"id": "mat-10", "ch": "mat", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "이론적으로 상의 도약(image jump)이 일어나지 않는 이중초점렌즈의 분절 형태는?", "o": ["원형 분절(22 mm)", "리본형", "E형(이그제큐티브, 일자 전폭형)", "원형 분절(38 mm)", "누진 전환이 없는 원형 융착형"], "a": 2, "why": null, "e": "상 도약 = (분절 광학중심에서 분절 상단까지 거리, cm) × 가입도. E형은 분절 광학중심이 분절 경계선 위에 있으므로 거리가 0 → 상 도약이 없다. 일자형(D형)은 광학중심이 상단 약 3~5 mm 아래라 상 도약이 작다.", "th": "원형 분절은 광학중심이 분절 중심(반지름만큼 아래)에 있어 상 도약이 크다. 예: 22 mm 원형, Add +2.00 → 1.1 cm × 2 = 2.2 Δ.", "cite": "", "area": "이론"}, {"id": "mat-15", "ch": "mat", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "굴절률 1.50인 렌즈에 단층 반사방지막을 입힐 때, 반사를 0으로 만드는 이상적인 막의 굴절률은? (공기 n=1.00)", "o": ["약 1.00", "약 1.22", "약 1.38", "약 1.50", "약 2.25"], "a": 1, "why": null, "e": "단층 λ/4 막에서 두 반사광의 세기가 같아지는 조건은 n_f = √(n_공기 × n_렌즈) = √1.50 ≈ 1.22이다. 실제로는 이에 가까운 MgF₂(n≈1.38)를 쓰거나 다층막을 사용한다.", "th": "AR 코팅 조건: ① 위상 조건 – 광학두께 n_f·t = λ/4 ② 진폭 조건 – n_f = √n_s.", "cite": "", "area": "이론"}, {"id": "sopt-02", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "vertex", "q": "정점간거리 13 mm에서 +10.00 D 안경으로 교정되는 무수정체안에 필요한 각막면 굴절력으로 가장 가까운 것은?", "o": ["+8.85 D", "+10.00 D", "+10.75 D", "+11.49 D", "+12.25 D"], "a": 3, "why": null, "e": "F_c = 10/(1 − 0.013 × 10) = 10/0.87 = 11.494 ≈ +11.49 D.", "th": "고도 플러스는 위치 변화에 민감 → 안경테 피팅 시 정점간거리 측정·표기 필수.", "cite": "", "area": "이론"}, {"id": "sopt-03", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "vertex", "q": "원점이 각막 앞 25 cm인 근시안을 정점간거리 12 mm의 안경으로 교정할 때 필요한 안경렌즈 굴절력은?", "o": ["−4.50 D", "−4.20 D", "−4.00 D", "−3.85 D", "−3.50 D"], "a": 1, "why": null, "e": "안경렌즈의 2차 초점이 원점에 일치해야 한다. 렌즈에서 원점까지 거리 = 250 − 12 = 238 mm → F = −1/0.238 = −4.20 D.", "th": "원점 굴절(각막면) −4.00 D → 안경면 F = R/(1 + dR) = −4/(1 − 0.048) = −4.20 D (같은 결과).", "cite": "", "area": "이론"}, {"id": "sopt-11", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "age", "q": "원용 정시, 조절력 2.00 D인 사람이 가입도 +1.50 D의 근용 단초점 안경을 쓸 때 명시역(뚜렷하게 볼 수 있는 범위)은? (안경면 기준 근사)", "o": ["약 28.6 cm ~ 66.7 cm", "약 20.0 cm ~ 50.0 cm", "약 33.3 cm ~ 66.7 cm", "약 25.0 cm ~ 무한대", "약 40.0 cm ~ 100 cm"], "a": 0, "why": null, "e": "원점: 조절 0일 때 1/1.50 = 0.667 m(66.7 cm). 근점: 조절 최대일 때 1/(1.50 + 2.00) = 1/3.50 = 0.286 m(28.6 cm).", "th": "근용안경 명시역: 원점 = 1/Add, 근점 = 1/(Add + A) (원용 교정 상태 가정).", "cite": "", "area": "이론"}, {"id": "sopt-13", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "−10.00 D 안경렌즈(얇은 렌즈 가정)의 후면에서 입사동까지 거리가 15 mm일 때 도수인자에 의한 안경배율로 가장 가까운 것은?", "o": ["0.80배", "0.87배", "0.95배", "1.00배", "1.15배"], "a": 1, "why": null, "e": "도수인자 = 1/(1 − hF) = 1/(1 − 0.015 × (−10)) = 1/1.15 = 0.870 → 약 13 % 축소.", "th": "SM = 도수인자 × 형태인자. 마이너스 렌즈는 축소, 플러스 렌즈는 확대. CL은 h ≈ 3 mm로 작아 배율 변화가 적다.", "cite": "", "area": "이론"}, {"id": "sopt-15", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "공기 중 굴절력 F인 얇은 렌즈의 굴절 행렬(굴절 버전스와 높이 [nu; y] 기준 표기, R = [[1, −F],[0, 1]])에 대한 설명으로 옳은 것은?", "o": ["행렬식이 F이다.", "두께가 있는 렌즈와 동일한 행렬이다.", "행렬식(determinant)이 1이며, 높이 y는 변하지 않고 버전스(각)만 −F·y만큼 변한다.", "렌즈 통과 후 광선 높이가 F배가 된다.", "전이(transfer) 행렬과 같다."], "a": 2, "why": null, "e": "얇은 렌즈 굴절 행렬은 높이를 보존하고 각(축약 버전스) nu′ = nu − F·y로 바꾼다. 굴절·전이 행렬 모두 행렬식이 1이다(같은 매질 기준).", "th": "전이 행렬 T = [[1, 0],[d/n, 1]] (표기 순서는 교재마다 다르므로 정의를 먼저 확인). 렌즈계 행렬 = 각 행렬의 곱(빛 진행 역순으로 곱함).", "cite": "", "area": "이론"}, {"id": "sopt-17", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "unit", "q": "대물렌즈 +10.00 D, 접안렌즈 −30.00 D로 구성된 갈릴레이 망원경(무한 초점 조정)의 각배율과 경통 길이는?", "o": ["4배, 약 100 mm", "3배, 약 66.7 mm", "3배, 약 133.3 mm", "0.33배, 약 66.7 mm", "20배, 약 133.3 mm"], "a": 1, "why": null, "e": "M = −F_e/F_o = −(−30)/10 = 3배(정립상). 경통 길이 d = f_o + f_e = 100 mm + (−33.3 mm) = 66.7 mm.", "th": "케플러식(접안렌즈 플러스)은 도립상, 경통 길이 = f_o + f_e(둘 다 양수).", "cite": "", "area": "이론"}, {"id": "refr-05", "ch": "refr", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "(−)원주렌즈로 교정 중 잭슨 크로스실린더(JCC)로 원주 축을 정밀검사할 때, 1면과 2면 중 더 선명한 면의 JCC (−)축(적색점) 위치가 현재 축보다 시계 반대 방향(축 값이 커지는 쪽)이었다. 올바른 조치는?", "o": ["JCC를 90° 회전하여 도수 정밀검사를 먼저 반복한다.", "원주 축을 반대 방향으로 돌린다.", "원주 축을 (−)축(적색점) 쪽, 즉 축 값이 커지는 방향으로 조금 돌린다.", "원주 도수를 −0.50 D 추가한다.", "구면을 +0.50 D 추가한다."], "a": 2, "why": null, "e": "축 정밀검사에서는 원주 축을 '더 선명한 면의 JCC (−)축(적색점) 방향'으로 이동시키며(따라가기), 양쪽 면이 같아질 때까지 반복한다. 축 변화량은 원주 도수가 작을수록 크게(예: 15°), 클수록 작게(예: 5°) 한다.", "th": "JCC ±0.25 D: (−)축은 적색점, (+)축은 백색점. (+)원주 교정 시에는 백색점 쪽으로 이동.", "cite": "", "area": "응용"}, {"id": "refr-06", "ch": "refr", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "JCC 도수 정밀검사 결과 원주렌즈를 −1.00 D에서 −1.50 D로 증가시켰다. 등가구면을 유지하기 위한 구면 조정은?", "o": ["구면에 +0.50 D 추가", "구면에 −0.50 D 추가", "구면 변화 없음", "구면에 −0.25 D 추가", "구면에 +0.25 D 추가"], "a": 4, "why": null, "e": "원주가 −0.50 D 증가하면 등가구면이 −0.25 D 변하므로, 구면에 +0.25 D를 추가하여 최소착란원을 망막 위에 유지한다.", "th": "등가구면 SE = S + C/2. ΔC = −0.50 → ΔSE = −0.25 → ΔS = +0.25로 보정.", "cite": "", "area": "응용"}, {"id": "fab-03", "ch": "fab", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "처방 S −2.00 D ◯ C −1.00 D Ax 180을 기준곡면(base curve) −6.00 D의 내면 토릭 렌즈로 설계할 때(얇은 렌즈 가정), 전면 구면 커브와 후면 교차커브(cross curve)는?", "o": ["전면 +3.00 D, 교차커브 −6.00 D", "전면 +4.00 D, 교차커브 −5.00 D", "전면 +4.00 D, 교차커브 −7.00 D", "전면 −4.00 D, 교차커브 −7.00 D", "전면 +8.00 D, 교차커브 −7.00 D"], "a": 2, "why": null, "e": "(−)원주 형식에서 기준곡면은 원주 축 방향(180° 경선)에 놓인다. 180° 경선 굴절력 = S = −2.00 D이므로 전면 = −2.00 − (−6.00) = +4.00 D. 교차커브(90° 경선) = 기준곡면 + C = −6.00 + (−1.00) = −7.00 D. 확인: 90° 경선 = +4.00 − 7.00 = −3.00 D = S + C. ✓", "th": "토릭 변환: 전면 구면 = S − BC (원주 부호를 BC와 같게 맞춘 처방), 교차커브 = BC + C.", "cite": "", "area": "응용"}, {"id": "fab-04", "ch": "fab", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "안경테의 전경각이 10°일 때, 일반적인 원칙(전경각 2°당 1 mm)에 따라 광학중심을 동공 중심보다 얼마나 아래에 위치시키는가?", "o": ["1 mm", "2 mm", "5 mm", "10 mm", "20 mm"], "a": 2, "why": null, "e": "전경각 2°마다 광학중심을 약 1 mm 낮추므로 10° ÷ 2 × 1 mm = 5 mm 아래에 위치시킨다. 그래야 광축이 눈의 회선점을 지나 사입사 비점수차가 줄어든다.", "th": "광학중심 하방 위치 = 전경각에 따른 '회선점 조건'(optical center rotation point requirement).", "cite": "", "area": "응용"}, {"id": "fab-06", "ch": "fab", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "unit", "q": "유효직경(ED) 56 mm, 단안 편위량 3 mm인 경우 가공 여유 2 mm를 포함한 최소 렌즈(블랭크) 직경은?", "o": ["58 mm", "59 mm", "61 mm", "64 mm", "70 mm"], "a": 3, "why": null, "e": "최소 렌즈 직경 = ED + 2 × 편위량 + 여유 = 56 + 2 × 3 + 2 = 64 mm.", "th": "편위량이 클수록 큰 렌즈가 필요하고, 마이너스 렌즈 가장자리가 두꺼워진다 → FPD가 PD에 가까운 테 선택.", "cite": "", "area": "응용"}, {"id": "fab-12", "ch": "fab", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "concept", "q": "C −2.00 D 원주렌즈가 처방 축에서 10° 어긋나게 조제되었을 때 발생하는 잔여 원주 굴절력으로 가장 가까운 것은? (같은 크기의 원주가 θ만큼 어긋난 경우의 근사식 2C sin θ 사용)", "o": ["약 0.17 D", "약 0.35 D", "약 0.69 D", "약 1.00 D", "약 2.00 D"], "a": 2, "why": null, "e": "잔여 원주 ≈ 2 × |C| × sin θ = 2 × 2.00 × sin 10° = 4 × 0.1736 = 0.69 D. 원주 도수가 클수록 같은 축 오차에도 잔여 난시가 커진다.", "th": "사교 원주 합성: 크기 같고 부호 반대인 두 원주가 θ 어긋나면 합성 원주 = 2C sin θ.", "cite": "", "area": "응용"}, {"id": "nsopt-06", "ch": "sopt", "part": "p5", "tier": "심화", "tag": "[출제기준 추정]", "mt": "vertex", "q": "+12.00 D, 정점간거리 10 mm를 간편식(F + dF²)으로 계산했을 때 정식 계산과의 차이에 가장 가까운 것은?", "o": ["약 0.20 D", "0 D", "약 2.00 D", "약 0.05 D", "약 1.44 D"], "a": 0, "why": ["정식 12 ÷ 0.88 ≈ 13.64 D, 간편 12 + 0.01 × 144 = 13.44 D → 차이 약 0.20 D. 고도수일수록 간편식 오차가 커져요.", "간편식도 근사라 오차가 있어요.", "계산 실수예요.", "오차를 너무 작게 봤어요.", "dF² 값 자체를 오차로 착각했어요."], "e": "", "th": "", "cite": "", "area": "이론"}], "mts": {"unit": "단위 바꾸기 실수 — mm, cm, m, D를 헷갈림", "base": "기저 방향 실수 — 프리즘 기저가 안쪽인지 바깥쪽인지", "sign": "부호 실수 — +와 −를 반대로 씀", "vertex": "정점간거리 실수 — 안경과 눈 사이 거리를 빼먹음", "fine": "벌금 vs 과태료 — 형벌인지 돈만 내는 것인지", "punish": "형벌 vs 행정처분 — 징역·벌금과 면허 정지를 헷갈림", "number": "조문·숫자 실수 — 기간·금액 숫자를 바꿔 외움", "phoria": "사위 종류 — 내사위·외사위를 반대로 판단", "age": "근점과 나이 — 나이별 조절력 숫자 혼동", "symptom": "증상 → 질환 연결 — 비슷한 증상의 다른 병을 고름", "concept": "개념 혼동 — 비슷한 용어·원리를 바꿔 기억"}, "theory": {"unit": "p3.html#p3-vergence", "base": "p5.html#p5-prentice", "sign": "p3.html#p3-thinlens", "vertex": "p5.html#p5-vertex", "fine": "p2.html#p2-ladder", "punish": "p2.html#p2-ladder", "number": "p2.html#p2-scope", "phoria": "p7.html#p7-bv", "age": "p5.html#p5-add", "symptom": "eye.html#eye-list", "ch:law": "p2.html#p2-sum-law", "ch:geo": "p3.html#p3-sum-geo", "ch:phy": "p4.html#p4-sum-phy", "ch:sopt": "p5.html#p5-sum-sopt", "ch:mat": "p5.html#p5-sum-mat", "ch:fab": "p5.html#p5-sum-fab", "ch:refr": "p5.html#p5-sum-refr", "ch:cl": "p6.html#p6-sum-cl", "ch:prac": "p6.html#p6-sum-prac", "ch:inst": "p6.html#p6-sum-inst", "ch:anat": "p7.html#p7-sum-anat", "ch:phys": "p7.html#p7-sum-phys", "ch:dis": "p7.html#p7-sum-dis", "ch:bv": "p7.html#p7-sum-bv", "ch:eye": "eye.html#eye-list"}, "chtitle": {"anat": "시기해부학(눈해부학)", "phys": "시기생리학(눈생리학)", "dis": "안질환", "mat": "안경재료학", "sopt": "안경광학", "geo": "기하광학", "phy": "물리광학", "law": "의료관계법규", "refr": "굴절검사", "fab": "안경조제가공", "bv": "시기능이상(양안시기능)", "cl": "콘택트렌즈", "inst": "안광학기기", "prac": "실기시험(시광학 실무)", "eye": "안질환 단원(사진·의뢰)"}, "partsSel": [{"key": "p2", "title": "파트2 의료기사법·의료관계법규", "chs": ["law"]}, {"key": "p3", "title": "파트3 기하광학·행렬", "chs": ["geo"]}, {"key": "p4", "title": "파트4 물리광학", "chs": ["phy"]}, {"key": "p5", "title": "파트5 안경광학·누진·프리즘", "chs": ["sopt", "mat", "fab", "refr"]}, {"key": "p6", "title": "파트6 콘택트렌즈·실기", "chs": ["cl", "prac", "inst"]}, {"key": "p7", "title": "파트7 안과학·양안시·안질환", "chs": ["anat", "phys", "dis", "bv", "eye"]}], "examDate": "2026-12-19"};</script><script>(function(){
+'use strict';
+var D = window.OE_DATA || {}, CFG = D.cfg || {};
+var CIRC = ['①','②','③','④','⑤'];
+function $(s, r){return (r||document).querySelector(s);}
+function $$(s, r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function onPreview(){return CFG.preview_host && location.hostname.indexOf(CFG.preview_host) >= 0;}
+// 링크: 로컬/일반 호스팅은 상대 경로, html-preview에서는 미리보기 주소로 감싸기, 한 파일(offline)에서는 페이지 안 이동
+function L(p){
+  if (D.offline){
+    var h = p.indexOf('#') >= 0 ? p.slice(p.indexOf('#')) : '';
+    var f = p.split('#')[0].replace('.html','');
+    if (f === 'quiz' || f === 'cards' || f === 'ask') return h && h.indexOf('=') > 0 ? h : '#' + f;
+    if (h) return h;
+    return '#' + (f === 'index' ? 'home' : f);
+  }
+  if (onPreview()) return CFG.qr_base + p;
+  return p;
+}
+window.OE_L = L;
+function fixLinks(root){ $$('a[data-l]', root).forEach(function(a){ a.href = L(a.getAttribute('data-l')); }); }
+// 저장소
+var KEY = 'oe-study-v1';
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
+var S = load(); S.q = S.q || {}; S.mt = S.mt || {}; S.cards = S.cards || {}; S.days = S.days || {};
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+function rec(q, ok){
+  var r = S.q[q.id] || {r:0, w:0}; if (ok) r.r++; else r.w++; r.last = ok ? 1 : 0; r.t = Date.now(); if (!q.gen) S.q[q.id] = r;
+  if (q.mt){ var m = S.mt[q.mt] || {r:0, w:0}; if (ok) m.r++; else m.w++; S.mt[q.mt] = m; }
+  save();
+}
+function shuffle(a){ a = a.slice(); for (var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function mtName(k){ var s = (D.mts || {})[k] || ''; return s.split(' — ')[0]; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+// ---------- 숫자 문제 자동 생성 (같은 실수 종류) ----------
+function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+function fD(x){ x = Math.round(x * 100) / 100; return (x > 0 ? '+' : (x < 0 ? '−' : '')) + Math.abs(x).toFixed(2) + ' D'; }
+function q4(x){ return Math.round(x * 4) / 4; }
+function mk(mt, q, opts, why, e){
+  var seen = {}, o = [], w = [];
+  for (var i = 0; i < opts.length; i++){ if (!seen[opts[i]]){ seen[opts[i]] = 1; o.push(opts[i]); w.push(why[i]); } }
+  var idx = shuffle(o.map(function(_, i){ return i; }));
+  return {id:'gen-' + mt + '-' + Math.random().toString(36).slice(2, 8), gen:true, tier:'응용', tag:'[출제기준 추정]', mt:mt,
+    q:q + ' <span class="meta">(자동 생성 연습)</span>', o:idx.map(function(i){ return o[i]; }), why:idx.map(function(i){ return w[i]; }), a:idx.indexOf(0), e:e || '', th:''};
+}
+var GEN = {
+  unit: function(){
+    var x = pick([20, 25, 40, 50, 80, 125, 200]); var v = -100 / x;
+    return mk('unit', '물체가 렌즈 앞 ' + x + ' cm에 있을 때 렌즈에 들어오는 빛의 버전스는?',
+      [fD(v), fD(-v), fD(-x / 100), fD(-x), fD(v * 10)],
+      ['앞쪽 거리는 −, ' + x + ' cm = ' + (x / 100) + ' m → −1 ÷ ' + (x / 100) + ' = ' + fD(v) + '.', '부호 실수: 렌즈 앞 물체에서 나온 빛은 퍼지므로 −예요.', 'm 값을 그대로 썼어요(역수를 안 함).', 'cm 숫자를 그대로 썼어요.', 'cm를 m로 바꿀 때 자릿수를 틀렸어요.'],
+      '단위: D = 1 ÷ m. cm면 100 ÷ cm.');
+  },
+  base: function(){
+    var F = pick([-6, -5, -4, -3, -2.5, 2, 2.5, 3, 4, 5, 6]), c = pick([2, 3, 4, 5, 6, 8]);
+    var dir = pick(['코 쪽', '귀 쪽', '위', '아래']);
+    var P = Math.round(c / 10 * Math.abs(F) * 100) / 100;
+    var plus = F > 0;
+    var toward = {'코 쪽':'BO', '귀 쪽':'BI', '위':'BD', '아래':'BU'}, away = {'코 쪽':'BI', '귀 쪽':'BO', '위':'BU', '아래':'BD'}, opp = {BI:'BO', BO:'BI', BU:'BD', BD:'BU'};
+    var b = plus ? toward[dir] : away[dir];
+    var ps = function(x){ return (Math.round(x * 100) / 100) + 'Δ '; };
+    return mk('base', fD(F) + ' 렌즈에서 시선이 광학중심보다 ' + c + ' mm ' + dir + '을(를) 지날 때 생기는 프리즘은?',
+      [ps(P) + b, ps(P) + opp[b], ps(P * 10) + b, ps(P / 10) + b, ps(Math.abs(F) / c) + b],
+      [(c / 10) + ' cm × ' + Math.abs(F) + ' = ' + P + 'Δ. ' + (plus ? '볼록렌즈는 기저가 광학중심 쪽' : '오목렌즈는 기저가 광학중심 반대쪽') + ' → ' + b + '.', '기저 방향 실수: ' + (plus ? '볼록' : '오목') + '렌즈 규칙을 반대로 썼어요.', 'mm를 cm로 바꾸지 않았어요.', '자릿수를 한 번 더 줄였어요.', '곱하지 않고 나눴어요.'],
+      '프렌티스: Δ = c(cm) × F.');
+  },
+  vertex: function(){
+    var F = pick([-12, -10, -9, -8, -7, -6, -5, 5, 6, 7, 8, 10, 12]), dmm = pick([10, 12, 14]), d = dmm / 1000;
+    var fc = F / (1 - d * F), fq = q4(fc), wrongDir = q4(F / (1 + d * F)), approx = F + d * F * F;
+    var opts = [fD(fq), fD(F), fD(wrongDir), fD(fq + (F > 0 ? 0.75 : -0.75)), fD(fq - (F > 0 ? 0.75 : -0.75))];
+    return mk('vertex', '정점간거리 ' + dmm + ' mm에서 ' + fD(F) + ' 안경을 쓰는 사람의 CL 도수(0.25 D 단위)에 가장 가까운 것은?', opts,
+      ['정식: ' + F + ' ÷ (1 − ' + d + ' × ' + F + ') = ' + fc.toFixed(2) + ' → ' + fD(fq) + '. 간편: F + dF² = ' + approx.toFixed(2) + ' D.', '정점간거리를 빼먹었어요.', '방향 실수: 안경 → CL은 F/(1 − dF)예요.', '너무 많이 바꿨어요.', '바꾸는 양이 틀렸어요.'],
+      (F < 0 ? '근시는 CL이 약해져요.' : '원시는 CL이 강해져요.') + ' ±4 D 이상이면 꼭 계산해요.');
+  },
+  sign: function(){
+    var x = pick([20, 25, 40, 50, 100]); var v = -100 / x;
+    return mk('sign', '원점이 눈앞 ' + x + ' cm인 근시안의 완전 교정 도수(정점간거리 무시)는?',
+      [fD(v), fD(-v), fD(-x / 100), fD(-x / 10), fD(v / 2)],
+      ['원점 ' + x + ' cm → 100 ÷ ' + x + ' = ' + Math.abs(v).toFixed(2) + ', 근시는 (−)렌즈 → ' + fD(v) + '.', '부호 실수: 근시는 (−)렌즈예요.', '역수를 하지 않았어요.', '단위 실수예요.', '절반으로 잘못 나눴어요.'],
+      '근시 교정 렌즈의 초점은 원점에 맞춰요.');
+  },
+  age: function(){
+    var a = pick([36, 38, 40, 42, 44, 46, 48, 50, 52, 55]); var amp = Math.round((18.5 - 0.3 * a) * 100) / 100, np = Math.round(100 / amp * 10) / 10;
+    var mn = Math.round((15 - 0.25 * a) * 100) / 100, mx = Math.round((25 - 0.4 * a) * 100) / 100;
+    var f = function(x){ return x.toFixed(2) + ' D, 근점 약 ' + (Math.round(100 / x * 10) / 10) + ' cm'; };
+    return mk('age', 'Hofstetter 평균 조절력 공식으로 ' + a + '세 정시안의 조절력과 근점은?',
+      [f(amp), f(mn), f(mx), amp.toFixed(2) + ' D, 근점 약 ' + (amp * 10).toFixed(0) + ' cm', f(amp + 2)],
+      ['평균 18.5 − 0.3 × ' + a + ' = ' + amp.toFixed(2) + ' D → 근점 100 ÷ ' + amp.toFixed(2) + ' ≈ ' + np + ' cm.', '최소 공식(15 − 0.25 × 나이)이에요.', '최대 공식(25 − 0.4 × 나이)이에요.', 'D를 cm로 바꿀 때 역수를 하지 않았어요.', '나이 계산 실수예요.'],
+      '최소 15 − 0.25×나이 · 평균 18.5 − 0.3×나이 · 최대 25 − 0.4×나이');
+  }
+};
+window.OE_GEN = GEN;
+
+// ---------- 문제 카드 ----------
+var BANK = D.qs || [];
+var byId = {}; BANK.forEach(function(q){ byId[q.id] = q; });
+function theoryLink(q){ var t = D.theory || {}; return t[q.mt] && q.mt !== 'concept' ? t[q.mt] : (t['ch:' + q.ch] || ''); }
+function qCard(q, n, opt){
+  opt = opt || {};
+  var el = document.createElement('div'); el.className = 'q'; el.id = 'q-' + q.id;
+  var tagc = q.tag.indexOf('기출') >= 0 ? 'ok' : 'est';
+  el.innerHTML = '<div class="qh"><span class="num">' + (n ? n + '.' : '') + '</span><span class="tier t-' + q.tier + '">' + q.tier + '</span><span class="tag ' + tagc + '">' + q.tag + '</span>' +
+    (q.ch && D.chtitle ? '<span class="mtl">' + (D.chtitle[q.ch] || '') + '</span>' : '') + '</div><div class="qt">' + q.q + '</div>' +
+    q.o.map(function(o, i){ return '<button class="opt" type="button" data-i="' + i + '"><b>' + CIRC[i] + '</b> ' + o + '</button>'; }).join('') +
+    '<div class="diag" hidden></div>';
+  $$('.opt', el).forEach(function(b){ b.addEventListener('click', function(){ choose(el, q, +b.getAttribute('data-i'), opt); }); });
+  return el;
+}
+function choose(el, q, i, opt){
+  if (el.getAttribute('data-done')) return;
+  if (opt.deferred){ $$('.opt', el).forEach(function(b){ b.classList.remove('pick'); }); $$('.opt', el)[i].classList.add('pick'); el.setAttribute('data-pick', i); if (opt.onPick) opt.onPick(); return; }
+  reveal(el, q, i);
+}
+function reveal(el, q, i){
+  el.setAttribute('data-done', '1');
+  var ok = i === q.a; rec(q, ok);
+  $$('.opt', el).forEach(function(b, k){ b.disabled = true; if (k === q.a) b.classList.add('right'); else if (k === i) b.classList.add('wrong'); });
+  var d = $('.diag', el), h = '';
+  if (i < 0) h += '<div class="no">답을 고르지 않았어요. 정답은 ' + CIRC[q.a] + '</div>';
+  else h += ok ? '<div class="ok">정답이에요! ' + CIRC[q.a] + '</div>' : '<div class="no">아쉬워요. 정답은 ' + CIRC[q.a] + '</div>';
+  if (!ok && i >= 0 && q.why) h += '<p><b>내가 고른 ' + CIRC[i] + '가 틀린 이유</b> ' + q.why[i] + '</p>';
+  h += '<p><b>정답 근거</b> ' + (q.why ? q.why[q.a] + ' ' : '') + (q.e || '') + '</p>';
+  if (q.th) h += '<p class="note"><b>관련 이론</b> ' + q.th + '</p>';
+  if (q.why) h += '<details><summary>보기별 오답 분석 보기</summary><ol>' + q.why.map(function(w, k){ return '<li>' + (k === q.a ? '<b>(정답)</b> ' : '') + w + '</li>'; }).join('') + '</ol></details>';
+  if (q.cite) h += '<p class="src">' + q.cite + '</p>';
+  if (q.mt) h += '<p class="meta">실수 종류: ' + (D.mts[q.mt] || q.mt) + '</p>';
+  var tl = theoryLink(q);
+  h += '<div class="ctrl">' + (tl ? '<a class="btn l" data-l="' + tl + '">이론 보러 가기</a>' : '') + '<button class="btn o sim" type="button">비슷한 문제 더 풀기</button></div><div class="simbox" hidden></div>';
+  d.innerHTML = h; d.hidden = false; fixLinks(d);
+  $('.sim', d).addEventListener('click', function(){ similar(el, q); });
+}
+function similar(el, q){
+  var box = $('.simbox', el); box.hidden = false;
+  var pool = shuffle(BANK.filter(function(x){ return x.mt === q.mt && x.id !== q.id && !(S.q[x.id] && S.q[x.id].last === 1); }));
+  var items = pool.slice(0, GEN[q.mt] ? 2 : 3);
+  if (GEN[q.mt]) items.push(GEN[q.mt]());
+  if (!items.length) items = shuffle(BANK.filter(function(x){ return x.ch === q.ch && x.id !== q.id; })).slice(0, 2);
+  box.innerHTML = '<p class="meta"><b>같은 실수 종류(' + mtName(q.mt) + ') 문제</b></p>';
+  items.forEach(function(x){ box.appendChild(qCard(x, '')); });
+  if (!D.fullBank){ var a = document.createElement('a'); a.className = 'btn l'; a.setAttribute('data-l', 'quiz.html#mt=' + q.mt); a.textContent = '이 실수 종류만 더 풀기'; box.appendChild(a); fixLinks(box); }
+}
+window.OE_qCard = qCard;
+
+// ---------- 페이지 안 문제 묶음 (파트·날짜 페이지) ----------
+function mountSet(root){
+  var ids = (root.getAttribute('data-ids') || '').split(',').filter(Boolean);
+  var qs = ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  var tabs = document.createElement('div'); tabs.className = 'ctrl';
+  var list = document.createElement('div');
+  var tiers = ['전체', '기본', '응용', '심화'];
+  function draw(t){
+    list.innerHTML = ''; var n = 0;
+    qs.forEach(function(q){ if (t === '전체' || q.tier === t){ n++; list.appendChild(qCard(q, n)); } });
+    if (!n) list.innerHTML = '<p class="note">이 단계 문제가 없어요.</p>';
+    $$('.chip', tabs).forEach(function(c){ c.classList.toggle('on', c.textContent.indexOf(t) === 0); });
+  }
+  tiers.forEach(function(t){ var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = t + ' ' + (t === '전체' ? qs.length : qs.filter(function(q){ return q.tier === t; }).length); b.onclick = function(){ draw(t); }; tabs.appendChild(b); });
+  root.appendChild(tabs); root.appendChild(list); draw('전체');
+}
+
+// ---------- 퀴즈 앱 (quiz.html, offline) ----------
+function weakList(){
+  var arr = Object.keys(S.mt).map(function(k){ var m = S.mt[k]; return {k:k, n:m.r + m.w, rate:m.w / Math.max(1, m.r + m.w)}; }).filter(function(x){ return x.n >= 2 && x.rate > 0; });
+  arr.sort(function(a, b){ return b.rate - a.rate || b.n - a.n; }); return arr;
+}
+window.OE_weak = weakList;
+function mountQuiz(root){
+  var parts = D.partsSel || [];
+  root.innerHTML = '<div class="card"><div class="ctrl"><select id="qz-cat"><option value="">전체 과목</option>' +
+    parts.map(function(p){ return '<optgroup label="' + p.title + '">' + p.chs.map(function(c){ return '<option value="ch:' + c + '">' + (D.chtitle[c] || c) + '</option>'; }).join('') + '</optgroup>'; }).join('') +
+    '</select><select id="qz-mt"><option value="">모든 실수 종류</option>' + Object.keys(D.mts).map(function(k){ return '<option value="' + k + '">' + mtName(k) + '</option>'; }).join('') + '</select>' +
+    '<select id="qz-n"><option>10</option><option selected>20</option><option value="999">전부</option></select></div>' +
+    '<div class="ctrl" id="qz-tier"></div><div class="ctrl"><button class="btn" id="qz-go" type="button">문제 풀기</button><button class="btn o" id="qz-weak" type="button">약한 부분 훈련</button>' +
+    '<button class="btn g" id="qz-mock" type="button">짧은 모의고사 40</button><button class="btn l" id="qz-gc" type="button">기출 응용</button></div><p class="meta" id="qz-info"></p></div><div id="qz-list"></div>';
+  var tier = '전체', tw = $('#qz-tier', root);
+  ['전체', '기본', '응용', '심화'].forEach(function(t){ var b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (t === tier ? ' on' : ''); b.textContent = t; b.onclick = function(){ tier = t; $$('.chip', tw).forEach(function(c){ c.classList.toggle('on', c.textContent === t); }); }; tw.appendChild(b); });
+  var list = $('#qz-list', root), info = $('#qz-info', root);
+  function show(qs, msg, deferred){
+    list.innerHTML = ''; info.textContent = msg || '';
+    var cards = [];
+    qs.forEach(function(q, i){ var c = qCard(q, i + 1, {deferred:deferred}); cards.push([c, q]); list.appendChild(c); });
+    if (deferred){
+      var t0 = Date.now(), bar = document.createElement('div'); bar.className = 'card';
+      bar.innerHTML = '<p>모의고사: 다 풀고 「채점하기」를 누르세요. <span id="qz-time"></span></p><button class="btn o" type="button" id="qz-grade">채점하기</button><div id="qz-res"></div>';
+      list.appendChild(bar);
+      var tm = setInterval(function(){ var s = Math.floor((Date.now() - t0) / 1000); var e = $('#qz-time'); if (e) e.textContent = '경과 ' + Math.floor(s / 60) + '분 ' + (s % 60) + '초'; else clearInterval(tm); }, 1000);
+      $('#qz-grade', bar).onclick = function(){
+        clearInterval(tm); var by = {};
+        cards.forEach(function(cq){ var c = cq[0], q = cq[1]; var p = c.getAttribute('data-pick'); var i = p === null ? -1 : +p; if (!c.getAttribute('data-done')) reveal(c, q, i); var a = by[q.area] = by[q.area] || {r:0, n:0}; a.n++; if (i === q.a) a.r++; });
+        var tot = 0, n = 0, rows = Object.keys(by).map(function(k){ var a = by[k]; tot += a.r; n += a.n; var p = Math.round(a.r / a.n * 100); return '<tr><td>' + k + '</td><td>' + a.r + '/' + a.n + '</td><td>' + p + '%' + (k === '실기' ? (p >= 60 ? '' : ' (60% 미만)') : (p >= 40 ? '' : ' (40% 미만)')) + '</td></tr>'; }).join('');
+        $('#qz-res', bar).innerHTML = '<div class="tblw"><table class="tbl"><tr><th>영역</th><th>맞힘</th><th>비율</th></tr>' + rows + '</table></div><p>전체 ' + tot + '/' + n + ' (' + Math.round(tot / n * 100) + '%). 실제 기준: 필기 총점 60% + 과목별 40%, 실기 60%.</p><p class="note">짧은 연습용 점검이에요. 이 점수로 합격을 예측하거나 보장할 수 없어요. 틀린 문제는 「약한 부분 훈련」에 모여요.</p>';
+        bar.scrollIntoView({behavior:'smooth'});
+      };
+    }
+    if (!qs.length) list.innerHTML = '<p class="card">조건에 맞는 문제가 없어요.</p>';
+  }
+  function filtered(){
+    var cat = $('#qz-cat', root).value, mt = $('#qz-mt', root).value;
+    return BANK.filter(function(q){ return (!cat || ('ch:' + q.ch) === cat || ('part:' + q.part) === cat) && (!mt || q.mt === mt) && (tier === '전체' || q.tier === tier); });
+  }
+  function go(){ var n = +$('#qz-n', root).value; var qs = shuffle(filtered()); var tot = qs.length; qs = qs.slice(0, n); var mt = $('#qz-mt', root).value; if (mt && GEN[mt]) { qs.push(GEN[mt]()); } show(qs, '조건에 맞는 ' + tot + '문제 중 ' + Math.min(n, tot) + '문제' + (mt && GEN[mt] ? ' + 자동 생성 1문제' : '')); }
+  function weak(){
+    var w = weakList(), wrong = BANK.filter(function(q){ return S.q[q.id] && S.q[q.id].last === 0; });
+    if (!w.length && !wrong.length){ show(shuffle(BANK.filter(function(q){ return q.tier === '기본'; })).slice(0, 10), '아직 틀린 기록이 없어요. 먼저 기본 문제 10개로 시작해요.'); return; }
+    var top = w.slice(0, 3).map(function(x){ return x.k; });
+    var qs = shuffle(wrong).slice(0, 8);
+    var more = shuffle(BANK.filter(function(q){ return top.indexOf(q.mt) >= 0 && qs.indexOf(q) < 0 && !(S.q[q.id] && S.q[q.id].last === 1); })).slice(0, 15 - qs.length);
+    qs = qs.concat(more); top.forEach(function(k){ if (GEN[k]) qs.push(GEN[k]()); });
+    show(qs, '약한 실수 종류: ' + (top.map(mtName).join(', ') || '없음') + ' · 최근 틀린 문제 ' + wrong.length + '개');
+  }
+  function mock(){
+    var plan = {법규:4, 이론:14, 응용:14, 실기:8}, qs = [];
+    Object.keys(plan).forEach(function(k){ qs = qs.concat(shuffle(BANK.filter(function(q){ return q.area === k; })).slice(0, plan[k])); });
+    show(qs, '짧은 모의고사 40문제 (법규 4 · 이론 14 · 응용 14 · 실기 8). 권장 시간 약 30분.', true);
+  }
+  function gc(){ show(BANK.filter(function(q){ return q.tag.indexOf('기출') >= 0; }), '[기출 확인] 유형: 국시원 공개 예시문항과 같은 형식의 문제'); }
+  $('#qz-go', root).onclick = go; $('#qz-weak', root).onclick = weak; $('#qz-mock', root).onclick = mock; $('#qz-gc', root).onclick = gc;
+  function applyHash(){
+    var h = decodeURIComponent(location.hash.slice(1)); if (!h || h.indexOf('=') < 0) return false;
+    var p = {}; h.split('&').forEach(function(kv){ var x = kv.split('='); p[x[0]] = x[1]; });
+    if (p.ch) $('#qz-cat', root).value = 'ch:' + p.ch;
+    if (p.part){ var o = document.createElement('option'); o.value = 'part:' + p.part; o.textContent = '파트 전체'; $('#qz-cat', root).appendChild(o); $('#qz-cat', root).value = 'part:' + p.part; }
+    if (p.mt) $('#qz-mt', root).value = p.mt;
+    if (p.tier){ tier = p.tier; $$('.chip', tw).forEach(function(c){ c.classList.toggle('on', c.textContent === tier); }); }
+    if (p.mode === 'weak') weak(); else if (p.mode === 'mock') mock(); else if (p.mode === 'gichul') gc(); else go();
+    if (D.offline){ var z = document.getElementById('quiz'); if (z) z.scrollIntoView(); }
+    return true;
+  }
+  window.addEventListener('hashchange', applyHash);
+  if (!applyHash()) go();
+}
+
+// ---------- 플래시카드 (라이트너) ----------
+var INTERVAL = [0, 1, 3, 7, 14];
+function mountCards(root){
+  var cards = D.cards || [], DAY = 86400000;
+  root.innerHTML = '<div class="card"><div class="boxes" id="fc-boxes"></div><div class="ctrl"><select id="fc-part"><option value="">모든 파트</option>' + (D.partsSel || []).map(function(p){ return '<option value="' + p.key + '">' + p.title + '</option>'; }).join('') + '</select></div></div><div class="flash" id="fc"></div><div class="ctrl"><button class="btn l" id="fc-show" type="button">뒤집기</button><button class="btn g" id="fc-ok" type="button">알았어요</button><button class="btn o" id="fc-no" type="button">몰랐어요</button></div>';
+  var cur = null, part = '';
+  function st(c){ return S.cards[c.id] || {b:0, due:0}; }
+  function counts(){ var n = [0, 0, 0, 0, 0]; cards.forEach(function(c){ n[st(c).b]++; }); $('#fc-boxes', root).innerHTML = n.map(function(x, i){ return '<span>' + (i < 4 ? '상자' + (i + 1) : '완료') + ' ' + x + '</span>'; }).join(''); }
+  function next(){
+    var now = Date.now(); var pool = cards.filter(function(c){ return (!part || c.part === part) && st(c).due <= now; });
+    counts();
+    if (!pool.length){ $('#fc', root).innerHTML = '<p>오늘 볼 카드를 다 봤어요. 내일 다시 와요!</p>'; cur = null; return; }
+    pool.sort(function(a, b){ return st(a).b - st(b).b; }); var low = st(pool[0]).b; pool = shuffle(pool.filter(function(c){ return st(c).b === low; }));
+    cur = pool[0]; $('#fc', root).innerHTML = '<div class="meta">' + (cur.ptitle || '') + ' · ' + (st(cur).b < 4 ? '상자' + (st(cur).b + 1) : '완료') + '</div><div class="front">' + cur.f + '</div><div class="back" hidden>' + cur.b + '</div>';
+  }
+  function mark(ok){ if (!cur) return; var s = st(cur); s.b = ok ? Math.min(4, s.b + 1) : 0; s.due = Date.now() + INTERVAL[s.b] * DAY; S.cards[cur.id] = s; save(); next(); }
+  $('#fc-show', root).onclick = function(){ var b = $('#fc .back', root); if (b) b.hidden = !b.hidden; };
+  $('#fc-ok', root).onclick = function(){ mark(true); }; $('#fc-no', root).onclick = function(){ mark(false); };
+  $('#fc-part', root).onchange = function(){ part = this.value; next(); };
+  next();
+}
+
+// ---------- 질문 바 (AI로 연결) ----------
+function askUrl(svc, text){
+  var cat = (document.body.getAttribute('data-cat') || '기타');
+  var prompt = '저는 한국 안경사 국가시험을 준비하는 학생입니다. [' + cat + '] 쉬운 말로, 근거(이론·공식·법조문)와 함께 설명해 주세요: ' + text;
+  return (svc === 'gpt' ? 'https://chatgpt.com/?q=' : 'https://grok.com/?q=') + encodeURIComponent(prompt);
+}
+function mountAsk(){
+  var f = $('#askform'); if (!f) return;
+  function go(svc){ var t = $('#askq').value.trim(); if (!t){ $('#askq').focus(); return; } window.open(askUrl(svc, t), '_blank', 'noopener'); }
+  f.addEventListener('submit', function(e){ e.preventDefault(); go('grok'); });
+  var alt = $('#askalt'); if (alt) alt.addEventListener('click', function(){ go('gpt'); });
+  $$('.bigbtns button').forEach(function(b){ b.addEventListener('click', function(){ document.body.setAttribute('data-cat', b.textContent); $$('.bigbtns button').forEach(function(x){ x.classList.toggle('on', x === b); }); var q = $('#askq'); q.placeholder = '[' + b.textContent + '] 궁금한 걸 적어 주세요'; q.focus(); }); });
+}
+
+// ---------- 홈: D-day, 오늘, 진행 ----------
+function mountHome(){
+  var ex = new Date(D.examDate + 'T09:00:00+09:00'), now = new Date();
+  var dd = Math.ceil((ex - now) / 86400000), e = $('#dday'); if (e) e.textContent = dd > 0 ? 'D-' + dd : (dd === 0 ? 'D-DAY' : '시험 종료');
+  var start = new Date('2026-11-10T00:00:00+09:00'), k = Math.floor((now - start) / 86400000);
+  var t = $('#today');
+  if (t){
+    if (k < 0) t.innerHTML = '11월 10일에 D1부터 시작해요.';
+    else if (k < 21){ var d = (k % 10) + 1; t.innerHTML = '오늘은 <b>' + (k < 10 ? '1회차' : (k < 20 ? '2회차' : '마무리')) + ' D' + d + '</b> → <a data-l="d' + (d < 10 ? '0' + d : d) + '.html">오늘 할 일 열기</a>'; }
+    else if (dd > 0) t.innerHTML = '지금은 <b>복습 기간</b>이에요 → <a data-l="quiz.html#mode=weak">약한 부분 훈련</a> · <a data-l="quiz.html#mode=mock">모의고사</a>';
+    else t.innerHTML = '시험이 끝났어요. 수고했어요!';
+  }
+  $$('[data-day]').forEach(function(a){ if (S.days[a.getAttribute('data-day')]) a.classList.add('done'); });
+  var n = 0, r = 0; Object.keys(S.q).forEach(function(k){ n++; if (S.q[k].last) r++; });
+  var st = $('#stats'); if (st){ var w = weakList().slice(0, 3); st.innerHTML = '푼 문제 ' + n + '개 · 최근 정답 ' + r + '개' + (n ? ' (' + Math.round(r / n * 100) + '%)' : '') + (w.length ? '<br>약한 실수 종류: ' + w.map(function(x){ return mtName(x.k) + ' ' + Math.round(x.rate * 100) + '%'; }).join(', ') : ''); }
+  fixLinks(t);
+}
+function mountDayDone(){
+  var c = $('#daydone'); if (!c) return; var k = c.getAttribute('data-d');
+  c.checked = !!S.days[k]; c.addEventListener('change', function(){ S.days[k] = c.checked ? Date.now() : 0; save(); });
+}
+// ---------- 해시 → 섹션 이동 ----------
+function scrollHash(){
+  var h = decodeURIComponent(location.hash.slice(1)); if (!h || h.indexOf('=') >= 0) return;
+  var el = document.getElementById(h); if (el) setTimeout(function(){ el.scrollIntoView(); }, 60);
+}
+// ---------- QA 훅 (#qa 일 때만) ----------
+function qa(){
+  if (location.hash.indexOf('qa') < 0) return;
+  var W = document.documentElement.clientWidth, over = [];
+  $$('body *').forEach(function(el){ var r = el.getBoundingClientRect(); if (r.width > 0 && (r.right > W + 1 || r.left < -1) && !el.closest('.tblw') && !el.closest('nav.tabs') && getComputedStyle(el).position !== 'fixed') over.push(el.tagName + '.' + el.className); });
+  var b = $('.q .opt'), clicked = 'none';
+  if (b){ b.click(); var d = b.closest('.q').querySelector('.diag'); clicked = d && !d.hidden ? 'ok' : 'fail'; var s = d && d.querySelector('.sim'); if (s){ s.click(); clicked += (d.querySelector('.simbox .q') ? '+sim' : '+nosim'); } }
+  document.body.setAttribute('data-qa', JSON.stringify({w:W, sw:document.documentElement.scrollWidth, over:over.slice(0, 10), click:clicked, qn:$$('.q').length}));
+}
+document.addEventListener('DOMContentLoaded', function(){
+  fixLinks();
+  var on = $('nav.tabs a.on'); if (on) on.parentNode.scrollLeft = Math.max(0, on.offsetLeft - 60);
+  $$('[data-set]').forEach(mountSet);
+  var qz = $('#quizapp'); if (qz) mountQuiz(qz);
+  var fc = $('#cardapp'); if (fc) mountCards(fc);
+  mountAsk(); mountDayDone();
+  if (D.page === 'home' || D.offline) mountHome();
+  scrollHash(); window.addEventListener('hashchange', scrollHash);
+  setTimeout(qa, 300);
+});
+})();
+</script></body></html>

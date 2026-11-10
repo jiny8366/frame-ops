@@ -1,0 +1,435 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>파트3 기하광학·행렬 · 안경사 국가시험 공부</title><meta name="description" content="안경사 국가시험 10일 로드맵·문제·해설 (자체 제작 학습 자료)">
+<style>*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR","Malgun Gothic","NanumGothic",sans-serif;font-size:17px;line-height:1.65;color:#1d2330;background:#f6f8fb;word-break:keep-all;overflow-wrap:anywhere;padding-bottom:96px}
+a{color:#1f5fbf}
+header.top{position:sticky;top:0;z-index:20;background:#1f3a5f;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+header.top .in{max-width:760px;margin:0 auto;padding:8px 12px;display:flex;align-items:center;gap:8px}
+header.top .ttl{font-weight:700;font-size:16px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;max-width:760px;margin:0 auto;padding:0 8px 8px;scrollbar-width:none}
+nav.tabs a{flex:0 0 auto;color:#fff;text-decoration:none;font-size:14px;padding:6px 11px;border-radius:16px;background:rgba(255,255,255,.14)}
+nav.tabs a.on{background:#e07b00}
+main{max-width:760px;margin:0 auto;padding:12px}
+h1{font-size:1.45em;line-height:1.35;margin:.4em 0 .3em;color:#1f3a5f}
+h2{font-size:1.2em;line-height:1.4;margin:1.4em 0 .5em;color:#1f3a5f;border-left:5px solid #1f3a5f;padding-left:8px}
+h3{font-size:1.05em;margin:1em 0 .4em}
+.card{background:#fff;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 3px rgba(20,40,80,.08)}
+.core{background:#fff8ec;border:2px solid #e07b00;border-radius:14px;padding:12px 14px;margin:12px 0}
+.core h2{border:0;padding:0;margin:.2em 0 .4em;color:#b35f00}
+.core ol{margin:0;padding-left:1.3em}
+.box{border-radius:10px;padding:10px 12px;margin:10px 0;font-size:.95em}
+.box b:first-child{display:inline-block;margin-right:6px}
+.box.term{background:#eef5ff;border-left:5px solid #2a6fdb}
+.box.bg{background:#f1f3f6;border-left:5px solid #777}
+.box.must{background:#fff1de;border-left:5px solid #e07b00}
+.box.must b:first-child{color:#b35f00}
+.box.star{background:#fffbe6;border-left:5px solid #d4a400}
+.box.err{background:#fdeeee;border-left:5px solid #c0392b}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.two>div{background:#fff;border:2px solid #1f3a5f;border-radius:10px;padding:8px 10px;font-size:.92em}
+.two>div:last-child{border-color:#e07b00}
+@media (max-width:380px){.two{grid-template-columns:1fr}}
+.case{background:#fff;border:1px solid #d7deea;border-radius:10px;padding:10px;margin:10px 0}
+.tblw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.tbl{border-collapse:collapse;width:100%;font-size:.88em;margin:8px 0;background:#fff}
+table.tbl th,table.tbl td{border:1px solid #cfd8e6;padding:6px 7px;vertical-align:top;text-align:left}
+table.tbl th{background:#e9eff8}
+svg.fig{display:block;width:100%;max-width:520px;height:auto;margin:10px auto;background:#fff;border-radius:10px}
+.sec{background:#fff;border-radius:14px;padding:4px 14px 12px;margin:14px 0;box-shadow:0 1px 3px rgba(20,40,80,.08);scroll-margin-top:96px}
+.sec h2{margin-top:.8em}
+.meta{font-size:.8em;color:#556}
+.stars{color:#d48a00;letter-spacing:1px}
+.tier{display:inline-block;font-size:.75em;padding:1px 8px;border-radius:10px;color:#fff;vertical-align:middle}
+.t-기본{background:#1b7a43}.t-응용{background:#2a6fdb}.t-심화{background:#7b3fb5}
+.tag{display:inline-block;font-size:.72em;padding:1px 7px;border-radius:10px;border:1px solid;vertical-align:middle}
+.tag.ok{color:#a3460a;border-color:#e07b00;background:#fff4e6}.tag.est{color:#445;border-color:#99a;background:#f4f5f8}
+.note{font-size:.9em;color:#556}.src{font-size:.78em;color:#667;word-break:break-all}
+.btn,button.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border-radius:10px;border:0;background:#1f3a5f;color:#fff;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;margin:4px 4px 4px 0}
+.btn.o{background:#e07b00}.btn.g{background:#1b7a43}.btn.l{background:#e9eff8;color:#1f3a5f}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.grid a.tile{display:block;background:#fff;border:2px solid #d7deea;border-radius:12px;padding:10px;text-decoration:none;color:#1d2330;min-height:64px}
+.grid a.tile b{display:block;color:#1f3a5f}
+.grid a.tile.done{border-color:#1b7a43;background:#effaf2}
+.q{background:#fff;border-radius:14px;padding:12px;margin:12px 0;box-shadow:0 1px 3px rgba(20,40,80,.1)}
+.qh{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.qh .num{font-weight:700;color:#1f3a5f}
+.qh .mtl{font-size:.72em;color:#667}
+.qt{font-weight:600;margin-bottom:8px}
+button.opt{display:block;width:100%;text-align:left;background:#f4f7fb;border:2px solid #d7deea;border-radius:10px;padding:10px 12px;margin:6px 0;font-size:16px;line-height:1.45;color:#1d2330;cursor:pointer;min-height:44px;font-family:inherit}
+button.opt:disabled{cursor:default;color:#1d2330}
+button.opt.right{background:#e6f6ea;border-color:#1b7a43}
+button.opt.wrong{background:#fdeaea;border-color:#c0392b}
+button.opt.pick{background:#eef5ff;border-color:#2a6fdb}
+.diag{margin-top:8px;border-top:1px dashed #ccd;padding-top:8px;font-size:.94em}
+.diag .ok{color:#1b7a43;font-weight:700}.diag .no{color:#c0392b;font-weight:700}
+.diag details{margin:6px 0}.diag summary{cursor:pointer;color:#1f5fbf}
+.simbox{border-left:4px solid #e07b00;padding-left:8px;margin-top:8px}
+.ctrl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ctrl select{font-size:15px;min-height:44px;border-radius:10px;border:1px solid #bcc7d8;padding:6px 8px;max-width:100%;background:#fff}
+.chip{border:2px solid #1f3a5f;background:#fff;color:#1f3a5f;border-radius:18px;padding:6px 12px;min-height:40px;font-size:14px;font-weight:700;cursor:pointer}
+.chip.on{background:#1f3a5f;color:#fff}
+.askbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid #d7deea;box-shadow:0 -2px 8px rgba(0,0,0,.08)}
+.askbar form{max-width:760px;margin:0 auto;display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.askbar input{flex:1;min-width:0;font-size:16px;border:1px solid #bcc7d8;border-radius:10px;padding:10px}
+.askbar button{min-height:44px;border:0;border-radius:10px;background:#e07b00;color:#fff;font-weight:700;padding:0 12px;font-size:15px}
+.askbar .alt{background:#e9eff8;color:#1f3a5f;padding:0 8px;font-size:13px}
+.bigbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bigbtns button{min-height:64px;font-size:17px;font-weight:700;border-radius:14px;border:2px solid #1f3a5f;background:#fff;color:#1f3a5f}
+.bigbtns button.on{background:#1f3a5f;color:#fff}
+.flash{background:#fff;border-radius:16px;min-height:200px;padding:18px;box-shadow:0 2px 8px rgba(20,40,80,.12);font-size:1.05em}
+.flash .front{font-weight:700;font-size:1.1em;color:#1f3a5f}
+.flash .back{margin-top:12px;border-top:1px dashed #ccd;padding-top:12px}
+.boxes{display:flex;gap:6px;flex-wrap:wrap;font-size:.85em}
+.boxes span{background:#e9eff8;border-radius:8px;padding:3px 8px}
+.dis{background:#fff;border-radius:14px;padding:12px;margin:12px 0;box-shadow:0 1px 3px rgba(20,40,80,.08)}
+.dis img{width:100%;max-width:520px;height:auto;border-radius:10px;display:block;margin:6px auto}
+.dis dl{margin:6px 0}.dis dt{font-weight:700;color:#1f3a5f}.dis dd{margin:0 0 6px 0}
+.cap{font-size:.75em;color:#556;word-break:break-all}
+.link1{background:#effaf2;border-left:5px solid #1b7a43;padding:8px 10px;border-radius:8px;font-size:.93em}
+.ref{display:grid;gap:8px}.ref div{border-radius:10px;padding:8px 10px;color:#fff}
+.dday{font-size:1.6em;font-weight:800;color:#c0392b}
+.progress{height:10px;background:#e3e8f0;border-radius:6px;overflow:hidden}.progress i{display:block;height:100%;background:#1b7a43}
+.hide{display:none!important}
+footer{max-width:760px;margin:20px auto;padding:0 12px;font-size:.8em;color:#667}
+</style></head><body data-cat="기타"><header class="top"><div class="in"><span class="ttl">파트3 기하광학·행렬</span></div><nav class="tabs"><a data-l="index.html" href="index.html">홈</a><a data-l="d01.html" href="d01.html">10일</a><a data-l="p1.html" href="p1.html">1 구조</a><a data-l="p2.html" href="p2.html">2 법규</a><a data-l="p3.html" href="p3.html" class=on>3 기하</a><a data-l="p4.html" href="p4.html">4 물리</a><a data-l="p5.html" href="p5.html">5 안경·프리즘</a><a data-l="p6.html" href="p6.html">6 CL·실기</a><a data-l="p7.html" href="p7.html">7 안과·양안시</a><a data-l="eye.html" href="eye.html">안질환</a><a data-l="quiz.html" href="quiz.html">퀴즈</a><a data-l="cards.html" href="cards.html">카드</a><a data-l="ask.html" href="ask.html">질문</a><a data-l="credits.html" href="credits.html">출처</a></nav></header>
+<main><h1>파트 3. 기하광학·행렬</h1><p class="meta">함께 보는 날: <a data-l="d03.html" href="d03.html">D3</a></p><div class="core"><h2>이것만 알아도 절반</h2><ol><li>단위: D = 1/m. 25 cm = 4 D, 33 cm ≈ 3 D, 40 cm = 2.5 D, 50 cm = 2 D.</li><li>얇은 렌즈: L′ = L + F (물체가 앞에 있으면 L은 −). 배율 m = L/L′ (음수면 도립).</li><li>두 렌즈: F = F₁ + F₂ − dF₁F₂ (d는 m). 간격이 작으면 F₁ + F₂로 어림.</li><li>프리즘: 광선은 기저 쪽으로 꺾이고, 상은 꼭지점 쪽으로 보여요. 1Δ = 1 m 앞에서 1 cm.</li><li>볼록렌즈는 실패형(핀쿠션) 왜곡, 오목렌즈는 술통형 왜곡.</li></ol></div><div class="card"><b>목차</b><ol><li><a data-l="p3.html#p3-vergence" href="p3.html#p3-vergence">버전스와 단위 바꾸기</a> <span class="stars">★★★</span></li><li><a data-l="p3.html#p3-thinlens" href="p3.html#p3-thinlens">얇은 렌즈의 상</a> <span class="stars">★★★</span></li><li><a data-l="p3.html#p3-refraction" href="p3.html#p3-refraction">반사·굴절·구면</a> <span class="stars">★★☆</span></li><li><a data-l="p3.html#p3-prismgeo" href="p3.html#p3-prismgeo">프리즘 기초</a> <span class="stars">★★★</span></li><li><a data-l="p3.html#p3-combine" href="p3.html#p3-combine">렌즈 합치기와 두꺼운 렌즈</a> <span class="stars">★★☆</span></li><li><a data-l="p3.html#p3-matrix" href="p3.html#p3-matrix">광선 행렬로 보기 (심화)</a> <span class="stars">★☆☆</span></li><li><a data-l="p3.html#p3-aberration" href="p3.html#p3-aberration">조리개·수차</a> <span class="stars">★★☆</span></li><li><a data-l="p3.html#p3-sum-geo" href="p3.html#p3-sum-geo">핵심 정리: 기하광학</a> <span class="stars">★★☆</span></li><li><a data-l="p3.html#p3-quiz" href="p3.html#p3-quiz">문제 풀기 (20문항)</a></li></ol></div><section class="sec" id="p3-vergence"><h2>버전스와 단위 바꾸기</h2><div class="meta"><span class="stars">★★★</span> <span class="tier t-기본">기본</span></div><svg class="fig" viewBox="0 0 340 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="버전스 수직선" font-family="'NG','Sym','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f3a5f"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs><line x1="20" y1="70" x2="320" y2="70" stroke="#333" stroke-width="2" marker-end="url(#ar)"/><text x="318" y="124" font-size="12" fill="#666" text-anchor="end" font-weight="normal">빛 진행 →</text><line x1="170" y1="20" x2="170" y2="120" stroke="#1f3a5f" stroke-width="3"/><text x="170" y="138" font-size="12" fill="#1f3a5f" text-anchor="middle" font-weight="normal">렌즈 (0)</text><circle cx="70" cy="70" r="6" fill="#c0392b"/><text x="70" y="50" font-size="12" fill="#333" text-anchor="middle" font-weight="normal">물체 50 cm 앞</text><text x="70" y="100" font-size="13" fill="#c0392b" text-anchor="middle" font-weight="bold">L = −2.00 D</text><circle cx="255" cy="70" r="6" fill="#c0392b"/><text x="255" y="50" font-size="12" fill="#333" text-anchor="middle" font-weight="normal">상 33 cm 뒤</text><text x="255" y="100" font-size="13" fill="#c0392b" text-anchor="middle" font-weight="bold">L′ = +3.00 D</text><text x="170" y="160" font-size="13" fill="#1f3a5f" text-anchor="middle" font-weight="bold">L′ = L + F  →  −2 + 5 = +3 D  →  1/3 m = 33 cm</text><text x="170" y="180" font-size="12" fill="#666" text-anchor="middle" font-weight="normal">왼쪽(앞) 거리는 −, 오른쪽(뒤) 거리는 +</text></svg>
+<div class="box term"><b>용어 풀이</b> 버전스 = 빛이 모이거나 퍼지는 정도. 모이면 +, 퍼지면 −. 값 = 1 ÷ 거리(m).</div>
+<div class="box must"><b>필수 암기</b> cm → D: 100 ÷ cm · mm → m: ÷ 1000 · 물체가 렌즈 앞 x cm면 L = −100/x</div>
+<div class="box err"><b>자주 하는 실수</b> 50 cm를 0.5가 아니라 50으로 넣기, 앞쪽 거리의 − 부호 빼먹기.</div></section><section class="sec" id="p3-thinlens"><h2>얇은 렌즈의 상</h2><div class="meta"><span class="stars">★★★</span> <span class="tier t-기본">기본</span></div>
+<p>예) +5.00 D 렌즈 앞 50 cm 물체: L = −2.00 D → L′ = −2 + 5 = +3.00 D → 상은 렌즈 뒤 33 cm(실상). m = −2/+3 = −0.67 → 도립·축소.</p>
+<div class="tblw"><table class="tbl"><tr><th>물체 위치(볼록렌즈)</th><th>상</th></tr>
+<tr><td>2f 바깥</td><td>실상·도립·축소</td></tr><tr><td>2f</td><td>실상·도립·같은 크기</td></tr>
+<tr><td>f ~ 2f</td><td>실상·도립·확대</td></tr><tr><td>f 안쪽</td><td>허상·정립·확대(돋보기)</td></tr></table></div>
+<p>오목렌즈의 상은 물체 위치와 관계없이 허상·정립·축소.</p></section><section class="sec" id="p3-refraction"><h2>반사·굴절·구면</h2><div class="meta"><span class="stars">★★☆</span> <span class="tier t-기본">기본</span></div>
+<ul><li>스넬 법칙: n₁ sin θ₁ = n₂ sin θ₂. 임계각: sin θc = n₂/n₁ (밀한 → 소한 매질일 때만).</li>
+<li>구면 굴절면: F = (n₂ − n₁)/r. 렌즈 제작자 공식(공기 중 얇은 렌즈): F = (n − 1)(1/r₁ − 1/r₂).</li>
+<li>구면 거울: 초점거리 = r/2. 평면거울 상은 같은 크기·정립·허상, 거울 뒤 같은 거리.</li></ul></section><section class="sec" id="p3-prismgeo"><h2>프리즘 기초</h2><div class="meta"><span class="stars">★★★</span> <span class="tier t-기본">기본</span></div>
+<ul><li>얇은 프리즘 편위각 δ ≈ (n − 1)A. 프리즘 디옵터: 1 m 앞에서 1 cm 옮겨지면 1Δ.</li>
+<li>광선은 기저 쪽으로, 상(보이는 위치)은 꼭지점 쪽으로.</li>
+<li>분산: 파장마다 굴절률이 달라 색이 갈라짐. 아베수가 클수록 색 번짐이 적어요.</li></ul></section><section class="sec" id="p3-combine"><h2>렌즈 합치기와 두꺼운 렌즈</h2><div class="meta"><span class="stars">★★☆</span> <span class="tier t-응용">응용</span></div><svg class="fig" viewBox="0 0 330 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="두꺼운 렌즈" font-family="'NG','Sym','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f3a5f"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs><line x1="10" y1="90" x2="330" y2="90" stroke="#999" stroke-dasharray="4 3"/><path d="M140,20 Q115,90 140,160 L190,160 Q215,90 190,20 Z" fill="#eef3fa" stroke="#1f3a5f" stroke-width="2"/><line x1="150" y1="15" x2="150" y2="165" stroke="#e07b00" stroke-dasharray="5 3"/><text x="150" y="180" font-size="13" fill="#e07b00" text-anchor="middle" font-weight="bold">H</text><line x1="180" y1="15" x2="180" y2="165" stroke="#e07b00" stroke-dasharray="5 3"/><text x="180" y="180" font-size="13" fill="#e07b00" text-anchor="middle" font-weight="bold">H′</text><text x="165" y="200" font-size="12" fill="#222" text-anchor="middle" font-weight="normal">주요점(H, H′)에서 재면 얇은 렌즈 공식 그대로</text><text x="165" y="218" font-size="13" fill="#1f3a5f" text-anchor="middle" font-weight="bold">F = F₁ + F₂ − (d/n)F₁F₂</text></svg>
+<div class="two"><div><b>정식</b> +3.00, +2.00 D, 간격 20 mm<br>F = 3 + 2 − 0.02 × 3 × 2 = 4.88 D</div><div><b>간편</b> 3 + 2 = 5.00 D<br>오차 0.12 D(약 2.5%). 간격이 크거나 도수가 높으면 정식으로.</div></div>
+<p>후면정점굴절력 Fv′ = F₁/(1 − (d/n)F₁) + F₂ — 렌즈미터가 재는 값이에요.</p></section><section class="sec" id="p3-matrix"><h2>광선 행렬로 보기 (심화)</h2><div class="meta"><span class="stars">★☆☆</span> <span class="tier t-심화">심화</span></div><svg class="fig" viewBox="0 0 340 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="광선과 행렬" font-family="'NG','Sym','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f3a5f"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs><line x1="10" y1="90" x2="330" y2="90" stroke="#999" stroke-dasharray="4 3"/><line x1="120" y1="25" x2="120" y2="155" stroke="#1f3a5f" stroke-width="3"/><text x="120" y="172" font-size="12" fill="#1f3a5f" text-anchor="middle" font-weight="normal">굴절 R</text><line x1="230" y1="25" x2="230" y2="155" stroke="#1f3a5f" stroke-width="3"/><text x="230" y="172" font-size="12" fill="#1f3a5f" text-anchor="middle" font-weight="normal">굴절 R</text><polyline points="20,60 120,50 230,80 320,110" fill="none" stroke="#c0392b" stroke-width="2.5" marker-end="url(#arr)"/><text x="175" y="40" font-size="12" fill="#666" text-anchor="middle" font-weight="normal">전달 T (거리 d)</text><text x="170" y="195" font-size="11" fill="#222" text-anchor="middle" font-weight="normal">광선 = [높이 y, 각 u] · R = [[1, 0], [−F, 1]] · T = [[1, d/n], [0, 1]]</text><text x="170" y="213" font-size="11" fill="#1f3a5f" text-anchor="middle" font-weight="bold">전체 행렬 = R₂ · T · R₁  → 등가굴절력 = −(왼쪽 아래 값)</text></svg>
+<div class="box bg"><b>배경</b> 렌즈가 여러 장이어도 행렬을 곱하면 한 번에 전체 굴절력을 구할 수 있어요. 프렌티스 법칙도 행렬에서 바로 나와요(높이 y에서 각이 −yF만큼 바뀜).</div></section><section class="sec" id="p3-aberration"><h2>조리개·수차</h2><div class="meta"><span class="stars">★★☆</span> <span class="tier t-응용">응용</span></div>
+<ul><li>조리개: 구경 조리개(밝기·초점 심도), 시야 조리개(보이는 범위). 동공이 작으면 초점 심도가 깊어져요.</li>
+<li>색수차(분산), 단색 수차 5가지: 구면수차·코마·비점수차·상면만곡·왜곡.</li>
+<li>왜곡: 볼록렌즈 = 실패형(핀쿠션), 오목렌즈 = 술통형. 고도수 안경에서 체감.</li></ul></section><section class="sec" id="p3-sum-geo"><h2>핵심 정리: 기하광학</h2><div class="meta"><span class="stars">★★☆</span> <span class="tier t-기본">기본</span></div><dl class="sum"><dt>굴절률·스넬 법칙</dt><dd>n = c/v. n₁ sin θ₁ = n₂ sin θ₂. 임계각 sin θ_c = n₂/n₁ (밀 → 소 매질). n = 1.5 → θ_c ≈ 41.8°. 응용: 광섬유, 전반사 프리즘.</dd><dt>버전스 공식</dt><dd>V = U + F (U = n/u, V = n′/v, 거리는 렌즈 기준 부호: 빛 진행 방향 +). 횡배율 m = U/V (공기 중 = v/u). 실물체는 U &lt; 0. 결과 V &gt; 0 → 실상, V &lt; 0 → 허상.</dd><dt>구면 굴절·거울</dt><dd>구면 굴절력 F = (n₂ − n₁)/r. 구면거울 f = r/2, 1/u + 1/v = 1/f(실제 거리 부호 규약에 주의), 평면거울 2개 사이각 θ → 상의 수 = 360/θ − 1.</dd><dt>렌즈 합성</dt><dd>밀착: F = F₁ + F₂. 분리: F_e = F₁ + F₂ − (d/n)F₁F₂. 두꺼운 렌즈 후면정점굴절력 F_v′ = F₁/(1 − (t/n)F₁) + F₂.</dd><dt>프리즘</dt><dd>얇은 프리즘 편향각 δ = (n − 1)A. 프리즘 디옵터 P = 100 tan δ (45° = 100 Δ). 분산: 단파장(보라)일수록 굴절률이 커서 많이 꺾인다.</dd><dt>조리개·수차</dt><dd>개구조리개 → 입사동(물체 공간 상)·사출동. 시야조리개 → 시야 제한. 단색수차(자이델 5수차): 구면수차·코마·비점수차·상면만곡·왜곡. 색수차: 종색수차 = F/ν, 횡색수차 = P/ν.</dd></dl></section><section class="sec" id="p3-quiz"><h2>문제 풀기 · 기본/응용/심화</h2><p class="note">고르면 바로 정답·틀린 이유·관련 이론이 나와요. 「비슷한 문제 더 풀기」로 같은 실수 종류를 더 풀어요.</p><div data-set data-ids="geo-01,geo-02,geo-03,geo-06,geo-10,geo-12,geo-16,geo-17,ngeo-01,geo-04,geo-07,geo-11,geo-13,geo-14,geo-18,ngeo-02,geo-05,geo-08,geo-09,geo-15"></div></section></main>
+<footer>자체 제작 학습 자료(문항·그림 직접 제작, 사진은 재사용 허락 라이선스만 사용 → <a data-l="credits.html" href="credits.html">출처·라이선스</a>). 합격을 보장하지 않아요. 시험 정보는 국시원 공고를 기준으로 하세요.</footer>
+<div class="askbar"><form id="askform" autocomplete="off"><input id="askq" type="text" placeholder="궁금한 걸 물어보세요 (기타)" aria-label="질문"><button type="submit">Grok에 묻기</button><button type="button" class="alt" id="askalt">ChatGPT</button></form></div>
+<script>window.OE_DATA={"cfg": {"qr_base": "https://html-preview.github.io/?url=https://github.com/jiny8366/frame-ops/blob/gh-pages/optician-exam/", "preview_host": "html-preview.github.io"}, "page": "p3", "offline": false, "fullBank": false, "qs": [{"id": "geo-01", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[기출 확인]", "mt": "sign", "q": "공기 중에 있는 물체가 +5.00 D의 얇은 렌즈 앞 50 cm에 있을 때, 상의 종류는?", "o": ["축소, 도립, 실상", "축소, 정립, 허상", "확대, 정립, 실상", "확대, 정립, 허상", "확대, 도립, 실상"], "a": 0, "why": null, "e": "U = 1/(−0.50 m) = −2.00 D, V = U + F = −2.00 + 5.00 = +3.00 D → v = +33.3 cm(렌즈 뒤, 실상). 횡배율 m = U/V = −2/3 ≈ −0.67 → 크기 2/3로 축소, 부호(−)이므로 도립.", "th": "버전스 공식 V = U + F, 횡배율 m = U/V. 물체가 2f(40 cm)보다 멀리 있으면 축소 도립 실상.", "cite": "출처: 한국보건의료인국가시험원, 「2025년도 안경사 국가시험 종합안내서」(2025.8.) Ⅲ-2. 예시문항 (문항 원문 인용, 정답·풀이는 이 자료의 풀이). 국시원 출제정보: https://www.kuksiwon.or.kr", "area": "이론"}, {"id": "geo-02", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "굴절률 1.5인 유리 안에서 빛의 속력은? (진공 중 빛의 속력 3.0 × 10⁸ m/s)", "o": ["1.0 × 10⁸ m/s", "1.5 × 10⁸ m/s", "2.0 × 10⁸ m/s", "3.0 × 10⁸ m/s", "4.5 × 10⁸ m/s"], "a": 2, "why": null, "e": "v = c/n = 3.0 × 10⁸ / 1.5 = 2.0 × 10⁸ m/s.", "th": "굴절률 n = c/v. 진동수는 매질에서 변하지 않고 속력과 파장이 1/n로 줄어든다.", "cite": "", "area": "이론"}, {"id": "geo-03", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "굴절률 1.50인 유리에서 공기로 빛이 진행할 때 임계각으로 가장 가까운 것은?", "o": ["30.0°", "41.8°", "48.6°", "56.3°", "60.0°"], "a": 1, "why": null, "e": "sin θ_c = 1/1.50 = 0.667 → θ_c ≈ 41.8°. 입사각이 이보다 크면 전반사가 일어난다.", "th": "참고: 물(n=1.33)의 임계각 ≈ 48.8°, 56.3°는 n=1.5의 브루스터각.", "cite": "", "area": "이론"}, {"id": "geo-06", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "sign", "q": "+2.00 D 얇은 렌즈 앞 25 cm에 물체가 있을 때 생기는 상에 대한 설명으로 옳은 것은?", "o": ["렌즈 뒤 50 cm에 2배 확대된 도립 실상", "렌즈 뒤 16.7 cm에 축소된 도립 실상", "상이 무한대에 생긴다.", "렌즈 앞 50 cm에 2배 확대된 정립 허상", "렌즈 앞 25 cm에 같은 크기의 정립 허상"], "a": 3, "why": null, "e": "U = 1/(−0.25) = −4.00 D, V = −4.00 + 2.00 = −2.00 D → v = −50 cm(렌즈 앞, 허상). m = U/V = −4/−2 = +2 → 2배 확대 정립.", "th": "물체가 초점(50 cm) 안쪽에 있으면 볼록렌즈는 확대경처럼 정립 확대 허상을 만든다.", "cite": "", "area": "이론"}, {"id": "geo-10", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "꼭지각 6°, 굴절률 1.50인 얇은 프리즘의 최소 편향각은?", "o": ["1.5°", "3°", "4°", "6°", "9°"], "a": 1, "why": null, "e": "얇은 프리즘 근사 δ = (n − 1)A = 0.50 × 6° = 3°.", "th": "프리즘 디옵터로는 P = 100 tan 3° ≈ 5.24 Δ.", "cite": "", "area": "이론"}, {"id": "geo-12", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "백색광이 프리즘을 통과할 때 가장 크게 굴절(편향)되는 색은?", "o": ["보라색", "초록색", "노란색", "주황색", "빨간색"], "a": 0, "why": null, "e": "정상분산에서 파장이 짧을수록 굴절률이 크므로 보라색이 가장 크게 꺾이고 빨간색이 가장 적게 꺾인다.", "th": "적록검사(duochrome)의 원리: 눈의 종색수차로 녹색은 적색보다 앞쪽에 초점을 맺는다.", "cite": "", "area": "이론"}, {"id": "geo-16", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "자이델(Seidel)의 5가지 단색수차에 해당하지 않는 것은?", "o": ["비점수차", "코마", "왜곡", "색수차", "구면수차"], "a": 3, "why": null, "e": "자이델 5수차는 구면수차, 코마, 비점수차, 상면만곡, 왜곡이다. 색수차는 파장에 따른 굴절률 차이(분산)로 생기는 수차로 단색수차에 속하지 않는다.", "th": "안경렌즈 설계에서 특히 중요한 것: 사입사 비점수차와 상면만곡(곡률 오차), 왜곡.", "cite": "", "area": "이론"}, {"id": "geo-17", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[출제기준 추정]", "mt": "concept", "q": "광섬유(optical fiber)에서 빛을 손실 없이 전달하는 기본 원리는?", "o": ["편광", "분산", "산란", "회절", "전반사"], "a": 4, "why": null, "e": "코어(굴절률 높음)와 클래딩(굴절률 낮음)의 경계에서 임계각보다 큰 입사각으로 진행하는 빛이 전반사를 반복하며 전달된다.", "th": "전반사 조건: 밀한 매질 → 소한 매질, 입사각 &gt; 임계각.", "cite": "", "area": "이론"}, {"id": "ngeo-01", "ch": "geo", "part": "p3", "tier": "기본", "tag": "[기출 확인]", "mt": "sign", "q": "공기 중 +4.00 D 얇은 렌즈 앞 20 cm에 물체가 있다. 상의 종류는?", "o": ["확대, 도립, 실상", "확대, 정립, 허상", "같은 크기, 도립, 실상", "축소, 정립, 허상", "축소, 도립, 실상"], "a": 1, "why": ["f~2f 사이 물체일 때의 상이에요.", "L = −5 D, L′ = −5 + 4 = −1 D → 렌즈 앞 1 m 허상, m = L/L′ = +5 → 확대·정립. 물체가 초점(25 cm) 안쪽이라 돋보기 상황이에요. (국시원 예시문항 1번과 같은 유형)", "2f에 있을 때의 상이에요.", "오목렌즈의 상이에요.", "2f 바깥 물체일 때의 상이에요."], "e": "", "th": "", "cite": "", "area": "이론"}, {"id": "geo-04", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "두 평면거울을 60°로 마주 세운 사이에 물체를 놓았을 때 생기는 상의 개수는?", "o": ["3개", "4개", "5개", "6개", "7개"], "a": 2, "why": null, "e": "상의 수 N = 360°/θ − 1 = 360/60 − 1 = 5개 (360/θ가 짝수일 때 물체 위치에 무관).", "th": "평면거울 상: 정립·허상·크기 같음·좌우 반전.", "cite": "", "area": "이론"}, {"id": "geo-07", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "+3.00 D 얇은 렌즈와 −1.00 D 얇은 렌즈를 밀착시켰을 때의 합성 굴절력은?", "o": ["−3.00 D", "+1.00 D", "+2.00 D", "+3.00 D", "+4.00 D"], "a": 2, "why": null, "e": "밀착된 얇은 렌즈의 합성 굴절력은 F = F₁ + F₂ = +3.00 + (−1.00) = +2.00 D.", "th": "렌즈 간격 d가 0이면 F_e = F₁ + F₂ − dF₁F₂에서 마지막 항이 0이 된다.", "cite": "", "area": "이론"}, {"id": "geo-11", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "편향각 45°를 프리즘 디옵터로 나타내면?", "o": ["45 Δ", "57.3 Δ", "78.5 Δ", "100 Δ", "141 Δ"], "a": 3, "why": null, "e": "P = 100 × tan δ = 100 × tan 45° = 100 Δ.", "th": "1 Δ: 1 m 떨어진 곳에서 1 cm 편위. 작은 각에서는 1° ≈ 1.75 Δ.", "cite": "", "area": "이론"}, {"id": "geo-13", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "sign", "q": "초점거리 20 cm인 오목거울 앞 30 cm에 물체가 있을 때 상에 대한 설명으로 옳은 것은?", "o": ["거울 앞 12 cm에 축소된 도립 실상", "거울 앞 60 cm에 2배 확대된 도립 실상", "거울 뒤 60 cm에 2배 확대된 정립 허상", "거울 앞 20 cm에 같은 크기의 실상", "상이 생기지 않는다."], "a": 1, "why": null, "e": "1/u + 1/v = 1/f (실제 거리를 양수로): 1/30 + 1/v = 1/20 → 1/v = 1/60 → v = 60 cm(거울 앞, 실상). 배율 m = −v/u = −60/30 = −2 → 2배 확대 도립.", "th": "물체가 f와 2f 사이에 있으면 2f 바깥쪽에 확대 도립 실상이 생긴다.", "cite": "", "area": "이론"}, {"id": "geo-14", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "concept", "q": "광학계의 입사동(entrance pupil)에 대한 설명으로 옳은 것은?", "o": ["항상 렌즈 뒤쪽에 위치한다.", "상 쪽에서 본 시야조리개의 상이다.", "시야의 범위를 결정하는 조리개 자체이다.", "광학계의 초점과 항상 일치한다.", "물체 쪽에서 본 개구조리개의 상이다."], "a": 4, "why": null, "e": "입사동은 개구조리개를 그 앞쪽(물체 쪽) 광학계를 통해 본 상이며, 사출동은 뒤쪽(상 쪽)에서 본 상이다. 눈에서 입사동은 각막을 통해 본 동공(실제 동공보다 약 13 % 크고 약 0.5 mm 앞)이다.", "th": "개구조리개 → 밝기·피사계심도 결정 / 시야조리개 → 시야 결정.", "cite": "", "area": "이론"}, {"id": "geo-18", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "sign", "q": "볼록렌즈의 초점거리의 2배 위치(2f)에 실물체를 놓았을 때의 상은?", "o": ["반대쪽 f 위치에 축소 실상", "반대쪽 4f 위치에 2배 확대 실상", "무한대에 생긴다", "같은 쪽 2f 위치에 같은 크기의 정립 허상", "반대쪽 2f 위치에 같은 크기의 도립 실상"], "a": 4, "why": null, "e": "u = −2f일 때 1/v = 1/f + 1/u = 1/f − 1/(2f) = 1/(2f) → v = +2f. 배율 m = v/u = −1 → 같은 크기, 도립 실상.", "th": "버전스: U = −F/2, V = U + F = +F/2 → m = U/V = −1.", "cite": "", "area": "이론"}, {"id": "ngeo-02", "ch": "geo", "part": "p3", "tier": "응용", "tag": "[출제기준 추정]", "mt": "unit", "q": "+4.00 D와 +6.00 D 얇은 렌즈를 공기 중 25 mm 간격으로 두었다. 등가굴절력은?", "o": ["−50.00 D", "+4.00 D", "+9.40 D", "+10.00 D", "+10.60 D"], "a": 2, "why": ["25를 m로 바꾸지 않았어요(25 × 24 = 600).", "잘못된 공식이에요.", "F = 4 + 6 − 0.025 × 4 × 6 = 10 − 0.6 = 9.40 D.", "간격을 무시했어요.", "dF₁F₂를 더했어요(부호 실수)."], "e": "", "th": "", "cite": "", "area": "이론"}, {"id": "geo-05", "ch": "geo", "part": "p3", "tier": "심화", "tag": "[출제기준 추정]", "mt": "unit", "q": "곡률반경 7.8 mm, 굴절률 1.376인 각막 전면(앞쪽은 공기)의 굴절력으로 가장 가까운 것은?", "o": ["+43.1 D", "+45.0 D", "+48.2 D", "+50.4 D", "+52.0 D"], "a": 2, "why": null, "e": "F = (n₂ − n₁)/r = (1.376 − 1.000)/0.0078 m = 0.376/0.0078 = +48.2 D.", "th": "각막곡률계는 각막 후면 효과까지 근사하기 위해 환산 굴절률 1.3375를 사용 → 337.5/7.8 = 43.27 D.", "cite": "", "area": "이론"}, {"id": "geo-08", "ch": "geo", "part": "p3", "tier": "심화", "tag": "[출제기준 추정]", "mt": "unit", "q": "공기 중에서 +5.00 D 얇은 렌즈 두 개를 10 cm 간격으로 배치했을 때의 등가굴절력은?", "o": ["+2.50 D", "+5.00 D", "+7.50 D", "+10.00 D", "+12.50 D"], "a": 2, "why": null, "e": "F_e = F₁ + F₂ − dF₁F₂ = 5 + 5 − 0.10 × 5 × 5 = 10 − 2.5 = +7.50 D.", "th": "굴스트란드 공식. 매질이 공기가 아니면 d 대신 d/n(환산거리)을 쓴다.", "cite": "", "area": "이론"}, {"id": "geo-09", "ch": "geo", "part": "p3", "tier": "심화", "tag": "[출제기준 추정]", "mt": "unit", "q": "전면 굴절력 +8.00 D, 후면 굴절력 −2.00 D, 중심두께 6 mm, 굴절률 1.50인 렌즈의 후면정점굴절력으로 가장 가까운 것은?", "o": ["+5.81 D", "+6.00 D", "+6.26 D", "+6.53 D", "+8.26 D"], "a": 2, "why": null, "e": "F_v′ = F₁/(1 − (t/n)F₁) + F₂ = 8/(1 − (0.006/1.5) × 8) − 2 = 8/0.968 − 2 = 8.264 − 2 = +6.26 D.", "th": "렌즈미터는 후면정점굴절력을 측정한다. 공칭굴절력(F₁ + F₂ = +6.00 D)과의 차이는 두께 효과.", "cite": "", "area": "이론"}, {"id": "geo-15", "ch": "geo", "part": "p3", "tier": "심화", "tag": "[출제기준 추정]", "mt": "unit", "q": "아베수 30인 −6.00 D 렌즈에서 광학중심으로부터 10 mm 떨어진 곳을 볼 때 발생하는 횡색수차는?", "o": ["0.05 Δ", "0.10 Δ", "0.20 Δ", "0.30 Δ", "1.80 Δ"], "a": 2, "why": null, "e": "그 위치의 프리즘 굴절력 P = 1.0 cm × 6.00 = 6.0 Δ. 횡색수차 TCA = P/ν = 6.0/30 = 0.20 Δ.", "th": "종색수차 LCA = F/ν. 횡색수차가 약 0.1 Δ 이상이면 색번짐을 느낄 수 있다고 알려져 있다.", "cite": "", "area": "이론"}], "mts": {"unit": "단위 바꾸기 실수 — mm, cm, m, D를 헷갈림", "base": "기저 방향 실수 — 프리즘 기저가 안쪽인지 바깥쪽인지", "sign": "부호 실수 — +와 −를 반대로 씀", "vertex": "정점간거리 실수 — 안경과 눈 사이 거리를 빼먹음", "fine": "벌금 vs 과태료 — 형벌인지 돈만 내는 것인지", "punish": "형벌 vs 행정처분 — 징역·벌금과 면허 정지를 헷갈림", "number": "조문·숫자 실수 — 기간·금액 숫자를 바꿔 외움", "phoria": "사위 종류 — 내사위·외사위를 반대로 판단", "age": "근점과 나이 — 나이별 조절력 숫자 혼동", "symptom": "증상 → 질환 연결 — 비슷한 증상의 다른 병을 고름", "concept": "개념 혼동 — 비슷한 용어·원리를 바꿔 기억"}, "theory": {"unit": "p3.html#p3-vergence", "base": "p5.html#p5-prentice", "sign": "p3.html#p3-thinlens", "vertex": "p5.html#p5-vertex", "fine": "p2.html#p2-ladder", "punish": "p2.html#p2-ladder", "number": "p2.html#p2-scope", "phoria": "p7.html#p7-bv", "age": "p5.html#p5-add", "symptom": "eye.html#eye-list", "ch:law": "p2.html#p2-sum-law", "ch:geo": "p3.html#p3-sum-geo", "ch:phy": "p4.html#p4-sum-phy", "ch:sopt": "p5.html#p5-sum-sopt", "ch:mat": "p5.html#p5-sum-mat", "ch:fab": "p5.html#p5-sum-fab", "ch:refr": "p5.html#p5-sum-refr", "ch:cl": "p6.html#p6-sum-cl", "ch:prac": "p6.html#p6-sum-prac", "ch:inst": "p6.html#p6-sum-inst", "ch:anat": "p7.html#p7-sum-anat", "ch:phys": "p7.html#p7-sum-phys", "ch:dis": "p7.html#p7-sum-dis", "ch:bv": "p7.html#p7-sum-bv", "ch:eye": "eye.html#eye-list"}, "chtitle": {"anat": "시기해부학(눈해부학)", "phys": "시기생리학(눈생리학)", "dis": "안질환", "mat": "안경재료학", "sopt": "안경광학", "geo": "기하광학", "phy": "물리광학", "law": "의료관계법규", "refr": "굴절검사", "fab": "안경조제가공", "bv": "시기능이상(양안시기능)", "cl": "콘택트렌즈", "inst": "안광학기기", "prac": "실기시험(시광학 실무)", "eye": "안질환 단원(사진·의뢰)"}, "partsSel": [{"key": "p2", "title": "파트2 의료기사법·의료관계법규", "chs": ["law"]}, {"key": "p3", "title": "파트3 기하광학·행렬", "chs": ["geo"]}, {"key": "p4", "title": "파트4 물리광학", "chs": ["phy"]}, {"key": "p5", "title": "파트5 안경광학·누진·프리즘", "chs": ["sopt", "mat", "fab", "refr"]}, {"key": "p6", "title": "파트6 콘택트렌즈·실기", "chs": ["cl", "prac", "inst"]}, {"key": "p7", "title": "파트7 안과학·양안시·안질환", "chs": ["anat", "phys", "dis", "bv", "eye"]}], "examDate": "2026-12-19"};</script><script>(function(){
+'use strict';
+var D = window.OE_DATA || {}, CFG = D.cfg || {};
+var CIRC = ['①','②','③','④','⑤'];
+function $(s, r){return (r||document).querySelector(s);}
+function $$(s, r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function onPreview(){return CFG.preview_host && location.hostname.indexOf(CFG.preview_host) >= 0;}
+// 링크: 로컬/일반 호스팅은 상대 경로, html-preview에서는 미리보기 주소로 감싸기, 한 파일(offline)에서는 페이지 안 이동
+function L(p){
+  if (D.offline){
+    var h = p.indexOf('#') >= 0 ? p.slice(p.indexOf('#')) : '';
+    var f = p.split('#')[0].replace('.html','');
+    if (f === 'quiz' || f === 'cards' || f === 'ask') return h && h.indexOf('=') > 0 ? h : '#' + f;
+    if (h) return h;
+    return '#' + (f === 'index' ? 'home' : f);
+  }
+  if (onPreview()) return CFG.qr_base + p;
+  return p;
+}
+window.OE_L = L;
+function fixLinks(root){ $$('a[data-l]', root).forEach(function(a){ a.href = L(a.getAttribute('data-l')); }); }
+// 저장소
+var KEY = 'oe-study-v1';
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
+var S = load(); S.q = S.q || {}; S.mt = S.mt || {}; S.cards = S.cards || {}; S.days = S.days || {};
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+function rec(q, ok){
+  var r = S.q[q.id] || {r:0, w:0}; if (ok) r.r++; else r.w++; r.last = ok ? 1 : 0; r.t = Date.now(); if (!q.gen) S.q[q.id] = r;
+  if (q.mt){ var m = S.mt[q.mt] || {r:0, w:0}; if (ok) m.r++; else m.w++; S.mt[q.mt] = m; }
+  save();
+}
+function shuffle(a){ a = a.slice(); for (var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function mtName(k){ var s = (D.mts || {})[k] || ''; return s.split(' — ')[0]; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+// ---------- 숫자 문제 자동 생성 (같은 실수 종류) ----------
+function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+function fD(x){ x = Math.round(x * 100) / 100; return (x > 0 ? '+' : (x < 0 ? '−' : '')) + Math.abs(x).toFixed(2) + ' D'; }
+function q4(x){ return Math.round(x * 4) / 4; }
+function mk(mt, q, opts, why, e){
+  var seen = {}, o = [], w = [];
+  for (var i = 0; i < opts.length; i++){ if (!seen[opts[i]]){ seen[opts[i]] = 1; o.push(opts[i]); w.push(why[i]); } }
+  var idx = shuffle(o.map(function(_, i){ return i; }));
+  return {id:'gen-' + mt + '-' + Math.random().toString(36).slice(2, 8), gen:true, tier:'응용', tag:'[출제기준 추정]', mt:mt,
+    q:q + ' <span class="meta">(자동 생성 연습)</span>', o:idx.map(function(i){ return o[i]; }), why:idx.map(function(i){ return w[i]; }), a:idx.indexOf(0), e:e || '', th:''};
+}
+var GEN = {
+  unit: function(){
+    var x = pick([20, 25, 40, 50, 80, 125, 200]); var v = -100 / x;
+    return mk('unit', '물체가 렌즈 앞 ' + x + ' cm에 있을 때 렌즈에 들어오는 빛의 버전스는?',
+      [fD(v), fD(-v), fD(-x / 100), fD(-x), fD(v * 10)],
+      ['앞쪽 거리는 −, ' + x + ' cm = ' + (x / 100) + ' m → −1 ÷ ' + (x / 100) + ' = ' + fD(v) + '.', '부호 실수: 렌즈 앞 물체에서 나온 빛은 퍼지므로 −예요.', 'm 값을 그대로 썼어요(역수를 안 함).', 'cm 숫자를 그대로 썼어요.', 'cm를 m로 바꿀 때 자릿수를 틀렸어요.'],
+      '단위: D = 1 ÷ m. cm면 100 ÷ cm.');
+  },
+  base: function(){
+    var F = pick([-6, -5, -4, -3, -2.5, 2, 2.5, 3, 4, 5, 6]), c = pick([2, 3, 4, 5, 6, 8]);
+    var dir = pick(['코 쪽', '귀 쪽', '위', '아래']);
+    var P = Math.round(c / 10 * Math.abs(F) * 100) / 100;
+    var plus = F > 0;
+    var toward = {'코 쪽':'BO', '귀 쪽':'BI', '위':'BD', '아래':'BU'}, away = {'코 쪽':'BI', '귀 쪽':'BO', '위':'BU', '아래':'BD'}, opp = {BI:'BO', BO:'BI', BU:'BD', BD:'BU'};
+    var b = plus ? toward[dir] : away[dir];
+    var ps = function(x){ return (Math.round(x * 100) / 100) + 'Δ '; };
+    return mk('base', fD(F) + ' 렌즈에서 시선이 광학중심보다 ' + c + ' mm ' + dir + '을(를) 지날 때 생기는 프리즘은?',
+      [ps(P) + b, ps(P) + opp[b], ps(P * 10) + b, ps(P / 10) + b, ps(Math.abs(F) / c) + b],
+      [(c / 10) + ' cm × ' + Math.abs(F) + ' = ' + P + 'Δ. ' + (plus ? '볼록렌즈는 기저가 광학중심 쪽' : '오목렌즈는 기저가 광학중심 반대쪽') + ' → ' + b + '.', '기저 방향 실수: ' + (plus ? '볼록' : '오목') + '렌즈 규칙을 반대로 썼어요.', 'mm를 cm로 바꾸지 않았어요.', '자릿수를 한 번 더 줄였어요.', '곱하지 않고 나눴어요.'],
+      '프렌티스: Δ = c(cm) × F.');
+  },
+  vertex: function(){
+    var F = pick([-12, -10, -9, -8, -7, -6, -5, 5, 6, 7, 8, 10, 12]), dmm = pick([10, 12, 14]), d = dmm / 1000;
+    var fc = F / (1 - d * F), fq = q4(fc), wrongDir = q4(F / (1 + d * F)), approx = F + d * F * F;
+    var opts = [fD(fq), fD(F), fD(wrongDir), fD(fq + (F > 0 ? 0.75 : -0.75)), fD(fq - (F > 0 ? 0.75 : -0.75))];
+    return mk('vertex', '정점간거리 ' + dmm + ' mm에서 ' + fD(F) + ' 안경을 쓰는 사람의 CL 도수(0.25 D 단위)에 가장 가까운 것은?', opts,
+      ['정식: ' + F + ' ÷ (1 − ' + d + ' × ' + F + ') = ' + fc.toFixed(2) + ' → ' + fD(fq) + '. 간편: F + dF² = ' + approx.toFixed(2) + ' D.', '정점간거리를 빼먹었어요.', '방향 실수: 안경 → CL은 F/(1 − dF)예요.', '너무 많이 바꿨어요.', '바꾸는 양이 틀렸어요.'],
+      (F < 0 ? '근시는 CL이 약해져요.' : '원시는 CL이 강해져요.') + ' ±4 D 이상이면 꼭 계산해요.');
+  },
+  sign: function(){
+    var x = pick([20, 25, 40, 50, 100]); var v = -100 / x;
+    return mk('sign', '원점이 눈앞 ' + x + ' cm인 근시안의 완전 교정 도수(정점간거리 무시)는?',
+      [fD(v), fD(-v), fD(-x / 100), fD(-x / 10), fD(v / 2)],
+      ['원점 ' + x + ' cm → 100 ÷ ' + x + ' = ' + Math.abs(v).toFixed(2) + ', 근시는 (−)렌즈 → ' + fD(v) + '.', '부호 실수: 근시는 (−)렌즈예요.', '역수를 하지 않았어요.', '단위 실수예요.', '절반으로 잘못 나눴어요.'],
+      '근시 교정 렌즈의 초점은 원점에 맞춰요.');
+  },
+  age: function(){
+    var a = pick([36, 38, 40, 42, 44, 46, 48, 50, 52, 55]); var amp = Math.round((18.5 - 0.3 * a) * 100) / 100, np = Math.round(100 / amp * 10) / 10;
+    var mn = Math.round((15 - 0.25 * a) * 100) / 100, mx = Math.round((25 - 0.4 * a) * 100) / 100;
+    var f = function(x){ return x.toFixed(2) + ' D, 근점 약 ' + (Math.round(100 / x * 10) / 10) + ' cm'; };
+    return mk('age', 'Hofstetter 평균 조절력 공식으로 ' + a + '세 정시안의 조절력과 근점은?',
+      [f(amp), f(mn), f(mx), amp.toFixed(2) + ' D, 근점 약 ' + (amp * 10).toFixed(0) + ' cm', f(amp + 2)],
+      ['평균 18.5 − 0.3 × ' + a + ' = ' + amp.toFixed(2) + ' D → 근점 100 ÷ ' + amp.toFixed(2) + ' ≈ ' + np + ' cm.', '최소 공식(15 − 0.25 × 나이)이에요.', '최대 공식(25 − 0.4 × 나이)이에요.', 'D를 cm로 바꿀 때 역수를 하지 않았어요.', '나이 계산 실수예요.'],
+      '최소 15 − 0.25×나이 · 평균 18.5 − 0.3×나이 · 최대 25 − 0.4×나이');
+  }
+};
+window.OE_GEN = GEN;
+
+// ---------- 문제 카드 ----------
+var BANK = D.qs || [];
+var byId = {}; BANK.forEach(function(q){ byId[q.id] = q; });
+function theoryLink(q){ var t = D.theory || {}; return t[q.mt] && q.mt !== 'concept' ? t[q.mt] : (t['ch:' + q.ch] || ''); }
+function qCard(q, n, opt){
+  opt = opt || {};
+  var el = document.createElement('div'); el.className = 'q'; el.id = 'q-' + q.id;
+  var tagc = q.tag.indexOf('기출') >= 0 ? 'ok' : 'est';
+  el.innerHTML = '<div class="qh"><span class="num">' + (n ? n + '.' : '') + '</span><span class="tier t-' + q.tier + '">' + q.tier + '</span><span class="tag ' + tagc + '">' + q.tag + '</span>' +
+    (q.ch && D.chtitle ? '<span class="mtl">' + (D.chtitle[q.ch] || '') + '</span>' : '') + '</div><div class="qt">' + q.q + '</div>' +
+    q.o.map(function(o, i){ return '<button class="opt" type="button" data-i="' + i + '"><b>' + CIRC[i] + '</b> ' + o + '</button>'; }).join('') +
+    '<div class="diag" hidden></div>';
+  $$('.opt', el).forEach(function(b){ b.addEventListener('click', function(){ choose(el, q, +b.getAttribute('data-i'), opt); }); });
+  return el;
+}
+function choose(el, q, i, opt){
+  if (el.getAttribute('data-done')) return;
+  if (opt.deferred){ $$('.opt', el).forEach(function(b){ b.classList.remove('pick'); }); $$('.opt', el)[i].classList.add('pick'); el.setAttribute('data-pick', i); if (opt.onPick) opt.onPick(); return; }
+  reveal(el, q, i);
+}
+function reveal(el, q, i){
+  el.setAttribute('data-done', '1');
+  var ok = i === q.a; rec(q, ok);
+  $$('.opt', el).forEach(function(b, k){ b.disabled = true; if (k === q.a) b.classList.add('right'); else if (k === i) b.classList.add('wrong'); });
+  var d = $('.diag', el), h = '';
+  if (i < 0) h += '<div class="no">답을 고르지 않았어요. 정답은 ' + CIRC[q.a] + '</div>';
+  else h += ok ? '<div class="ok">정답이에요! ' + CIRC[q.a] + '</div>' : '<div class="no">아쉬워요. 정답은 ' + CIRC[q.a] + '</div>';
+  if (!ok && i >= 0 && q.why) h += '<p><b>내가 고른 ' + CIRC[i] + '가 틀린 이유</b> ' + q.why[i] + '</p>';
+  h += '<p><b>정답 근거</b> ' + (q.why ? q.why[q.a] + ' ' : '') + (q.e || '') + '</p>';
+  if (q.th) h += '<p class="note"><b>관련 이론</b> ' + q.th + '</p>';
+  if (q.why) h += '<details><summary>보기별 오답 분석 보기</summary><ol>' + q.why.map(function(w, k){ return '<li>' + (k === q.a ? '<b>(정답)</b> ' : '') + w + '</li>'; }).join('') + '</ol></details>';
+  if (q.cite) h += '<p class="src">' + q.cite + '</p>';
+  if (q.mt) h += '<p class="meta">실수 종류: ' + (D.mts[q.mt] || q.mt) + '</p>';
+  var tl = theoryLink(q);
+  h += '<div class="ctrl">' + (tl ? '<a class="btn l" data-l="' + tl + '">이론 보러 가기</a>' : '') + '<button class="btn o sim" type="button">비슷한 문제 더 풀기</button></div><div class="simbox" hidden></div>';
+  d.innerHTML = h; d.hidden = false; fixLinks(d);
+  $('.sim', d).addEventListener('click', function(){ similar(el, q); });
+}
+function similar(el, q){
+  var box = $('.simbox', el); box.hidden = false;
+  var pool = shuffle(BANK.filter(function(x){ return x.mt === q.mt && x.id !== q.id && !(S.q[x.id] && S.q[x.id].last === 1); }));
+  var items = pool.slice(0, GEN[q.mt] ? 2 : 3);
+  if (GEN[q.mt]) items.push(GEN[q.mt]());
+  if (!items.length) items = shuffle(BANK.filter(function(x){ return x.ch === q.ch && x.id !== q.id; })).slice(0, 2);
+  box.innerHTML = '<p class="meta"><b>같은 실수 종류(' + mtName(q.mt) + ') 문제</b></p>';
+  items.forEach(function(x){ box.appendChild(qCard(x, '')); });
+  if (!D.fullBank){ var a = document.createElement('a'); a.className = 'btn l'; a.setAttribute('data-l', 'quiz.html#mt=' + q.mt); a.textContent = '이 실수 종류만 더 풀기'; box.appendChild(a); fixLinks(box); }
+}
+window.OE_qCard = qCard;
+
+// ---------- 페이지 안 문제 묶음 (파트·날짜 페이지) ----------
+function mountSet(root){
+  var ids = (root.getAttribute('data-ids') || '').split(',').filter(Boolean);
+  var qs = ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  var tabs = document.createElement('div'); tabs.className = 'ctrl';
+  var list = document.createElement('div');
+  var tiers = ['전체', '기본', '응용', '심화'];
+  function draw(t){
+    list.innerHTML = ''; var n = 0;
+    qs.forEach(function(q){ if (t === '전체' || q.tier === t){ n++; list.appendChild(qCard(q, n)); } });
+    if (!n) list.innerHTML = '<p class="note">이 단계 문제가 없어요.</p>';
+    $$('.chip', tabs).forEach(function(c){ c.classList.toggle('on', c.textContent.indexOf(t) === 0); });
+  }
+  tiers.forEach(function(t){ var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = t + ' ' + (t === '전체' ? qs.length : qs.filter(function(q){ return q.tier === t; }).length); b.onclick = function(){ draw(t); }; tabs.appendChild(b); });
+  root.appendChild(tabs); root.appendChild(list); draw('전체');
+}
+
+// ---------- 퀴즈 앱 (quiz.html, offline) ----------
+function weakList(){
+  var arr = Object.keys(S.mt).map(function(k){ var m = S.mt[k]; return {k:k, n:m.r + m.w, rate:m.w / Math.max(1, m.r + m.w)}; }).filter(function(x){ return x.n >= 2 && x.rate > 0; });
+  arr.sort(function(a, b){ return b.rate - a.rate || b.n - a.n; }); return arr;
+}
+window.OE_weak = weakList;
+function mountQuiz(root){
+  var parts = D.partsSel || [];
+  root.innerHTML = '<div class="card"><div class="ctrl"><select id="qz-cat"><option value="">전체 과목</option>' +
+    parts.map(function(p){ return '<optgroup label="' + p.title + '">' + p.chs.map(function(c){ return '<option value="ch:' + c + '">' + (D.chtitle[c] || c) + '</option>'; }).join('') + '</optgroup>'; }).join('') +
+    '</select><select id="qz-mt"><option value="">모든 실수 종류</option>' + Object.keys(D.mts).map(function(k){ return '<option value="' + k + '">' + mtName(k) + '</option>'; }).join('') + '</select>' +
+    '<select id="qz-n"><option>10</option><option selected>20</option><option value="999">전부</option></select></div>' +
+    '<div class="ctrl" id="qz-tier"></div><div class="ctrl"><button class="btn" id="qz-go" type="button">문제 풀기</button><button class="btn o" id="qz-weak" type="button">약한 부분 훈련</button>' +
+    '<button class="btn g" id="qz-mock" type="button">짧은 모의고사 40</button><button class="btn l" id="qz-gc" type="button">기출 응용</button></div><p class="meta" id="qz-info"></p></div><div id="qz-list"></div>';
+  var tier = '전체', tw = $('#qz-tier', root);
+  ['전체', '기본', '응용', '심화'].forEach(function(t){ var b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (t === tier ? ' on' : ''); b.textContent = t; b.onclick = function(){ tier = t; $$('.chip', tw).forEach(function(c){ c.classList.toggle('on', c.textContent === t); }); }; tw.appendChild(b); });
+  var list = $('#qz-list', root), info = $('#qz-info', root);
+  function show(qs, msg, deferred){
+    list.innerHTML = ''; info.textContent = msg || '';
+    var cards = [];
+    qs.forEach(function(q, i){ var c = qCard(q, i + 1, {deferred:deferred}); cards.push([c, q]); list.appendChild(c); });
+    if (deferred){
+      var t0 = Date.now(), bar = document.createElement('div'); bar.className = 'card';
+      bar.innerHTML = '<p>모의고사: 다 풀고 「채점하기」를 누르세요. <span id="qz-time"></span></p><button class="btn o" type="button" id="qz-grade">채점하기</button><div id="qz-res"></div>';
+      list.appendChild(bar);
+      var tm = setInterval(function(){ var s = Math.floor((Date.now() - t0) / 1000); var e = $('#qz-time'); if (e) e.textContent = '경과 ' + Math.floor(s / 60) + '분 ' + (s % 60) + '초'; else clearInterval(tm); }, 1000);
+      $('#qz-grade', bar).onclick = function(){
+        clearInterval(tm); var by = {};
+        cards.forEach(function(cq){ var c = cq[0], q = cq[1]; var p = c.getAttribute('data-pick'); var i = p === null ? -1 : +p; if (!c.getAttribute('data-done')) reveal(c, q, i); var a = by[q.area] = by[q.area] || {r:0, n:0}; a.n++; if (i === q.a) a.r++; });
+        var tot = 0, n = 0, rows = Object.keys(by).map(function(k){ var a = by[k]; tot += a.r; n += a.n; var p = Math.round(a.r / a.n * 100); return '<tr><td>' + k + '</td><td>' + a.r + '/' + a.n + '</td><td>' + p + '%' + (k === '실기' ? (p >= 60 ? '' : ' (60% 미만)') : (p >= 40 ? '' : ' (40% 미만)')) + '</td></tr>'; }).join('');
+        $('#qz-res', bar).innerHTML = '<div class="tblw"><table class="tbl"><tr><th>영역</th><th>맞힘</th><th>비율</th></tr>' + rows + '</table></div><p>전체 ' + tot + '/' + n + ' (' + Math.round(tot / n * 100) + '%). 실제 기준: 필기 총점 60% + 과목별 40%, 실기 60%.</p><p class="note">짧은 연습용 점검이에요. 이 점수로 합격을 예측하거나 보장할 수 없어요. 틀린 문제는 「약한 부분 훈련」에 모여요.</p>';
+        bar.scrollIntoView({behavior:'smooth'});
+      };
+    }
+    if (!qs.length) list.innerHTML = '<p class="card">조건에 맞는 문제가 없어요.</p>';
+  }
+  function filtered(){
+    var cat = $('#qz-cat', root).value, mt = $('#qz-mt', root).value;
+    return BANK.filter(function(q){ return (!cat || ('ch:' + q.ch) === cat || ('part:' + q.part) === cat) && (!mt || q.mt === mt) && (tier === '전체' || q.tier === tier); });
+  }
+  function go(){ var n = +$('#qz-n', root).value; var qs = shuffle(filtered()); var tot = qs.length; qs = qs.slice(0, n); var mt = $('#qz-mt', root).value; if (mt && GEN[mt]) { qs.push(GEN[mt]()); } show(qs, '조건에 맞는 ' + tot + '문제 중 ' + Math.min(n, tot) + '문제' + (mt && GEN[mt] ? ' + 자동 생성 1문제' : '')); }
+  function weak(){
+    var w = weakList(), wrong = BANK.filter(function(q){ return S.q[q.id] && S.q[q.id].last === 0; });
+    if (!w.length && !wrong.length){ show(shuffle(BANK.filter(function(q){ return q.tier === '기본'; })).slice(0, 10), '아직 틀린 기록이 없어요. 먼저 기본 문제 10개로 시작해요.'); return; }
+    var top = w.slice(0, 3).map(function(x){ return x.k; });
+    var qs = shuffle(wrong).slice(0, 8);
+    var more = shuffle(BANK.filter(function(q){ return top.indexOf(q.mt) >= 0 && qs.indexOf(q) < 0 && !(S.q[q.id] && S.q[q.id].last === 1); })).slice(0, 15 - qs.length);
+    qs = qs.concat(more); top.forEach(function(k){ if (GEN[k]) qs.push(GEN[k]()); });
+    show(qs, '약한 실수 종류: ' + (top.map(mtName).join(', ') || '없음') + ' · 최근 틀린 문제 ' + wrong.length + '개');
+  }
+  function mock(){
+    var plan = {법규:4, 이론:14, 응용:14, 실기:8}, qs = [];
+    Object.keys(plan).forEach(function(k){ qs = qs.concat(shuffle(BANK.filter(function(q){ return q.area === k; })).slice(0, plan[k])); });
+    show(qs, '짧은 모의고사 40문제 (법규 4 · 이론 14 · 응용 14 · 실기 8). 권장 시간 약 30분.', true);
+  }
+  function gc(){ show(BANK.filter(function(q){ return q.tag.indexOf('기출') >= 0; }), '[기출 확인] 유형: 국시원 공개 예시문항과 같은 형식의 문제'); }
+  $('#qz-go', root).onclick = go; $('#qz-weak', root).onclick = weak; $('#qz-mock', root).onclick = mock; $('#qz-gc', root).onclick = gc;
+  function applyHash(){
+    var h = decodeURIComponent(location.hash.slice(1)); if (!h || h.indexOf('=') < 0) return false;
+    var p = {}; h.split('&').forEach(function(kv){ var x = kv.split('='); p[x[0]] = x[1]; });
+    if (p.ch) $('#qz-cat', root).value = 'ch:' + p.ch;
+    if (p.part){ var o = document.createElement('option'); o.value = 'part:' + p.part; o.textContent = '파트 전체'; $('#qz-cat', root).appendChild(o); $('#qz-cat', root).value = 'part:' + p.part; }
+    if (p.mt) $('#qz-mt', root).value = p.mt;
+    if (p.tier){ tier = p.tier; $$('.chip', tw).forEach(function(c){ c.classList.toggle('on', c.textContent === tier); }); }
+    if (p.mode === 'weak') weak(); else if (p.mode === 'mock') mock(); else if (p.mode === 'gichul') gc(); else go();
+    if (D.offline){ var z = document.getElementById('quiz'); if (z) z.scrollIntoView(); }
+    return true;
+  }
+  window.addEventListener('hashchange', applyHash);
+  if (!applyHash()) go();
+}
+
+// ---------- 플래시카드 (라이트너) ----------
+var INTERVAL = [0, 1, 3, 7, 14];
+function mountCards(root){
+  var cards = D.cards || [], DAY = 86400000;
+  root.innerHTML = '<div class="card"><div class="boxes" id="fc-boxes"></div><div class="ctrl"><select id="fc-part"><option value="">모든 파트</option>' + (D.partsSel || []).map(function(p){ return '<option value="' + p.key + '">' + p.title + '</option>'; }).join('') + '</select></div></div><div class="flash" id="fc"></div><div class="ctrl"><button class="btn l" id="fc-show" type="button">뒤집기</button><button class="btn g" id="fc-ok" type="button">알았어요</button><button class="btn o" id="fc-no" type="button">몰랐어요</button></div>';
+  var cur = null, part = '';
+  function st(c){ return S.cards[c.id] || {b:0, due:0}; }
+  function counts(){ var n = [0, 0, 0, 0, 0]; cards.forEach(function(c){ n[st(c).b]++; }); $('#fc-boxes', root).innerHTML = n.map(function(x, i){ return '<span>' + (i < 4 ? '상자' + (i + 1) : '완료') + ' ' + x + '</span>'; }).join(''); }
+  function next(){
+    var now = Date.now(); var pool = cards.filter(function(c){ return (!part || c.part === part) && st(c).due <= now; });
+    counts();
+    if (!pool.length){ $('#fc', root).innerHTML = '<p>오늘 볼 카드를 다 봤어요. 내일 다시 와요!</p>'; cur = null; return; }
+    pool.sort(function(a, b){ return st(a).b - st(b).b; }); var low = st(pool[0]).b; pool = shuffle(pool.filter(function(c){ return st(c).b === low; }));
+    cur = pool[0]; $('#fc', root).innerHTML = '<div class="meta">' + (cur.ptitle || '') + ' · ' + (st(cur).b < 4 ? '상자' + (st(cur).b + 1) : '완료') + '</div><div class="front">' + cur.f + '</div><div class="back" hidden>' + cur.b + '</div>';
+  }
+  function mark(ok){ if (!cur) return; var s = st(cur); s.b = ok ? Math.min(4, s.b + 1) : 0; s.due = Date.now() + INTERVAL[s.b] * DAY; S.cards[cur.id] = s; save(); next(); }
+  $('#fc-show', root).onclick = function(){ var b = $('#fc .back', root); if (b) b.hidden = !b.hidden; };
+  $('#fc-ok', root).onclick = function(){ mark(true); }; $('#fc-no', root).onclick = function(){ mark(false); };
+  $('#fc-part', root).onchange = function(){ part = this.value; next(); };
+  next();
+}
+
+// ---------- 질문 바 (AI로 연결) ----------
+function askUrl(svc, text){
+  var cat = (document.body.getAttribute('data-cat') || '기타');
+  var prompt = '저는 한국 안경사 국가시험을 준비하는 학생입니다. [' + cat + '] 쉬운 말로, 근거(이론·공식·법조문)와 함께 설명해 주세요: ' + text;
+  return (svc === 'gpt' ? 'https://chatgpt.com/?q=' : 'https://grok.com/?q=') + encodeURIComponent(prompt);
+}
+function mountAsk(){
+  var f = $('#askform'); if (!f) return;
+  function go(svc){ var t = $('#askq').value.trim(); if (!t){ $('#askq').focus(); return; } window.open(askUrl(svc, t), '_blank', 'noopener'); }
+  f.addEventListener('submit', function(e){ e.preventDefault(); go('grok'); });
+  var alt = $('#askalt'); if (alt) alt.addEventListener('click', function(){ go('gpt'); });
+  $$('.bigbtns button').forEach(function(b){ b.addEventListener('click', function(){ document.body.setAttribute('data-cat', b.textContent); $$('.bigbtns button').forEach(function(x){ x.classList.toggle('on', x === b); }); var q = $('#askq'); q.placeholder = '[' + b.textContent + '] 궁금한 걸 적어 주세요'; q.focus(); }); });
+}
+
+// ---------- 홈: D-day, 오늘, 진행 ----------
+function mountHome(){
+  var ex = new Date(D.examDate + 'T09:00:00+09:00'), now = new Date();
+  var dd = Math.ceil((ex - now) / 86400000), e = $('#dday'); if (e) e.textContent = dd > 0 ? 'D-' + dd : (dd === 0 ? 'D-DAY' : '시험 종료');
+  var start = new Date('2026-11-10T00:00:00+09:00'), k = Math.floor((now - start) / 86400000);
+  var t = $('#today');
+  if (t){
+    if (k < 0) t.innerHTML = '11월 10일에 D1부터 시작해요.';
+    else if (k < 21){ var d = (k % 10) + 1; t.innerHTML = '오늘은 <b>' + (k < 10 ? '1회차' : (k < 20 ? '2회차' : '마무리')) + ' D' + d + '</b> → <a data-l="d' + (d < 10 ? '0' + d : d) + '.html">오늘 할 일 열기</a>'; }
+    else if (dd > 0) t.innerHTML = '지금은 <b>복습 기간</b>이에요 → <a data-l="quiz.html#mode=weak">약한 부분 훈련</a> · <a data-l="quiz.html#mode=mock">모의고사</a>';
+    else t.innerHTML = '시험이 끝났어요. 수고했어요!';
+  }
+  $$('[data-day]').forEach(function(a){ if (S.days[a.getAttribute('data-day')]) a.classList.add('done'); });
+  var n = 0, r = 0; Object.keys(S.q).forEach(function(k){ n++; if (S.q[k].last) r++; });
+  var st = $('#stats'); if (st){ var w = weakList().slice(0, 3); st.innerHTML = '푼 문제 ' + n + '개 · 최근 정답 ' + r + '개' + (n ? ' (' + Math.round(r / n * 100) + '%)' : '') + (w.length ? '<br>약한 실수 종류: ' + w.map(function(x){ return mtName(x.k) + ' ' + Math.round(x.rate * 100) + '%'; }).join(', ') : ''); }
+  fixLinks(t);
+}
+function mountDayDone(){
+  var c = $('#daydone'); if (!c) return; var k = c.getAttribute('data-d');
+  c.checked = !!S.days[k]; c.addEventListener('change', function(){ S.days[k] = c.checked ? Date.now() : 0; save(); });
+}
+// ---------- 해시 → 섹션 이동 ----------
+function scrollHash(){
+  var h = decodeURIComponent(location.hash.slice(1)); if (!h || h.indexOf('=') >= 0) return;
+  var el = document.getElementById(h); if (el) setTimeout(function(){ el.scrollIntoView(); }, 60);
+}
+// ---------- QA 훅 (#qa 일 때만) ----------
+function qa(){
+  if (location.hash.indexOf('qa') < 0) return;
+  var W = document.documentElement.clientWidth, over = [];
+  $$('body *').forEach(function(el){ var r = el.getBoundingClientRect(); if (r.width > 0 && (r.right > W + 1 || r.left < -1) && !el.closest('.tblw') && !el.closest('nav.tabs') && getComputedStyle(el).position !== 'fixed') over.push(el.tagName + '.' + el.className); });
+  var b = $('.q .opt'), clicked = 'none';
+  if (b){ b.click(); var d = b.closest('.q').querySelector('.diag'); clicked = d && !d.hidden ? 'ok' : 'fail'; var s = d && d.querySelector('.sim'); if (s){ s.click(); clicked += (d.querySelector('.simbox .q') ? '+sim' : '+nosim'); } }
+  document.body.setAttribute('data-qa', JSON.stringify({w:W, sw:document.documentElement.scrollWidth, over:over.slice(0, 10), click:clicked, qn:$$('.q').length}));
+}
+document.addEventListener('DOMContentLoaded', function(){
+  fixLinks();
+  var on = $('nav.tabs a.on'); if (on) on.parentNode.scrollLeft = Math.max(0, on.offsetLeft - 60);
+  $$('[data-set]').forEach(mountSet);
+  var qz = $('#quizapp'); if (qz) mountQuiz(qz);
+  var fc = $('#cardapp'); if (fc) mountCards(fc);
+  mountAsk(); mountDayDone();
+  if (D.page === 'home' || D.offline) mountHome();
+  scrollHash(); window.addEventListener('hashchange', scrollHash);
+  setTimeout(qa, 300);
+});
+})();
+</script></body></html>
